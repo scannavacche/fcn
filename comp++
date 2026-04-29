@@ -1,0 +1,25 @@
+#!/bin/bash
+#
+# batch di compilazione per lab FCN 
+# contiene riferimenti a matplot mica per caso ;)
+# i percorsi delle lib sono per ubuntu wsl di casa
+#
+# uso: ./comp++ sourcename  
+#    (solo nome, senza estensione)
+#
+srcname=$1
+echo Compilo $srcname
+g++ -std=c++17 -O2  ${srcname}.cpp fcn_lib_calc.cpp -o ${srcname} \
+	-L/usr/local/lib \
+	-L/usr/local/lib/Matplot++ \
+	-Wl,--start-group \
+	-lmatplot -lnodesoup -lpng -ltiff -lz -ljpeg  -lm \
+	-Wl,--end-group
+
+
+
+
+
+
+
+
