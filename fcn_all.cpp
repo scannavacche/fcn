@@ -1347,7 +1347,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             // stampa_matrice(T, T.size(), "Triangolare");
 
             Vec v_atan = prodotto_matrice_vettore(T, fvals); // prodotto matrice vettore per ottenere stima integrale
-            // vector_dump(v_atan, 10, v_atan.size(), "T * fvals = stima integrale");
+            vector_dump(v_atan, 10, v_atan.size(), "T * fvals = stima integrale");
         
             // Mat T_inv_sint = costruisci_inv_triangolare_sint(10);
             // stampa_matrice(T_inv_sint, T_inv_sint.size(), "Inversa sintetica");
@@ -1360,6 +1360,14 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             
             // Mat I = prodotto_matrici(T, T_inv);
             // stampa_matrice(I, I.size(), "T * T_inv");  
+
+            Vec Err_Min_1(N, 0.0), Err_0(N, 0.0), Err_Plus_1(N, 0.0);
+            for (int i = 1; i < N-1; ++i) {
+                Err_Min_1[i] = std::abs(v_atan_d[i] - fvals[i-1]);
+                Err_0[i] = std::abs(v_atan_d[i] - fvals[i]);
+                Err_Plus_1[i] = std::abs(v_atan_d[i] - fvals[i+1]);
+            }
+
             figure_handle f = TableInit(true, "Integrazione e derivazione", "da 1/(1+x^2) ad atan e viceversa", 2,2);
             auto ax = f->current_axes();
 
@@ -1391,6 +1399,8 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             p->display_name("u'(t) = 1/(1+t^2)");
 
             auto q = plot(t, v_atan);
+            q->use_y2(true);
+            // ax->y2_axis().limits({-1.6, 1.6});  
             q->line_width(2);
             q->display_name("U(t) = Tu'(t)");
 
@@ -1398,12 +1408,43 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             r->line_width(2);
             r->line_style("--");
             r->display_name("u'(t) = T^-1 U(t)");
+ 
 
             legend_align(matplot::legend(), 2, 0,0);
             matplot::legend();
             xlabel("t [rad]");
             ylabel("valore");
+
+            f->nexttile(3);
+            ax = f->current_axes();
+            ax->title("Errore su integrazione e successiva derivazione");
+            // ax->legend();
+            // cout << "Integrazione discreta: U = T * fvals" << endl;
+            hold(on);
+            auto p1 = plot(t, Err_Min_1);
+            // p->line_style(" -");
+            p1->line_width(2);
+            p1->display_name("Err i su i-1");
+
+            auto q1 = plot(t, Err_0);
+            q1->line_width(2);
+            q1->use_y2(true);
+            ax->y2_axis().limits({-0.001, 0.001});
+            q1->display_name("Err i su i");
+
+            auto r1 = plot(t, Err_Plus_1);
+            r1->line_width(2);
+            r1->line_style("- ");
+            r1->display_name("Err i su i+1");
+ 
+
+            legend_align(matplot::legend(), 1, 0,0);
+            matplot::legend();
+            xlabel("t [rad]");
+            ylabel("valore");
             f->draw();
+
+
 
 
             while (!redo && !leave) {
