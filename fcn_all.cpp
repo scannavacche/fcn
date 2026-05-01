@@ -1299,9 +1299,9 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                         std::cout << "Inserire nuova cond finale x1 (<q> per uscire) > " ;
                         if (std::cin >> x1) { if (x1>=x0 && x1<=T) redo=true;} else {cout << "Key: " << x1 <<endl; leave=true;} ;
                     }
-                cin_clear();
                 };
-            };
+                cin_clear();
+           };
         };
     };
 
@@ -1480,7 +1480,6 @@ int main() {
         figure_handle fig = TableInit(true, "Figure vuota per inizializzare matplot++", "Figure vuota per inizializzare matplot++", 2, 2);
         // fig->draw();
     }
-    bool bypass_waitakey = true;
     MenuConfig menu;
     ActionRegistry actions;
 
@@ -1542,7 +1541,7 @@ int main() {
 
         cin_clear();
         it->second();
-        wait_return_to_menu(bypass_waitakey);
+        wait_return_to_menu(true);
         
         int dummy = system("clear"); 
 
