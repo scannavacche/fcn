@@ -81,6 +81,10 @@ void stampa_matrice(
     const double NR, 
     const std::string &nome);
 
+Vec vector_shift(
+    const Vec &v, 
+    const double shift);
+
 void vector_dump (
     Vec x, 
     int colspan, 
