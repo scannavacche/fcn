@@ -41,7 +41,7 @@ const MenuItem* find_menu_item(
     const MenuConfig& menu, 
     int key);
 
-void wait_return_to_menu();
+void wait_return_to_menu(bool bypass_waitakey);
 
 void cin_clear();
 

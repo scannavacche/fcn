@@ -993,8 +993,10 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             << " mancava solo il confronto con eps_M ma era gia' stimabile ad occhio attorno  10^-16 \n";
         cout << "Premere un tasto per continuare" << endl;   
 
-        cin_clear();
-        // getc(stdin);
+        // cin_clear();
+        wait_return_to_menu(false);
+        wait_return_to_menu(false);
+
     }
 
     void f2_deriv() {
@@ -1415,6 +1417,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             auto q1 = plot(t, Err_0);
             q1->line_width(2);
             q1->use_y2(true);
+
             ax->y2_axis().limits({-1.00e-6, 1.00e-6 });
             q1->display_name("Err i su i");
 
@@ -1477,6 +1480,7 @@ int main() {
         figure_handle fig = TableInit(true, "Figure vuota per inizializzare matplot++", "Figure vuota per inizializzare matplot++", 2, 2);
         // fig->draw();
     }
+    bool bypass_waitakey = true;
     MenuConfig menu;
     ActionRegistry actions;
 
@@ -1536,13 +1540,10 @@ int main() {
             continue;
         }
 
-        if (std::cin.fail()) {
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); 
-        };
+        cin_clear();
         it->second();
-        wait_return_to_menu(); // sfruttiamo cin in errore per scavalcare la wait_return quando serve
-
+        wait_return_to_menu(bypass_waitakey);
+        
         int dummy = system("clear"); 
 
     }
