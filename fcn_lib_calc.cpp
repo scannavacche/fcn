@@ -29,7 +29,11 @@ double deg2rad(const int alpha) {
 void cin_clear() {
     if (std::cin.fail()) {
         std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');  // Svuota buffer
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); 
+    };
+    std::streamsize max_ignore = std::cin.rdbuf()->in_avail(); // numero di caratteri disponibili in ingresso
+    if (max_ignore > 0) {
+        std::cin.ignore(max_ignore, '\n'); // ignora fino a max_ignore caratteri o fino a newline
     };
 };
 
@@ -626,9 +630,10 @@ const MenuItem* find_menu_item(const MenuConfig& menu, int key) {
     return nullptr;
 }
 
-void wait_return_to_menu() {
-    std::cout << "\nPremi INVIO per tornare al menu...";
-    // std::cin.clear(); // ci sta bene che passi dritto se usciamo da un precedente con input non valido
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    std::cin.get();
+void wait_return_to_menu(bool bypass_waitakey) {
+    if (!bypass_waitakey) {
+        std::cout << "\nPremi INVIO per tornare al menu...";
+        cin_clear();
+        std::cin.get();
+    };
 }
