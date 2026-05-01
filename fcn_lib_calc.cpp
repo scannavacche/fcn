@@ -169,6 +169,15 @@ void stampa_matrice(
     }
 }
 
+Vec vector_shift(
+    const Vec &v, 
+    const double shift) {
+    Vec v_shifted = v;
+    for (int i = 0; i < (int)v.size(); ++i) {
+        v_shifted[i] += shift;
+    }
+    return v_shifted;
+}
 
 void vector_dump (
     Vec x, 

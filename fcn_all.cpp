@@ -719,11 +719,9 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             while (!redo && !leave) {
                 cout << "Segnale a freq K = "<< itostr(K) << " campionato su " << itostr(N) << " punti \n" ;
                 cout << "Inserire nuovo valore di K (dim base dello spazio del segnale) 1 .. 256 (<q> per uscire) > ";
-                if (std::cin.fail()) {
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');  // Svuota buffer
-                };
+                cin_clear();
                 if (cin >> K) { if (K>0 && K<256) redo=true;} else {cout << "Key: " << K <<endl; leave=true;} ; 
+                cin_clear();
             };
 
 
@@ -795,15 +793,11 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             while (!redo && !leave) {
                 cout << "Inserire nuovo valore di x di cui calcolare exp(x) < x - eXit>:  " ;
 
-                if (std::cin.fail()) {
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');  // Svuota buffer
-                };
-
+                cin_clear();
                 if (cin >> target_arg) { if (target_arg != 0) redo=true;} else {cout << "Key: " << target_arg <<endl; leave=true;} ; 
                 cout << "Inserire numero di termini dello sviluppo di Taylor 1 .. 40 (<q> per uscire) > ";
                 if (cin >> n_terms) { if (n_terms>0 && n_terms<=40) redo=true;} else {cout << "Key: " << n_terms <<endl; leave=true;} ; 
-
+                cin_clear();
             };
         }
     }
@@ -851,13 +845,11 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             redo = false;
             while (!redo && !leave) {
                 cout << "Inserire nuovo valore di x di cui calcolare cos(x) [deg 1..360] < x - eXit>:  " ;
-                if (std::cin.fail()) {
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');  // Svuota buffer
-                };
+                cin_clear();
                 if (cin >> target_arg) { if ((target_arg >= -360) && (target_arg<=360)) redo=true;} else {cout << "Key: " << target_arg <<endl; leave=true;} ; 
                 cout << "Inserire numero di termini dello sviluppo di Taylor 1 .. 40 (<q> per uscire) > ";
                 if (cin >> n_terms) { if (n_terms>0 && n_terms<=40) redo=true;} else {cout << "Key: " << n_terms <<endl; leave=true;} ; 
+                cin_clear();
                 curr_tile=0;
             };
         }
@@ -1001,10 +993,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             << " mancava solo il confronto con eps_M ma era gia' stimabile ad occhio attorno  10^-16 \n";
         cout << "Premere un tasto per continuare" << endl;   
 
-        if (std::cin.fail()) {
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');  // Svuota buffer
-        };
+        cin_clear();
         // getc(stdin);
     }
 
@@ -1105,10 +1094,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             while (!redo && !leave) {
                 cout << "Inserire nuova semiampiezza di dominio di arctg(x) 1 .. 10 rad (<q> per uscire) > ";
 
-                if (std::cin.fail()) {
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');  // Svuota buffer
-                };
+                cin_clear();
 
                 if (cin >> domain_span) { 
                     if (domain_span >= 1 && domain_span <= 10) {
@@ -1119,7 +1105,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                     cout << "Key: " << domain_span <<endl; 
                     leave=true;
                 } ; 
-        
+                cin_clear();
             };
         };
     };
@@ -1199,16 +1185,14 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             while (!redo && !leave) {
                 std::cout << "Inserire nuovo T finale 5 .. 50 (<q> per uscire) > ";
 
-                if (std::cin.fail()) {
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');  // Svuota buffer
-                };
+                cin_clear();
 
                 if (std::cin >> T) { if (T>=5 && T<=50) redo=true;} else {cout << "Key: " << T <<endl; leave=true;} ;
                 if (!leave) {
                     std::cout << "Inserire nuovo valore iniziale x0 (<q> per uscire) > " ;
                     if (std::cin >> x0) { if (x0>=t0 && x0<=T) redo=true;} else {cout << "Key: " << x0 <<endl; leave=true;} ;
                 };
+                cin_clear();
             };
         };
     };
@@ -1303,10 +1287,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             while (!redo && !leave) {
                 std::cout << "Inserire nuovo T finale 1 .. 10 (<q> per uscire) > ";
 
-                if (std::cin.fail()) {
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');  // Svuota buffer
-                };
+                cin_clear();
 
                 if (std::cin >> T) { if (T>=1 && T<=10) redo=true;} else {cout << "Key: " << T <<endl; leave=true;} ;
                 if (!leave) {
@@ -1316,6 +1297,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                         std::cout << "Inserire nuova cond finale x1 (<q> per uscire) > " ;
                         if (std::cin >> x1) { if (x1>=x0 && x1<=T) redo=true;} else {cout << "Key: " << x1 <<endl; leave=true;} ;
                     }
+                cin_clear();
                 };
             };
         };
@@ -1323,8 +1305,8 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
     void f2_integral() {
 
-        double a=0,b=1; // intevallo di integrazione
-        int N = 40; // numero di punti di campionamento   
+        double a=-7,b=7; // intervallo di integrazione
+        int N = 50; // numero di punti di campionamento   
         bool leave = false; 
         Vec fvals;
 
@@ -1347,7 +1329,9 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             // stampa_matrice(T, T.size(), "Triangolare");
 
             Vec v_atan = prodotto_matrice_vettore(T, fvals); // prodotto matrice vettore per ottenere stima integrale
-            vector_dump(v_atan, 10, v_atan.size(), "T * fvals = stima integrale");
+            vector_dump(v_atan, 10, v_atan.size(), "T * fvals = stima integrale per somma discreta");
+            v_atan = vector_shift(v_atan, std::atan(a)); // shift di arcotg(a) per centratura
+            vector_dump(v_atan, 10, v_atan.size(), "T * fvals = stima integrale riposizionata");
         
             // Mat T_inv_sint = costruisci_inv_triangolare_sint(10);
             // stampa_matrice(T_inv_sint, T_inv_sint.size(), "Inversa sintetica");
@@ -1355,8 +1339,10 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             Mat T_inv = calcola_inversa_LU (T);
             //stampa_matrice(T_inv, T_inv.size(), "Inversa con LU");
 
-            Vec v_atan_d = prodotto_matrice_vettore(T_inv, v_atan); // prodotto matrice vettore per ottenere stima derivata
-            // vector_dump(v_atan_d, 10, v_atan_d.size(), "T * v_atan = stima derivata");
+            Vec v_atan_d = prodotto_matrice_vettore(T_inv, vector_shift(v_atan, -std::atan(a))); // derivata corrispondente, con backshift di centratura
+            Vec v_atan_dcn = prodotto_matrice_vettore(T_inv, v_atan); // derivata analiticamente corretta ma sbagliata per cn 
+            vector_dump(v_atan_d, 10, v_atan_d.size(), "T * v_atan = stima derivata simmetrica");
+            vector_dump(v_atan_dcn, 10, v_atan_dcn.size(), "T * v_atan = stima derivata analitica");
             
             // Mat I = prodotto_matrici(T, T_inv);
             // stampa_matrice(I, I.size(), "T * T_inv");  
@@ -1429,7 +1415,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             auto q1 = plot(t, Err_0);
             q1->line_width(2);
             q1->use_y2(true);
-            ax->y2_axis().limits({-0.001, 0.001});
+            ax->y2_axis().limits({-1.00e-6, 1.00e-6 });
             q1->display_name("Err i su i");
 
             auto r1 = plot(t, Err_Plus_1);
@@ -1450,10 +1436,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             while (!redo && !leave) {
                 std::cout << "Inserire Numero di nodi di campionamento (<q> per uscire) > ";
 
-                if (std::cin.fail()) {
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');  // Svuota buffer
-                };
+                cin_clear();
 
                 if (std::cin >> N) { if (N>=1 && N<=1000) redo=true;} else {cout << "Key: " << N <<endl; leave=true;} ;
                 if (!leave) {
@@ -1464,6 +1447,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                         if (std::cin >> b) { if (b>a && b<=10) redo=true;} else {cout << "Key: " << b <<endl; leave=true;} ;
                     }
                 };
+                cin_clear();
             };
 
         };
