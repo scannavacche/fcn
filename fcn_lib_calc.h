@@ -43,6 +43,7 @@ const MenuItem* find_menu_item(
 
 void wait_return_to_menu();
 
+void cin_clear();
 
 double h_ticks(
     const double a_start, 

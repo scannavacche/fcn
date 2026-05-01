@@ -719,6 +719,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             while (!redo && !leave) {
                 cout << "Segnale a freq K = "<< itostr(K) << " campionato su " << itostr(N) << " punti \n" ;
                 cout << "Inserire nuovo valore di K (dim base dello spazio del segnale) 1 .. 256 (<q> per uscire) > ";
+                };
                 cin_clear();
                 if (cin >> K) { if (K>0 && K<256) redo=true;} else {cout << "Key: " << K <<endl; leave=true;} ; 
                 cin_clear();
@@ -1415,6 +1416,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             auto q1 = plot(t, Err_0);
             q1->line_width(2);
             q1->use_y2(true);
+
             ax->y2_axis().limits({-1.00e-6, 1.00e-6 });
             q1->display_name("Err i su i");
 

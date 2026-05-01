@@ -26,6 +26,13 @@ double deg2rad(const int alpha) {
     return (((double) alpha) * PI / 180.0);
 }
 
+void cin_clear() {
+    if (std::cin.fail()) {
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');  // Svuota buffer
+    };
+};
+
 // -----------------------------------------------------------------------------
 // Funzione f(t) nota nel problema di Cauchy.
 // Cambiare definizione per provare altri casi (es. cos(t), t, ...).
