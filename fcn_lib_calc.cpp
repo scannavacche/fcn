@@ -289,9 +289,9 @@ Mat calcola_inversa_LU (
     // cosa succede qui:
     // Tx = e_i ==> LUx = e_i => Ly = e_i => Ux = y 
 
-    for (int j=0;j<T[0].size();j++) {
+    for (std::size_t j=0;j<T[0].size();j++) {
         T_inv_j = risolvi_colonna(L, U, j); // risolvi per e_j e ottieni la colonna j di T^-1
-        for (int i=0;i<T_inv.size();i++) {
+        for (std::size_t i=0;i<T_inv.size();i++) {
             T_inv[i][j] = T_inv_j[i];
         };
     };
@@ -365,7 +365,7 @@ double prodotto_scalare(
     double s = 0.0;
     int usize = (int) u.size();
     int vsize = (int) v.size();
-    if (usize=vsize) 
+    if (usize==vsize) 
     { 
         for (int i = 0; i < usize; i++)  s += u[i]*v[i];
     }
@@ -443,8 +443,8 @@ Mat prodotto_matrice_coeff(
     const double coeff) 
 {
     Mat C = A; // copia di A
-    for (int i = 0; i < C.size(); ++i) {
-        for (int j = 0; j < C[i].size(); ++j) {
+    for (std::size_t i = 0; i < C.size(); ++i) {
+        for (std::size_t j = 0; j < C[i].size(); ++j) {
             C[i][j] *= coeff;
         }
     }
