@@ -142,6 +142,10 @@ Mat prodotto_matrice_coeff(
     const Mat& A, 
     const double coeff) ;
 
+double Norma(
+    int norma,
+    const Mat& A);
+
 Vec forward_substitution(
     const Mat &L, 
     const Vec &b);
@@ -154,8 +158,14 @@ void LU(
     const Mat &A, 
     Mat &L, 
     Mat &U);
-    
+
+Mat calcola_trasposta(
+    const Mat& A);
+
 Mat calcola_inversa_LU (
+    const Mat& A);
+    
+Vec calcola_autovalori_LU (
     const Mat& A);
 
 figure_handle TableInit (

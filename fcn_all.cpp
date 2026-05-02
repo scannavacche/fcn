@@ -1340,7 +1340,15 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
             Mat T_inv = calcola_inversa_LU (T);
             //stampa_matrice(T_inv, T_inv.size(), "Inversa con LU");
-
+            double NFT = Norma(-1, T);
+            double NFT_inv = Norma(-1, T_inv);
+            double N1T = Norma(1, T);
+            double N1T_inv = Norma(1, T_inv);   
+            double NIT = Norma(0, T);
+            double NIT_inv = Norma(0, T_inv); 
+            double N2T = Norma(2, T);
+            double N2T_inv = Norma(2, T_inv);   
+            
             Vec v_atan_d = prodotto_matrice_vettore(T_inv, vector_shift(v_atan, -std::atan(a))); // derivata corrispondente, con backshift di centratura
             Vec v_atan_dcn = prodotto_matrice_vettore(T_inv, v_atan); // derivata analiticamente corretta ma sbagliata per cn 
             vector_dump(v_atan_d, 10, v_atan_d.size(), "T * v_atan = stima derivata simmetrica");
@@ -1348,6 +1356,16 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             
             // Mat I = prodotto_matrici(T, T_inv);
             // stampa_matrice(I, I.size(), "T * T_inv");  
+
+            cout << endl;
+            cout << "Con N = " << N << " ||T|| = " << NFT << "\t e ||T_inv|| = " << NFT_inv << "\t con Norma di Frobenius" << endl;
+            cout << "Con N = " << N << " ||T|| = " << NIT << "\t e ||T_inv|| = " << NIT_inv << "\t con Norma Infinito" << endl;
+            cout << "Con N = " << N << " ||T|| = " << N1T << "\t e ||T_inv|| = " << N1T_inv << "\t con Norma 1" << endl;
+            cout << "Con N = " << N << " ||T|| = " << N2T << "\t e ||T_inv|| = " << N2T_inv << "\t con Norma 2" << endl;
+            cout << endl;
+            cout << "Il numero di condizionamento è: " << NFT*NFT_inv << " (Frobenius), " << NIT*NIT_inv << " (Infinito) e " << N1T*N1T_inv << " (1) e " << N2T*N2T_inv << " (2)" << endl;
+            cout << "E vale per le norme piu' adeguate (infinito e 1) N * " << NIT * NIT_inv / N << " e N * " << N1T * N1T_inv / N<< endl;
+            cout << "Per Frobenius la crescita e' con N^(3/2), non lineare" << endl;
 
             Vec Err_Min_1(N, 0.0), Err_0(N, 0.0), Err_Plus_1(N, 0.0);
             for (int i = 1; i < N-1; ++i) {

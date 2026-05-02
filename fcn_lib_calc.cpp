@@ -272,6 +272,20 @@ Vec risolvi_colonna(
     return x;
     };
 
+Mat calcola_trasposta(
+    const Mat& A) 
+{
+    int rows = A.size();
+    int cols = A[0].size();
+    Mat At(cols, Vec(rows, 0.0));
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            At[j][i] = A[i][j];
+        }
+    }
+    return At;
+};
+
 Mat calcola_inversa_LU (
     const Mat& T) {          
     // Calcola l' inversa di A usando la fattorizzazione LUx = e_i
@@ -298,6 +312,21 @@ Mat calcola_inversa_LU (
     return T_inv;
 }
 
+Vec calcola_autovalori_LU (
+    const Mat& A) 
+{
+    // Calcola gli autovalori di A usando la fattorizzazione LU
+    // Non e' detto che funzioni perche' A potrebbe essere singolare ma proviamoci lo stesso
+    // da usare solo su matrici simmetriche e positive semidefinite come Tt*T,
+    // altrimenti la LU potrebbe essere instabile o non definita.
+    Mat L, U;
+    LU(A, L, U);
+    Vec autovalori(U.size(), 0.0);
+    for (std::size_t i=0;i<U.size();i++) {
+        autovalori[i] = U[i][i]; // gli autovalori di A sono approssimativamente i valori diagonali di U
+    };
+    return autovalori;
+};  
 Vec nodi_equidistanti(
     const double amin, 
     const double amax, 
@@ -449,6 +478,76 @@ Mat prodotto_matrice_coeff(
         }
     }
     return C;
+};
+
+double Norma(
+    int norma,
+    const Mat& A) 
+{
+    switch (norma) {
+        case 2: // norma 2: massimo valore singolare (non implementata, richiede SVD)
+            {
+                //  vediamo se funziona con la LU di Tt * T, 
+                // ma non e' detto che funzioni perche' Tt*T e' simmetrica e positiva semidefinita, 
+                // quindi la sua LU potrebbe essere instabile o non definita. 
+                // piu' avanti implementeremo la SVD per calcolare la norma 2 in modo piu' robusto,
+                //  ma per ora proviamo con questa approssimazione.
+                Mat At = calcola_trasposta(A);
+                Mat AtA = prodotto_matrici(At, A);
+                Vec AutoAtA = calcola_autovalori_LU(AtA); // ci riesce.... se non e' singolare ;)  
+                // fosse SVD avremmo gia' il massimo valore singolare come primo autovalore di AtA, 
+                // ma con la LU non e' detto che sia ordinato o che sia stabile, 
+                // quindi cerchiamo il massimo tra tutti gli autovalori di AtA.
+                double max_autovalore = 0.0;
+                for (double val : AutoAtA) {
+                    if (std::abs(val) > max_autovalore) {
+                        max_autovalore = std::abs(val);
+                    }
+                }   
+                vector_dump(AutoAtA, 10, AutoAtA.size(), "Autovalori");
+                return std::sqrt(max_autovalore); // la norma 2 è la radice quadrata del massimo autovalore di A^T A    
+            }
+        case 1: // norma 1: massimo assoluto della somma delle colonne
+            {
+                double max_col_sum = 0.0;
+                for (std::size_t j = 0; j < A[0].size(); ++j) {
+                    double col_sum = 0.0;
+                    for (std::size_t i = 0; i < A.size(); ++i) {
+                        col_sum += std::abs(A[i][j]);
+                    }
+                    if (col_sum > max_col_sum) {
+                        max_col_sum = col_sum;
+                    }
+                }
+                return max_col_sum;
+            }
+        case 0: // norma infinito: massimo assoluto della somma delle righe
+            {
+                double max_row_sum = 0.0;
+                for (std::size_t i = 0; i < A.size(); ++i) {
+                    double row_sum = 0.0;
+                    for (std::size_t j = 0; j < A[0].size(); ++j) {
+                        row_sum += std::abs(A[i][j]);
+                    }
+                    if (row_sum > max_row_sum) {
+                        max_row_sum = row_sum;
+                    }
+                }
+                return max_row_sum;
+            }
+        case -1: // norma Frobenius: radice quadrata della somma dei quadrati di tutti gli elementi
+            {
+                double sum_squares = 0.0;
+                for (const auto& row : A) {
+                    for (double val : row) {
+                        sum_squares += val * val;
+                    }
+                }
+                return std::sqrt(sum_squares);
+            }
+        default:
+            throw std::invalid_argument("Norma non supportata");
+    }
 };
 
 Vec forward_substitution(
