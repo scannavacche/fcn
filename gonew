@@ -8,7 +8,7 @@ LDLIBS="-Wl,--start-group -lmatplot -lnodesoup -lpng -ltiff -lz -ljpeg -lm -Wl,-
 
 SOURCES="fcn_all.cpp fcn_lib_calc.cpp"
 HEADERS="fcn_lib_calc.h menu_config.h json.hpp"
-TARGET="fcn_main"
+TARGET="fcn_all"
 
 # Verifica che i sorgenti esistano
 for src in $SOURCES; do
