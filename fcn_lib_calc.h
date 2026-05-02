@@ -73,7 +73,7 @@ Mat kernel_gaussiano_matrice(
     const int N, 
     const double sigma,
     const double h) ;
-    
+
 string color_bool(
     const bool val);
 
@@ -126,11 +126,6 @@ Mat costruisci_triangolare(
 Mat costruisci_inv_triangolare_sint(
     int n);
 
-Vec risolvi_colonna(
-    const Mat& L,
-    const Mat& U,
-    int j);
-
 double prodotto_scalare(
     const Vec &u,
     const Vec &v);
@@ -173,11 +168,30 @@ void LU(
 Mat calcola_trasposta(
     const Mat& A);
 
+Vec versore_canonico(
+    int j, 
+    int N);
+
+Vec risolvi_colonna(
+    const Mat& L,
+    const Mat& U,
+    Vec x);
+
+Vec risolvi_sistema_LU(
+    const Mat& T,
+    const Vec& x);
+
 Mat calcola_inversa_LU (
     const Mat& A);
 
 Vec calcola_autovalori_LU (
     const Mat& A);
+
+Vec segnale_finestra(
+    int N,
+    double a, 
+    double b, 
+    double t);
 
 figure_handle TableInit (
     const bool ahold, 

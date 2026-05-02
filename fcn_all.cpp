@@ -1607,31 +1607,6 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
            
             f->draw();
 
-/*
-            // Plot con Matplot++
-            namespace plt = matplot;
-            auto fig = plt::figure();
-            std::string title = "Numeri di condizionamento vs N";
-            plt::title(title);
-            plt::xlabel("N");
-            plt::ylabel("kappa");
-            plt::gca()->y_scale("log");
-            
-            // Confronto con curva teorica N^2
-            std::vector<double> Ns, theory_N2, theory_N;
-            for (double N = 10; N <= 200; N += 5) {
-                Ns.push_back(N);
-                theory_N2.push_back((4.0/M_PI/M_PI) * N * N);
-                theory_N.push_back(2.0 * N);
-            }
-            
-            plt::plot(x_vals, cond_2_vals, {"-or", "DisplayName", "kappa_2 (spettrale)"});
-            plt::plot(x_vals, cond_f_vals, {"-sg", "DisplayName", "kappa_F (Frobenius)"});
-            plt::plot(x_vals, cond_1_vals, {"-^b", "DisplayName", "kappa_1"});
-            plt::plot(x_vals, cond_I_vals, {"-dc", "DisplayName", "kappa_I"});
-            plt::plot(Ns, theory_N2, {"--k", "DisplayName", "4N^2/pi^2 (teorico)"});
-            plt::plot(Ns, theory_N, {":m", "DisplayName", "2N (teorico)"});   
-*/
             while (!redo && !leave) {
                 std::cout << "Inserire inizio intervallo di integrazione -10..10 (<q> per uscire) > " ;
                 if (std::cin >> a) { if (a>-10 && a<=10) redo=true;} else {cout << "Key: " << a <<endl; leave=true;} ;
@@ -1658,46 +1633,192 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         
         while (!leave) {
             double h  = h_ticks(a,b,N); 
-            Mat K = kernel_gaussiano_matrice(N, sigma, h);
-            Mat K2 = kernel_gaussiano_matrice(N, sigma*2, h);
-            Mat K4 = kernel_gaussiano_matrice(N, sigma*4, h);
-            Mat K8 = kernel_gaussiano_matrice(N, sigma*8, h);
+            Mat K = kernel_gaussiano_matrice(N, sigma*h, h);
+            // ora serve il minimo della matrice coon sigma inferiore da usare come y_min fisso
+            Mat K2 = kernel_gaussiano_matrice(N, sigma*2*h, h);
+            Mat K4 = kernel_gaussiano_matrice(N, sigma*4*h, h);
+            Mat K8 = kernel_gaussiano_matrice(N, sigma*8*h, h);
 
             // stampa_matrice(K, N, "Matrice Kernel di Gauss");
 
+            Vec ws0 = segnale_finestra(N,(1./4.),(3./4.),1);
+            Vec ws1 = prodotto_matrice_vettore(K,ws0);
+            Vec ws2 = prodotto_matrice_vettore(K2,ws0);
+            Vec ws4 = prodotto_matrice_vettore(K4,ws0);
+            Vec ws8 = prodotto_matrice_vettore(K8,ws0);
+            cout << endl << endl;
+            Vec fs0 = risolvi_sistema_LU(K,ws0);
+            Vec fs1 = risolvi_sistema_LU(K,ws1);
+            Vec fs2 = risolvi_sistema_LU(K2,ws2);
+            Vec fs4 = risolvi_sistema_LU(K4,ws4);
+            Vec fs8 = risolvi_sistema_LU(K8,ws8);
+            vector_dump(ws0, 10, ws0.size(), "Finestra base");
+            vector_dump(fs0, 10, fs0.size(), "Trasf base");
+            cout <<endl;
+            vector_dump(ws1, 10, ws1.size(), "Blur "+std::to_string(sigma*h));
+            vector_dump(fs1, 10, fs1.size(), "Trasf Blur "+std::to_string(sigma*h));
+            cout <<endl;
+            vector_dump(ws2, 10, ws2.size(), "Blur "+std::to_string(sigma*h*2));
+            vector_dump(fs2, 10, fs2.size(), "Trasf Blur "+std::to_string(sigma*h*2));
+            cout <<endl;
+            vector_dump(ws4, 10, ws4.size(), "Blur "+std::to_string(sigma*h*4));
+            vector_dump(fs4, 10, fs4.size(), "Trasf Blur "+std::to_string(sigma*h*4));
+            cout <<endl;
+            // vector_dump(ws8, 10, ws8.size(), "Blur "+std::to_string(sigma*h*8));
+            // vector_dump(fs8, 10, fs8.size(), "Trasf Blur "+std::to_string(sigma*h*8));
+            cout << endl << endl;
+
+{
             figure_handle f = TableInit(true, "Deconvoluzione", "Kernel di Gauss a diverse StD base "+std::to_string(sigma), 2,2);
             auto ax = f->current_axes();
 
             f->nexttile(0);
             ax = f->current_axes();
-            ax->title("1 * sigma");
+            ax->title("1 * sigma * h = " + std::to_string(sigma*h));
             ax->imagesc(K); 
             colorbar(); 
 
             f->nexttile(1);
             ax = f->current_axes();
-            ax->title("2 * sigma");
+            ax->title("2 * sigma * h = " + std::to_string(sigma*h*2));
             ax->imagesc(K2); 
             colorbar(); 
 
             f->nexttile(2);
             ax = f->current_axes();
-            ax->title("4 * sigma");
+            ax->title("4 * sigma * h = " + std::to_string(sigma*h*4));
             ax->imagesc(K4); 
             colorbar(); 
 
             f->nexttile(3);
             ax = f->current_axes();
-            ax->title("8 * sigma");
+            ax->title("8 * sigma * h = " + std::to_string(sigma*h*8));
             ax->imagesc(K8); 
             colorbar(); 
 
             f->draw();
+}
+{
+            Vec x_vals = nodi_equidistanti(a,b,N);
+            std::string title = "Trasformazioni a diverse StD base ";
 
+            figure_handle f = TableInit(true, "Deconvoluzione", title + std::to_string(sigma*h), 1, 1);
+
+            legend_align(matplot::legend(), 3, 0,0);
+
+            f->nexttile(0);
+            auto ax = f->current_axes();
+            legend_align(matplot::legend(), 3, 0,0);
+            title = "Su segnale base ";
+            ax->title(title);
+            hold(on);
+
+            auto in0 = plot( ws0);
+            in0->display_name("input finestra");
+            in0->color("blue");
+            in0->line_style("-");
+            in0->marker("");
+            in0->line_width(4);
+            in0->use_y2(false);
+            // ax->ylim({-0.1, 1.1});
+
+            auto out0 = plot( fs0);
+            out0->display_name("output base");
+            out0->color("red");
+            out0->line_style("-");
+            out0->marker("");
+            out0->line_width(3);
+            out0->use_y2(true);
+
+            //f0->draw();
+
+            //figure_handle f1 = TableInit(true, "Deconvoluzione", title + std::to_string(sigma*h), 1, 1);
+
+            f->nexttile(1);
+            ax = f->current_axes();
+            legend_align(matplot::legend(), 3, 0,0);
+            title = "blurred " + std::to_string(sigma*h);
+            ax->title(title);
+            hold(on);
+
+            auto inb1 = plot( ws1);
+            inb1->display_name("input");
+            inb1->color("blue");
+            inb1->line_style("-");
+            inb1->marker("");
+            inb1->line_width(4);
+            inb1->use_y2(false);
+
+            auto outb1 = plot( fs1);
+            outb1->display_name("output");
+            outb1->color("red");
+            outb1->line_style("-");
+            outb1->marker("");
+            outb1->line_width(3);
+            outb1->use_y2(true);
+            // ax->y2lim({-0.1, 1.1});
+
+            // f1->draw();
+            
+            // figure_handle f2 = TableInit(true, "Deconvoluzione", title + std::to_string(sigma*h*2), 1, 1);
+           
+            f->nexttile(2);
+            ax = f->current_axes();
+            legend_align(matplot::legend(), 3, 0,0);
+            title = "blurred " + std::to_string(sigma*h*2);
+            ax->title(title);
+            hold(on);
+
+            auto inb2 = plot( ws2);
+            inb2->display_name("input");
+            inb2->color("blue");
+            inb2->line_style("-");
+            inb2->marker("");
+            inb2->line_width(4);
+            inb2->use_y2(false);
+            
+            auto outb2 = plot( fs2);
+            outb2->display_name("output");
+            outb2->color("red");
+            outb2->line_style("-");
+            outb2->marker("");
+            outb2->line_width(3);
+            outb2->use_y2(true);
+
+            // f2->draw();
+
+            // figure_handle f4 = TableInit(true, "Deconvoluzione", title + std::to_string(sigma*h*4), 1, 1);
+
+            f->nexttile(3);
+            ax = f->current_axes();
+            legend_align(matplot::legend(), 3, 0,0);
+            title = "blurred " + std::to_string(sigma*h*4);
+            ax->title(title);
+            hold(on);
+
+            auto inb4 = plot(ws4);
+            inb4->display_name("input");
+            inb4->color("blue");
+            inb4->line_style("-");
+            inb4->marker("");
+            inb4->line_width(4);
+            inb4->use_y2(false);
+            
+            auto outb4 = plot(fs4);
+            outb4->display_name("output");
+            outb4->color("red");
+            outb4->line_style("-");
+            outb4->marker("");
+            outb4->line_width(3);
+            outb4->use_y2(true);
+
+            f->draw();
+
+}
             bool redo = false;
             while (!redo && !leave) {
                 std::cout << "Numero di punti N sul lato della griglia [2..1024](<q> per uscire) > " ;
-                if (std::cin >> N) { if (N>=2 && N<=1024) redo=true;} else {cout << "Key: " << N <<endl; leave=true;} ;
+                if (std::cin >> N) { if (N>=2 && N<=1025) redo=true;} else {cout << "Key: " << N <<endl; leave=true;} ;
                 if (redo) {
                     std::cout << "Inserire nuova Deviazione Sigma in multipli di h=(1/(N-1)) da 1 a "<< N-1 <<" (<q> per uscire) > " ;
                     if (std::cin >> sigma) { if (sigma >=1 && sigma<=N-1) redo=true;} else {cout << "Key: " << sigma <<endl; leave=true;} ;

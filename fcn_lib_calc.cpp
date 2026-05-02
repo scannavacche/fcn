@@ -284,16 +284,24 @@ Mat costruisci_inv_triangolare_sint(
     return T;
 }
 
+Vec versore_canonico(
+    int j, 
+    int N)
+{
+    Vec e(N, 0.0);
+    e[j] = 1.0;
+    return e;
+}
+
 Vec risolvi_colonna(
     const Mat& L,
     const Mat& U,
-    int j){
-        // Risolve T x = e_j usando LU
+    Vec e){
+        // Risolveva  T x = e usando LU
         // Risolve L U x = e_j usando sostituzione in avanti e indietro
+        // ora risolve un vettore generico e 
 
     int n = L.size();
-    Vec e(n, 0.0);
-    e[j] = 1.0;
     Vec y = forward_substitution(L, e);
     // vector_dump(y, 10, y.size(), "y");
     Vec x = backward_substitution(U, y);
@@ -333,13 +341,25 @@ Mat calcola_inversa_LU (
     // Tx = e_i ==> LUx = e_i => Ly = e_i => Ux = y 
 
     for (std::size_t j=0;j<T[0].size();j++) {
-        T_inv_j = risolvi_colonna(L, U, j); // risolvi per e_j e ottieni la colonna j di T^-1
+        T_inv_j = risolvi_colonna(L, U, versore_canonico(j, T.size())); // risolvi per e_j e ottieni la colonna j di T^-1
         for (std::size_t i=0;i<T_inv.size();i++) {
             T_inv[i][j] = T_inv_j[i];
         };
     };
     return T_inv;
 }
+
+Vec risolvi_sistema_LU(
+    const Mat& T,
+    const Vec& x)
+{
+    Mat L, U;
+    int N = T.size(); 
+    LU(T, L, U); 
+    Vec g = risolvi_colonna(L, U, x);
+    return g;
+}
+
 
 Vec calcola_autovalori_LU (
     const Mat& A) 
@@ -709,6 +729,21 @@ void LU(
     }
 }
 
+Vec segnale_finestra(
+    int N,
+    double a, 
+    double b, 
+    double t)
+    {
+        // a e b in % su N, sono frazioni in [0,1]
+        Vec ws = Vec(N,0.0);
+        double temp;
+        for (int i=0; i<N; i++) {
+            temp = (double) i / (double) N;
+            if ((temp >=a) && (temp <= b)) ws[i]=t;
+        }
+        return ws;
+    }
 // 
 // Funzioni per matplot++
 
