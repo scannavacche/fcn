@@ -729,6 +729,9 @@ void legend_align(
     } else if (pos_enum == 2) { // center left
         lg->horizontal_location(HA::left);
         lg->vertical_location(VA::center);
+    } else if (pos_enum == 3) { // top left
+        lg->horizontal_location(HA::left);
+        lg->vertical_location(VA::top);
     };
 };
 

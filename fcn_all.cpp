@@ -1308,7 +1308,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
     void f2_integral() {
 
         double a=-7,b=7; // intervallo di integrazione
-        int N = 50; // numero di punti di campionamento   
+        int N = 40; // numero di punti di campionamento   
         bool leave = false; 
         Vec fvals;
 
@@ -1451,9 +1451,6 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             ylabel("valore");
             f->draw();
 
-
-
-
             while (!redo && !leave) {
                 std::cout << "Inserire Numero di nodi di campionamento (<q> per uscire) > ";
 
@@ -1474,17 +1471,22 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         };
     };
 
-    void f2_norma2() {
-        int dummy = system("clear");
+    void f2_norme() {
+        bool leave = false; 
+        double a=-7,b=7; // intervallo di integrazione
 
-        std::cout << "\n=== Norma 2 e numero di condizionamento spettrale ===\n";
-        
-        const int N_values[] = {10, 20, 50, 100, 200};
-        const int n_tests = 5;
-        
-        std::vector<double> x_vals, cond_2_vals, cond_f_vals, cond_1_vals, cond_I_vals;
-        
-        std::cout << std::setfill(' ')            
+        int dummy = system("clear");
+        while (!leave) {
+            bool redo = false;
+
+            std::cout << "\n=== Norma 2 e numero di condizionamento spettrale ===\n";
+            
+            const int N_values[] = {10, 20, 40, 80, 160, 320, 640};
+            const int n_tests = 7;
+            
+            std::vector<double> x_vals, cond_2_vals, cond_f_vals, cond_1_vals, cond_I_vals;
+            
+            std::cout << std::setfill(' ')            
                 << std::setw(6) << "N" 
                 << std::setw(12) << "norm2(A)"
                 << std::setw(12) << "norm2(A^-1)"
@@ -1493,81 +1495,156 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 << std::setw(12) << "kappaF"
                 << std::setw(12) << "kappa1"
                 << std::setw(12) << "kappaI\n";
-        
-        for (int n = 0; n < n_tests; ++n) {
-            int N = N_values[n];
-            double a=-7,b=7; // intervallo di integrazione
-            double h = h_ticks(a,b,N); // passo di campionamento
+            
+            for (int n = 0; n < n_tests; ++n) {
+                int N = N_values[n];
+                double h = h_ticks(a,b,N); // passo di campionamento
+            
+                Mat A = costruisci_triangolare(N);
+                A = prodotto_matrice_coeff(A, h); // moltiplica per h
+                Mat A_inv = calcola_inversa_LU(A);
+                
+                // Norma 2 spettrale
+                double norm2_A = Norma(2, A);
+                double norm2_Ainv = Norma(2, A_inv);
+                double kappa2 = norm2_A * norm2_Ainv;
+                
+                // Norma Frobenius
+                double normF_A = Norma(-1, A);
+                double normF_Ainv = Norma(-1, A_inv);
+                double kappaF = normF_A * normF_Ainv;
+                
+                // Norma 1 = max somma colonne
+                double norm1_A = Norma(1, A);
+                double norm1_Ainv = Norma(1, A_inv);
+                double kappa1 = norm1_A * norm1_Ainv;
+                
+                // Norma inf1 = max somma righe
+                double normI_A = Norma(0, A);
+                double normI_Ainv = Norma(0, A_inv);
+                double kappaI = normI_A * normI_Ainv;
+                
+                std::cout << std::setw(6) << N
+                        << std::setw(12) << std::fixed << std::setprecision(2) << norm2_A
+                        << std::setw(12) << norm2_Ainv
+                        << std::setw(12) << kappa2
+                        << std::setw(12) << kappa2 / (N*N)
+                        << std::setw(12) << kappaF
+                        << std::setw(12) << kappa1
+                        << std::setw(12) << kappaI << "\n";  
+
+                x_vals.push_back(N);
+                cond_2_vals.push_back(kappa2);
+                cond_f_vals.push_back(kappaF);
+                cond_1_vals.push_back(kappa1);
+                cond_I_vals.push_back(kappaI);
+
+            }
+
+            std::string title = "Numeri di condizionamento vs N";
+            figure_handle f = TableInit(true, "Confronto Norme", title, 1,1);
+            f->nexttile(0);
+            auto ax = f->current_axes();
+            ax->title(title);
+
+            xlabel("N");
+            ylabel("kappa");
+
+            // Confronto con curva teorica N^2
+            Vec Ns, theory_N2, theory_N;
+            for (double N = 10; N < 1000; N *=2) {
+                Ns.push_back(N);
+                theory_N2.push_back((4.0/M_PI/M_PI) * N * N);
+                theory_N.push_back(2.0 * N);
+            }
+            hold(on);
+
+            legend_align(matplot::legend(), 3, 0,0);
+
+            auto p2 = plot(x_vals, cond_2_vals);
+            p2->display_name("kappa_2 (spettrale)");
+            p2->color("red");
+            p2->line_style("-");
+            p2->marker(".");
+            p2->line_width(6);
+
+ 
+            auto p1 = plot(x_vals, cond_1_vals);
+            p1->display_name("kappa_1");
+            p1->color("green");
+            p1->line_style("-");
+            p1->marker("+");
+            p1->line_width(6);
+            
+            auto pI = plot(x_vals, cond_I_vals);
+            pI->display_name("kappa_I (Infinito)");
+            pI->color("magenta");
+            pI->line_style("--");
+            pI->marker("r");
+            pI->line_width(6);
+
+            auto pf = plot(x_vals, cond_f_vals);
+            pf->display_name("kappa_F (Frobenius)");
+            pf->color("cyan");
+            pf->line_style("-");
+            pf->line_width(6);
+            pf->marker("+");
+            
            
-            Mat A = costruisci_triangolare(N);
-            A = prodotto_matrice_coeff(A, h); // moltiplica per h
-            Mat A_inv = calcola_inversa_LU(A);
+            auto ptn2 = semilogy(Ns, theory_N2);
+            ptn2->display_name("4N^2/pi^2 (teorico)");
+            ptn2->color("blue");
+            ptn2->line_style("-");
+            ptn2->marker("");
+            ptn2->line_width(2);
             
-            // Norma 2 spettrale
-            double norm2_A = Norma(2, A);
-            double norm2_Ainv = Norma(2, A_inv);
-            double kappa2 = norm2_A * norm2_Ainv;
-            
-            // Norma Frobenius
-            double normF_A = Norma(-1, A);
-            double normF_Ainv = Norma(-1, A_inv);
-            double kappaF = normF_A * normF_Ainv;
-            
-            // Norma 1 = max somma colonne
-            double norm1_A = Norma(1, A);
-            double norm1_Ainv = Norma(1, A_inv);
-            double kappa1 = norm1_A * norm1_Ainv;
-            
-            // Norma inf1 = max somma righe
-            double normI_A = Norma(0, A);
-            double normI_Ainv = Norma(0, A_inv);
-            double kappaI = normI_A * normI_Ainv;
-            
-            std::cout << std::setw(6) << N
-                    << std::setw(12) << std::fixed << std::setprecision(2) << norm2_A
-                    << std::setw(12) << norm2_Ainv
-                    << std::setw(12) << kappa2
-                    << std::setw(12) << kappa2 / (N*N)
-                    << std::setw(12) << kappaF
-                    << std::setw(12) << kappa1
-                    << std::setw(12) << kappaI << "\n";  
+            auto ptn1 = plot(Ns, theory_N);
+            ptn1->display_name("2N (teorico)");
+            ptn1->color("black");
+            ptn1->line_style("_");
+            ptn1->marker("");
+            ptn1->line_width(2);
+           
+            f->draw();
 
-            x_vals.push_back(N);
-            cond_2_vals.push_back(kappa2);
-            cond_f_vals.push_back(kappaF);
-            cond_1_vals.push_back(kappa1);
-            cond_I_vals.push_back(kappaI);
-
-
-        };
-        
 /*
-        // Plot con Matplot++
-        namespace plt = matplot;
-        auto fig = plt::figure();
-        std::string title = "Numeri di condizionamento vs N";
-        plt::title(title);
-        plt::xlabel("N");
-        plt::ylabel("kappa");
-        plt::gca()->y_scale("log");
-        
-        // Confronto con curva teorica N^2
-        std::vector<double> Ns, theory_N2, theory_N;
-        for (double N = 10; N <= 200; N += 5) {
-            Ns.push_back(N);
-            theory_N2.push_back((4.0/M_PI/M_PI) * N * N);
-            theory_N.push_back(2.0 * N);
-        }
-        
-        plt::plot(x_vals, cond_2_vals, {"-or", "DisplayName", "kappa_2 (spettrale)"});
-        plt::plot(x_vals, cond_f_vals, {"-sg", "DisplayName", "kappa_F (Frobenius)"});
-        plt::plot(x_vals, cond_1_vals, {"-^b", "DisplayName", "kappa_1"});
-        plt::plot(x_vals, cond_I_vals, {"-dc", "DisplayName", "kappa_I"});
-        plt::plot(Ns, theory_N2, {"--k", "DisplayName", "4N^2/pi^2 (teorico)"});
-        plt::plot(Ns, theory_N, {":m", "DisplayName", "2N (teorico)"});   
+            // Plot con Matplot++
+            namespace plt = matplot;
+            auto fig = plt::figure();
+            std::string title = "Numeri di condizionamento vs N";
+            plt::title(title);
+            plt::xlabel("N");
+            plt::ylabel("kappa");
+            plt::gca()->y_scale("log");
+            
+            // Confronto con curva teorica N^2
+            std::vector<double> Ns, theory_N2, theory_N;
+            for (double N = 10; N <= 200; N += 5) {
+                Ns.push_back(N);
+                theory_N2.push_back((4.0/M_PI/M_PI) * N * N);
+                theory_N.push_back(2.0 * N);
+            }
+            
+            plt::plot(x_vals, cond_2_vals, {"-or", "DisplayName", "kappa_2 (spettrale)"});
+            plt::plot(x_vals, cond_f_vals, {"-sg", "DisplayName", "kappa_F (Frobenius)"});
+            plt::plot(x_vals, cond_1_vals, {"-^b", "DisplayName", "kappa_1"});
+            plt::plot(x_vals, cond_I_vals, {"-dc", "DisplayName", "kappa_I"});
+            plt::plot(Ns, theory_N2, {"--k", "DisplayName", "4N^2/pi^2 (teorico)"});
+            plt::plot(Ns, theory_N, {":m", "DisplayName", "2N (teorico)"});   
 */
-        wait_return_to_menu(false);
-        wait_return_to_menu(false);
+            while (!redo && !leave) {
+                std::cout << "Inserire inizio intervallo di integrazione -10..10 (<q> per uscire) > " ;
+                if (std::cin >> a) { if (a>-10 && a<=10) redo=true;} else {cout << "Key: " << a <<endl; leave=true;} ;
+                if (redo) {
+                    std::cout << "Inserire nuova fine intervallo di integrazione "<< a <<"..10 (<q> per uscire) > " ;
+                    if (std::cin >> b) { if (b>a && b<=10) redo=true;} else {cout << "Key: " << b <<endl; leave=true;} ;
+                }
+                cin_clear();
+            };
+
+
+       };
+        
 
 
     };
@@ -1583,7 +1660,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             {"f2_cauchy",      f2_cauchy},
             {"f2_bordo",       f2_bordo},
             {"f2_integral",    f2_integral},
-            {"f2_norma2",      f2_norma2}
+            {"f2_norme",      f2_norme}
             };
         };
 };  
