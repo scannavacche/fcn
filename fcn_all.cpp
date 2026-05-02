@@ -1730,10 +1730,6 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             out0->line_width(3);
             out0->use_y2(true);
 
-            //f0->draw();
-
-            //figure_handle f1 = TableInit(true, "Deconvoluzione", title + std::to_string(sigma*h), 1, 1);
-
             f->nexttile(1);
             ax = f->current_axes();
             legend_align(matplot::legend(), 3, 0,0);
@@ -1756,11 +1752,6 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             outb1->marker("");
             outb1->line_width(3);
             outb1->use_y2(true);
-            // ax->y2lim({-0.1, 1.1});
-
-            // f1->draw();
-            
-            // figure_handle f2 = TableInit(true, "Deconvoluzione", title + std::to_string(sigma*h*2), 1, 1);
            
             f->nexttile(2);
             ax = f->current_axes();
@@ -1784,10 +1775,6 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             outb2->marker("");
             outb2->line_width(3);
             outb2->use_y2(true);
-
-            // f2->draw();
-
-            // figure_handle f4 = TableInit(true, "Deconvoluzione", title + std::to_string(sigma*h*4), 1, 1);
 
             f->nexttile(3);
             ax = f->current_axes();
