@@ -485,7 +485,8 @@ double Norma(
     const Mat& A) 
 {
     switch (norma) {
-        case 2: // norma 2: massimo valore singolare (non implementata, richiede SVD)
+        case 3: 
+            // norma 2: versione limitata LU
             {
                 //  vediamo se funziona con la LU di Tt * T, 
                 // ma non e' detto che funzioni perche' Tt*T e' simmetrica e positiva semidefinita, 
@@ -507,6 +508,185 @@ double Norma(
                 vector_dump(AutoAtA, 10, AutoAtA.size(), "Autovalori");
                 return std::sqrt(max_autovalore); // la norma 2 è la radice quadrata del massimo autovalore di A^T A    
             }
+        case 2: // versione metodo delle potenze
+        {
+namespace {
+
+// Costruisce la matrice di integrazione discreta N x N, normalizzata con h=1
+// A[i,j] = 1 se i >= j, altrimenti 0
+Matrix build_integration_matrix(int N) {
+    Matrix A(N, std::vector<double>(N, 0.0));
+    for (std::size_t i = 0; i < N; ++i) {
+        for (std::size_t j = 0; j <= i; ++j) {
+            A[i][j] = 1.0;
+        }
+    }
+    return A;
+}
+
+// Costruisce A^T * A dato A (matrice di integrazione)
+Matrix matmul_transpose(const Matrix& A) {
+    std::size_t N = A.size();
+    Matrix ATA(N, std::vector<double>(N, 0.0));
+    for (std::size_t i = 0; i < N; ++i) {
+        for (std::size_t j = 0; j < N; ++j) {
+            for (std::size_t k = 0; k < N; ++k) {
+                ATA[i][j] += A[k][i] * A[k][j];  // A^T[i,k] = A[k,i]
+            }
+        }
+    }
+    return ATA;
+}
+
+// Metodo della potenza per trovare l'autovalore massimo di matrice simmetrica
+double power_method_max_eigenvalue(const Matrix& M, int max_iter = 1000, double tol = 1e-12) {
+    std::size_t N = M.size();
+    std::vector<double> x(N, 1.0 / std::sqrt(N));  // vettore iniziale normalizzato
+    
+    double lambda_old = 0.0;
+    double lambda = 0.0;
+    
+    for (int iter = 0; iter < max_iter; ++iter) {
+        // y = M * x
+        std::vector<double> y(N, 0.0);
+        for (std::size_t i = 0; i < N; ++i) {
+            for (std::size_t j = 0; j < N; ++j) {
+                y[i] += M[i][j] * x[j];
+            }
+        }
+        
+        // lambda = y^T * x (prodotto scalare Rayleigh quotient)
+        lambda = 0.0;
+        for (std::size_t i = 0; i < N; ++i) {
+            lambda += y[i] * x[i];
+        }
+        
+        // normalizza x = y / ||y||
+        double norm = 0.0;
+        for (std::size_t i = 0; i < N; ++i) {
+            norm += y[i] * y[i];
+        }
+        norm = std::sqrt(norm);
+        for (std::size_t i = 0; i < N; ++i) {
+            x[i] = y[i] / norm;
+        }
+        
+        if (std::abs(lambda - lambda_old) < tol) {
+            break;
+        }
+        lambda_old = lambda;
+    }
+    
+    return lambda;
+}
+
+// Norma 2 = massimo valore singolare = sqrt(massimo autovalore di A^T * A)
+double norm_2(const Matrix& A) {
+    Matrix ATA = matmul_transpose(A);
+    return std::sqrt(power_method_max_eigenvalue(ATA));
+}
+
+// Inversa della matrice di integrazione: differenze finite
+Matrix build_integration_inverse(int N) {
+    Matrix A_inv(N, std::vector<double>(N, 0.0));
+    for (std::size_t i = 0; i < N; ++i) {
+        A_inv[i][i] = 1.0;
+        if (i > 0) {
+            A_inv[i][i-1] = -1.0;
+        }
+    }
+    return A_inv;
+}
+
+void f2_norma2() {
+    std::cout << "\n=== Norma 2 e numero di condizionamento spettrale ===\n";
+    
+    const int N_values[] = {10, 20, 50, 100, 200};
+    const int n_tests = 5;
+    
+    std::vector<double> x_vals, cond_2_vals, cond_f_vals, cond_1_vals;
+    
+    std::cout << std::setw(6) << "N" 
+              << std::setw(12) << "norm2(A)"
+              << std::setw(12) << "norm2(A^-1)"
+              << std::setw(12) << "kappa2"
+              << std::setw(12) << "kappa2/N^2"
+              << std::setw(12) << "kappaF"
+              << std::setw(12) << "kappa1\n";
+    
+    for (int n = 0; n < n_tests; ++n) {
+        int N = N_values[n];
+        
+        Matrix A = build_integration_matrix(N);
+        Matrix A_inv = build_integration_inverse(N);
+        
+        // Norma 2 spettrale
+        double norm2_A = norm_2(A);
+        double norm2_Ainv = norm_2(A_inv);
+        double kappa2 = norm2_A * norm2_Ainv;
+        
+        // Norma Frobenius
+        double normF_A = 0.0, normF_Ainv = 0.0;
+        for (const auto& row : A) {
+            for (double v : row) normF_A += v*v;
+        }
+        normF_A = std::sqrt(normF_A);
+        for (const auto& row : A_inv) {
+            for (double v : row) normF_Ainv += v*v;
+        }
+        normF_Ainv = std::sqrt(normF_Ainv);
+        double kappaF = normF_A * normF_Ainv;
+        
+        // Norma 1 = max somma colonne
+        double norm1_A = 0.0, norm1_Ainv = 0.0;
+        for (std::size_t j = 0; j < N; ++j) {
+            double col_sum_A = 0.0, col_sum_Ainv = 0.0;
+            for (std::size_t i = 0; i < N; ++i) {
+                col_sum_A += std::abs(A[i][j]);
+                col_sum_Ainv += std::abs(A_inv[i][j]);
+            }
+            norm1_A = std::max(norm1_A, col_sum_A);
+            norm1_Ainv = std::max(norm1_Ainv, col_sum_Ainv);
+        }
+        double kappa1 = norm1_A * norm1_Ainv;
+        
+        std::cout << std::setw(6) << N
+                  << std::setw(12) << std::fixed << std::setprecision(2) << norm2_A
+                  << std::setw(12) << norm2_Ainv
+                  << std::setw(12) << kappa2
+                  << std::setw(12) << kappa2 / (N*N)
+                  << std::setw(12) << kappaF
+                  << std::setw(12) << kappa1 << "\n";
+        
+        x_vals.push_back(N);
+        cond_2_vals.push_back(kappa2);
+        cond_f_vals.push_back(kappaF);
+        cond_1_vals.push_back(kappa1);
+    }
+    
+    // Plot con Matplot++
+    namespace plt = matplot;
+    auto fig = plt::figure();
+    std::string title = "Numeri di condizionamento vs N";
+    fig->title(title);
+    fig->set_xlabel("N");
+    fig->set_ylabel("kappa");
+    fig->set_yscale("log");
+    
+    // Confronto con curva teorica N^2
+    std::vector<double> Ns, theory_N2, theory_N;
+    for (double N = 10; N <= 200; N += 5) {
+        Ns.push_back(N);
+        theory_N2.push_back((4.0/M_PI/M_PI) * N * N);
+        theory_N.push_back(2.0 * N);
+    }
+    
+    plt::plot(x_vals, cond_2_vals, {"-or", "DisplayName", "kappa_2 (spettrale)"});
+    plt::plot(x_vals, cond_f_vals, {"-sg", "DisplayName", "kappa_F (Frobenius)"});
+    plt::plot(x_vals, cond_1_vals, {"-^b", "DisplayName", "kappa_1"});
+    plt::plot(Ns, theory_N2, {"--k", "DisplayName", "4N^2/pi^2 (teorico)"});
+    plt::plot(Ns, theory_N, {":m", "DisplayName", "2N (teorico)"            
+        }
         case 1: // norma 1: massimo assoluto della somma delle colonne
             {
                 double max_col_sum = 0.0;
@@ -593,7 +773,8 @@ Vec backward_substitution(
 void LU(
     const Mat &A, 
     Mat &L, 
-    Mat &U) {
+    Mat &U) 
+{
         // -----------------------------------------------------------------------------
         // implementare la fattorizzazione LU per L
         // L matrice tridiagonale con 2 sulla diagonale, -1 su sopra e sotto-diagonale
