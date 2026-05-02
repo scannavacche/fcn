@@ -9,6 +9,7 @@
     { "key": 6, "label": "F2-E1a Problema di Cauchy",   "action": "f2_cauchy",   "enabled": true },
     { "key": 7, "label": "F2-E1b Problema Differenziale con condizioni al bordo",   "action": "f2_bordo",   "enabled": true },
     { "key": 8, "label": "F2-E2  Integrazione numerica",   "action": "f2_integral",   "enabled": true },
+    { "key": 9, "label": "F2-E2a  Confronto Norme",   "action": "f2_norma2",   "enabled": true },
     { "key": 0, "label": "Esci",      "action": "exit",      "enabled": true }
   ]
 }

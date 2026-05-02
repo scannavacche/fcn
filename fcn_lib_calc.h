@@ -142,6 +142,12 @@ Mat prodotto_matrice_coeff(
     const Mat& A, 
     const double coeff) ;
 
+double max_autoval_powermethod(
+    const Mat& M, 
+    int max_iter, 
+    double tol);
+
+
 double Norma(
     int norma,
     const Mat& A);
@@ -164,7 +170,7 @@ Mat calcola_trasposta(
 
 Mat calcola_inversa_LU (
     const Mat& A);
-    
+
 Vec calcola_autovalori_LU (
     const Mat& A);
 

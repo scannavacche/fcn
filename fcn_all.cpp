@@ -1474,6 +1474,104 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         };
     };
 
+    void f2_norma2() {
+        int dummy = system("clear");
+
+        std::cout << "\n=== Norma 2 e numero di condizionamento spettrale ===\n";
+        
+        const int N_values[] = {10, 20, 50, 100, 200};
+        const int n_tests = 5;
+        
+        std::vector<double> x_vals, cond_2_vals, cond_f_vals, cond_1_vals, cond_I_vals;
+        
+        std::cout << std::setfill(' ')            
+                << std::setw(6) << "N" 
+                << std::setw(12) << "norm2(A)"
+                << std::setw(12) << "norm2(A^-1)"
+                << std::setw(12) << "kappa2"
+                << std::setw(12) << "kappa2/N^2"
+                << std::setw(12) << "kappaF"
+                << std::setw(12) << "kappa1"
+                << std::setw(12) << "kappaI\n";
+        
+        for (int n = 0; n < n_tests; ++n) {
+            int N = N_values[n];
+            double a=-7,b=7; // intervallo di integrazione
+            double h = h_ticks(a,b,N); // passo di campionamento
+           
+            Mat A = costruisci_triangolare(N);
+            A = prodotto_matrice_coeff(A, h); // moltiplica per h
+            Mat A_inv = calcola_inversa_LU(A);
+            
+            // Norma 2 spettrale
+            double norm2_A = Norma(2, A);
+            double norm2_Ainv = Norma(2, A_inv);
+            double kappa2 = norm2_A * norm2_Ainv;
+            
+            // Norma Frobenius
+            double normF_A = Norma(-1, A);
+            double normF_Ainv = Norma(-1, A_inv);
+            double kappaF = normF_A * normF_Ainv;
+            
+            // Norma 1 = max somma colonne
+            double norm1_A = Norma(1, A);
+            double norm1_Ainv = Norma(1, A_inv);
+            double kappa1 = norm1_A * norm1_Ainv;
+            
+            // Norma inf1 = max somma righe
+            double normI_A = Norma(0, A);
+            double normI_Ainv = Norma(0, A_inv);
+            double kappaI = normI_A * normI_Ainv;
+            
+            std::cout << std::setw(6) << N
+                    << std::setw(12) << std::fixed << std::setprecision(2) << norm2_A
+                    << std::setw(12) << norm2_Ainv
+                    << std::setw(12) << kappa2
+                    << std::setw(12) << kappa2 / (N*N)
+                    << std::setw(12) << kappaF
+                    << std::setw(12) << kappa1
+                    << std::setw(12) << kappaI << "\n";  
+
+            x_vals.push_back(N);
+            cond_2_vals.push_back(kappa2);
+            cond_f_vals.push_back(kappaF);
+            cond_1_vals.push_back(kappa1);
+            cond_I_vals.push_back(kappaI);
+
+
+        };
+        
+/*
+        // Plot con Matplot++
+        namespace plt = matplot;
+        auto fig = plt::figure();
+        std::string title = "Numeri di condizionamento vs N";
+        plt::title(title);
+        plt::xlabel("N");
+        plt::ylabel("kappa");
+        plt::gca()->y_scale("log");
+        
+        // Confronto con curva teorica N^2
+        std::vector<double> Ns, theory_N2, theory_N;
+        for (double N = 10; N <= 200; N += 5) {
+            Ns.push_back(N);
+            theory_N2.push_back((4.0/M_PI/M_PI) * N * N);
+            theory_N.push_back(2.0 * N);
+        }
+        
+        plt::plot(x_vals, cond_2_vals, {"-or", "DisplayName", "kappa_2 (spettrale)"});
+        plt::plot(x_vals, cond_f_vals, {"-sg", "DisplayName", "kappa_F (Frobenius)"});
+        plt::plot(x_vals, cond_1_vals, {"-^b", "DisplayName", "kappa_1"});
+        plt::plot(x_vals, cond_I_vals, {"-dc", "DisplayName", "kappa_I"});
+        plt::plot(Ns, theory_N2, {"--k", "DisplayName", "4N^2/pi^2 (teorico)"});
+        plt::plot(Ns, theory_N, {":m", "DisplayName", "2N (teorico)"});   
+*/
+        wait_return_to_menu(false);
+        wait_return_to_menu(false);
+
+
+    };
+
     ActionRegistry build_action_registry() 
         {
         return {
@@ -1484,7 +1582,8 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             {"f2_deriv",       f2_deriv},
             {"f2_cauchy",      f2_cauchy},
             {"f2_bordo",       f2_bordo},
-            {"f2_integral",    f2_integral}
+            {"f2_integral",    f2_integral},
+            {"f2_norma2",      f2_norma2}
             };
         };
 };  
