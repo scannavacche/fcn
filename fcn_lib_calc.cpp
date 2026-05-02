@@ -66,14 +66,43 @@ double fcallb(
 double h_ticks(
     const double a_start, 
     const double a_stop, 
-    const int a_steps){
+    const int a_points){
+        //  ora si chiama a_points per disambiguazione.
+        // h e' la lunghezza dell' intervallo e gli intervalli sono points - 1
     if (a_stop>a_start) {
-        return (a_stop-a_start)/double(a_steps);
+        return (a_stop-a_start)/double(a_points - 1);
     } else {
         cout << "Intervallo da " << a_start << " a " << a_stop << " non valido!\n";
         exit(1);
     }
 }
+
+double kernel_gaussiano_elemento(  // forse non vale neanche la pena esportarla
+    const double t, 
+    const double s) 
+{
+    if (s!= 0) {
+        return std::exp( - (t*t)/(2*s*s));
+    }else {
+        throw std::invalid_argument("Sigma nmullo in calcolo Kernel Gaussiano per t = " + std::to_string(t));
+    }
+}
+
+Mat kernel_gaussiano_matrice(
+    const int N, 
+    const double sigma,
+    const double h) 
+    {
+        Mat K = Mat(N, Vec(N, 0.0));
+        for (int i = 0; i < N; ++i) {
+            double xi = i * h;
+            for (int j = 0; j < N; ++j) {
+                double xj = j * h;
+                K[i][j] = kernel_gaussiano_elemento((xi-xj), sigma);
+            }
+    }
+return K;
+}       
 
 
 // ----------------------------------------------------------------------------
@@ -691,7 +720,7 @@ figure_handle TableInit (
     const int ylab) 
 {
     figure_handle fig = matplot::figure(ahold);
-    fig->size(1600,800);
+    fig->size(1800,900);
     fig->position(10,10);
     fig->name(nome);
     fig->number_title(false);

@@ -48,7 +48,7 @@ void cin_clear();
 double h_ticks(
     const double a_start, 
     const double a_stop, 
-    const int a_steps);
+    const int a_points);
 
 double f_x(
     double t);
@@ -69,6 +69,11 @@ double fcallb(
     double t, 
     double (*f)(double));   
 
+Mat kernel_gaussiano_matrice(
+    const int N, 
+    const double sigma,
+    const double h) ;
+    
 string color_bool(
     const bool val);
 

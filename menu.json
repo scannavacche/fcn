@@ -1,16 +1,17 @@
 {
   "title": "FCN - Funzioni Calcolo Numerico - Menu Principale",
   "items": [
-    { "key": 1, "label": "F1-E1  Campionamento di funzione Cos",  "action": "f1_sample",  "enabled": true },
-    { "key": 2, "label": "F1-E2a F Esponenziale approssimata con Taylor", "action": "f1_taylor_exp", "enabled": true },
-    { "key": 3, "label": "F1-E2b F Coseno approssimata con Taylor",   "action": "f1_taylor_cos",   "enabled": true },
-    { "key": 4, "label": "F1-E3  Precisione di calcolo",   "action": "f1_prec",   "enabled": true },
-    { "key": 5, "label": "F2-E1  Derivata discreta",   "action": "f2_deriv",   "enabled": true },
-    { "key": 6, "label": "F2-E1a Problema di Cauchy",   "action": "f2_cauchy",   "enabled": true },
-    { "key": 7, "label": "F2-E1b Problema Differenziale con condizioni al bordo",   "action": "f2_bordo",   "enabled": true },
-    { "key": 8, "label": "F2-E2  Integrazione numerica",   "action": "f2_integral",   "enabled": true },
-    { "key": 9, "label": "F2-E2a Confronto Norme",   "action": "f2_norme",   "enabled": true },
-    { "key": 0, "label": "Esci",      "action": "exit",      "enabled": true }
+    { "key": 1, "label": " F1-E1  Campionamento di funzione Cos",  "action": "f1_sample",  "enabled": true },
+    { "key": 2, "label": " F1-E2a F Esponenziale approssimata con Taylor", "action": "f1_taylor_exp", "enabled": true },
+    { "key": 3, "label": " F1-E2b F Coseno approssimata con Taylor",   "action": "f1_taylor_cos",   "enabled": true },
+    { "key": 4, "label": " F1-E3  Precisione di calcolo",   "action": "f1_prec",   "enabled": true },
+    { "key": 5, "label": " F2-E1  Derivata discreta",   "action": "f2_deriv",   "enabled": true },
+    { "key": 6, "label": " F2-E1a Problema di Cauchy",   "action": "f2_cauchy",   "enabled": true },
+    { "key": 7, "label": " F2-E1b Problema Differenziale con condizioni al bordo",   "action": "f2_bordo",   "enabled": true },
+    { "key": 8, "label": " F2-E2  Integrazione numerica",   "action": "f2_integral",   "enabled": true },
+    { "key": 9, "label": " F2-E2a Confronto Norme",   "action": "f2_norme",   "enabled": true },
+    { "key": 10, "label": "F2-E3  Deconvoluzione",   "action": "f2_deconv",   "enabled": true },
+    { "key": 0, "label": " Esci",      "action": "exit",      "enabled": true }
   ]
 }
 

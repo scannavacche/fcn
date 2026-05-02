@@ -1649,6 +1649,64 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
     };
 
+    void f2_deconv() {
+        cout << "Deconvoluzione con Kernel di Gauss" << endl;
+        double a=0, b=1; // intervallo
+        int N = 100; // numero di punti separatori   
+        bool leave = false; 
+        double sigma = 2.0;
+        
+        while (!leave) {
+            double h  = h_ticks(a,b,N); 
+            Mat K = kernel_gaussiano_matrice(N, sigma, h);
+            Mat K2 = kernel_gaussiano_matrice(N, sigma*2, h);
+            Mat K4 = kernel_gaussiano_matrice(N, sigma*4, h);
+            Mat K8 = kernel_gaussiano_matrice(N, sigma*8, h);
+
+            // stampa_matrice(K, N, "Matrice Kernel di Gauss");
+
+            figure_handle f = TableInit(true, "Deconvoluzione", "Kernel di Gauss a diverse StD base "+std::to_string(sigma), 2,2);
+            auto ax = f->current_axes();
+
+            f->nexttile(0);
+            ax = f->current_axes();
+            ax->title("1 * sigma");
+            ax->imagesc(K); 
+            colorbar(); 
+
+            f->nexttile(1);
+            ax = f->current_axes();
+            ax->title("2 * sigma");
+            ax->imagesc(K2); 
+            colorbar(); 
+
+            f->nexttile(2);
+            ax = f->current_axes();
+            ax->title("4 * sigma");
+            ax->imagesc(K4); 
+            colorbar(); 
+
+            f->nexttile(3);
+            ax = f->current_axes();
+            ax->title("8 * sigma");
+            ax->imagesc(K8); 
+            colorbar(); 
+
+            f->draw();
+
+            bool redo = false;
+            while (!redo && !leave) {
+                std::cout << "Numero di punti N sul lato della griglia [2..1024](<q> per uscire) > " ;
+                if (std::cin >> N) { if (N>=2 && N<=1024) redo=true;} else {cout << "Key: " << N <<endl; leave=true;} ;
+                if (redo) {
+                    std::cout << "Inserire nuova Deviazione Sigma in multipli di h=(1/(N-1)) da 1 a "<< N-1 <<" (<q> per uscire) > " ;
+                    if (std::cin >> sigma) { if (sigma >=1 && sigma<=N-1) redo=true;} else {cout << "Key: " << sigma <<endl; leave=true;} ;
+                }
+                cin_clear();
+            };
+        }
+    }
+
     ActionRegistry build_action_registry() 
         {
         return {
@@ -1660,7 +1718,8 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             {"f2_cauchy",      f2_cauchy},
             {"f2_bordo",       f2_bordo},
             {"f2_integral",    f2_integral},
-            {"f2_norme",      f2_norme}
+            {"f2_norme",       f2_norme},
+            {"f2_deconv",       f2_deconv}
             };
         };
 };  
