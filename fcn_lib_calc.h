@@ -72,7 +72,9 @@ double fcallb(
 Mat kernel_gaussiano_matrice(
     const int N, 
     const double sigma,
-    const double h) ;
+    const double h, 
+    bool norm_flag,
+    Vec& Indicatori) ;
 
 string color_bool(
     const bool val);
@@ -102,6 +104,9 @@ std::string itostr(
 
 double deg2rad(
     const int alpha);
+
+string format_numstr(
+    double v);
 
 Vec nodi_equidistanti(
     const double amin,
@@ -164,6 +169,9 @@ void LU(
     const Mat &A, 
     Mat &L, 
     Mat &U);
+
+Mat matrice_righe_normalizzate(
+    Mat& K);
 
 Mat calcola_trasposta(
     const Mat& A);

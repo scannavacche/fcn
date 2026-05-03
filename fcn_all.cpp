@@ -1630,14 +1630,16 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         int N = 100; // numero di punti separatori   
         bool leave = false; 
         double sigma = 2.0;
-        
+        bool KG_Normal = true;
+        char KG_key = '\0';
+        Mat kappa2(4, Vec(3, 0.0)); // 0 numero cond, 1 norma2(K), 2 (norma2(K_inv))
+
         while (!leave) {
             double h  = h_ticks(a,b,N); 
-            Mat K = kernel_gaussiano_matrice(N, sigma*h, h);
-            // ora serve il minimo della matrice coon sigma inferiore da usare come y_min fisso
-            Mat K2 = kernel_gaussiano_matrice(N, sigma*2*h, h);
-            Mat K4 = kernel_gaussiano_matrice(N, sigma*4*h, h);
-            Mat K8 = kernel_gaussiano_matrice(N, sigma*8*h, h);
+            Mat K = kernel_gaussiano_matrice(N, sigma*h, h, KG_Normal, kappa2[0]);
+            Mat K2 = kernel_gaussiano_matrice(N, sigma*2*h, h, KG_Normal, kappa2[1]);
+            Mat K4 = kernel_gaussiano_matrice(N, sigma*4*h, h, KG_Normal, kappa2[2]);
+            Mat K8 = kernel_gaussiano_matrice(N, sigma*8*h, h, KG_Normal, kappa2[3]);
 
             // stampa_matrice(K, N, "Matrice Kernel di Gauss");
 
@@ -1655,21 +1657,24 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             vector_dump(ws0, 10, ws0.size(), "Finestra base");
             vector_dump(fs0, 10, fs0.size(), "Trasf base");
             cout <<endl;
-            vector_dump(ws1, 10, ws1.size(), "Blur "+std::to_string(sigma*h));
-            vector_dump(fs1, 10, fs1.size(), "Trasf Blur "+std::to_string(sigma*h));
+            vector_dump(ws1, 10, ws1.size(), "smooth "+std::to_string(sigma*h));
+            vector_dump(fs1, 10, fs1.size(), "Trasf smooth "+std::to_string(sigma*h));
             cout <<endl;
-            vector_dump(ws2, 10, ws2.size(), "Blur "+std::to_string(sigma*h*2));
-            vector_dump(fs2, 10, fs2.size(), "Trasf Blur "+std::to_string(sigma*h*2));
+            vector_dump(ws2, 10, ws2.size(), "smooth "+std::to_string(sigma*h*2));
+            vector_dump(fs2, 10, fs2.size(), "Trasf smooth "+std::to_string(sigma*h*2));
             cout <<endl;
-            vector_dump(ws4, 10, ws4.size(), "Blur "+std::to_string(sigma*h*4));
-            vector_dump(fs4, 10, fs4.size(), "Trasf Blur "+std::to_string(sigma*h*4));
+            vector_dump(ws4, 10, ws4.size(), "smooth "+std::to_string(sigma*h*4));
+            vector_dump(fs4, 10, fs4.size(), "Trasf smooth "+std::to_string(sigma*h*4));
             cout <<endl;
-            // vector_dump(ws8, 10, ws8.size(), "Blur "+std::to_string(sigma*h*8));
-            // vector_dump(fs8, 10, fs8.size(), "Trasf Blur "+std::to_string(sigma*h*8));
+            // vector_dump(ws8, 10, ws8.size(), "smooth "+std::to_string(sigma*h*8));
+            // vector_dump(fs8, 10, fs8.size(), "Trasf smooth "+std::to_string(sigma*h*8));
             cout << endl << endl;
+            string KGN_title = ((KG_Normal) ? "Normalizzato " : "");
 
-{
-            figure_handle f = TableInit(true, "Deconvoluzione", "Kernel di Gauss a diverse StD base "+std::to_string(sigma), 2,2);
+{    
+    // namespace anonimo per heatmap 
+
+            figure_handle f = TableInit(true, "Deconvoluzione", "Kernel di Gauss " + KGN_title+ "a diverse StD base "+std::to_string(sigma), 2,2);
             auto ax = f->current_axes();
 
             f->nexttile(0);
@@ -1698,9 +1703,12 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
             f->draw();
 }
+
 {
+    // namespace anonimo per plot
+
             Vec x_vals = nodi_equidistanti(a,b,N);
-            std::string title = "Trasformazioni a diverse StD base ";
+            std::string title = "Trasformazioni ("+KGN_title+") a 1x, 2x, 4x StD base ";
 
             figure_handle f = TableInit(true, "Deconvoluzione", title + std::to_string(sigma*h), 1, 1);
 
@@ -1709,7 +1717,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             f->nexttile(0);
             auto ax = f->current_axes();
             legend_align(matplot::legend(), 3, 0,0);
-            title = "Su segnale base ";
+            title = "Su segnale base con I2="+ format_numstr(kappa2[0][0]) + " |K|=" + format_numstr(kappa2[0][1]) + " |K^-1|="+format_numstr(kappa2[0][2]);
             ax->title(title);
             hold(on);
 
@@ -1718,7 +1726,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             in0->color("blue");
             in0->line_style("-");
             in0->marker("");
-            in0->line_width(4);
+            in0->line_width(2);
             in0->use_y2(false);
             // ax->ylim({-0.1, 1.1});
 
@@ -1727,13 +1735,13 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             out0->color("red");
             out0->line_style("-");
             out0->marker("");
-            out0->line_width(3);
+            out0->line_width(2);
             out0->use_y2(true);
 
             f->nexttile(1);
             ax = f->current_axes();
             legend_align(matplot::legend(), 3, 0,0);
-            title = "blurred " + std::to_string(sigma*h);
+            title = "smoothed q=" + std::to_string((int)sigma)+" con I2="+ format_numstr(kappa2[1][0]) + " |K|=" + format_numstr(kappa2[1][1]) + " |K^-1|="+format_numstr(kappa2[1][2]);
             ax->title(title);
             hold(on);
 
@@ -1742,7 +1750,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             inb1->color("blue");
             inb1->line_style("-");
             inb1->marker("");
-            inb1->line_width(4);
+            inb1->line_width(2);
             inb1->use_y2(false);
 
             auto outb1 = plot( fs1);
@@ -1750,13 +1758,13 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             outb1->color("red");
             outb1->line_style("-");
             outb1->marker("");
-            outb1->line_width(3);
+            outb1->line_width(2);
             outb1->use_y2(true);
            
             f->nexttile(2);
             ax = f->current_axes();
             legend_align(matplot::legend(), 3, 0,0);
-            title = "blurred " + std::to_string(sigma*h*2);
+            title = "smoothed q=" + std::to_string((int)sigma*2)+" con I2="+ format_numstr(kappa2[2][0]) + " |K|=" + format_numstr(kappa2[2][1]) + " |K^-1|="+format_numstr(kappa2[2][2]);
             ax->title(title);
             hold(on);
 
@@ -1765,7 +1773,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             inb2->color("blue");
             inb2->line_style("-");
             inb2->marker("");
-            inb2->line_width(4);
+            inb2->line_width(2);
             inb2->use_y2(false);
             
             auto outb2 = plot( fs2);
@@ -1773,13 +1781,13 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             outb2->color("red");
             outb2->line_style("-");
             outb2->marker("");
-            outb2->line_width(3);
+            outb2->line_width(2);
             outb2->use_y2(true);
 
             f->nexttile(3);
             ax = f->current_axes();
             legend_align(matplot::legend(), 3, 0,0);
-            title = "blurred " + std::to_string(sigma*h*4);
+            title = "smoothed q=" + std::to_string((int)sigma*4)+" con I2="+ format_numstr(kappa2[3][0]) + " |K|=" + format_numstr(kappa2[3][1]) + " |K^-1|="+format_numstr(kappa2[3][2]);
             ax->title(title);
             hold(on);
 
@@ -1788,7 +1796,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             inb4->color("blue");
             inb4->line_style("-");
             inb4->marker("");
-            inb4->line_width(4);
+            inb4->line_width(2);
             inb4->use_y2(false);
             
             auto outb4 = plot(fs4);
@@ -1796,7 +1804,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             outb4->color("red");
             outb4->line_style("-");
             outb4->marker("");
-            outb4->line_width(3);
+            outb4->line_width(2);
             outb4->use_y2(true);
 
             f->draw();
@@ -1807,8 +1815,20 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 std::cout << "Numero di punti N sul lato della griglia [2..1024](<q> per uscire) > " ;
                 if (std::cin >> N) { if (N>=2 && N<=1025) redo=true;} else {cout << "Key: " << N <<endl; leave=true;} ;
                 if (redo) {
-                    std::cout << "Inserire nuova Deviazione Sigma in multipli di h=(1/(N-1)) da 1 a "<< N-1 <<" (<q> per uscire) > " ;
+                    std::cout << "Inserire nuova Deviazione Sigma in q multipli di h=(1/(N-1)) da 1 a "<< N-1 <<" (<q> per uscire) > " ;
                     if (std::cin >> sigma) { if (sigma >=1 && sigma<=N-1) redo=true;} else {cout << "Key: " << sigma <<endl; leave=true;} ;
+                }
+                if (redo) {
+                    std::cout << "Il Kernel K va normalizzato? (<s/n> | <0> per uscire) > " ;
+                    if (std::cin >> KG_key) {
+                         if (KG_key == 'q') { 
+                            redo=false; 
+                            leave=true;
+                        } else {
+                            KG_Normal = (KG_key == 's'); 
+                            redo=true;
+                        }
+                    }
                 }
                 cin_clear();
             };

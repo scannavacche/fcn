@@ -8,6 +8,7 @@
 #include "fcn_lib_calc.h"
 #include "json.hpp"
 #include <fstream>
+#include <sstream>
 #include <stdexcept>
 
 using std::cout;
@@ -24,6 +25,12 @@ std::string itostr(const int nn) {
 
 double deg2rad(const int alpha) {
     return (((double) alpha) * PI / 180.0);
+}
+
+std::string format_numstr(double value) {
+    std::stringstream ss;
+    ss << std::scientific << std::setprecision(2) << value;
+    return ss.str();
 }
 
 void cin_clear() {
@@ -91,17 +98,24 @@ double kernel_gaussiano_elemento(  // forse non vale neanche la pena esportarla
 Mat kernel_gaussiano_matrice(
     const int N, 
     const double sigma,
-    const double h) 
+    const double h, 
+    bool norm_flag, 
+    Vec& Indicatori) 
     {
-        Mat K = Mat(N, Vec(N, 0.0));
+        // indicatori deve restituire il numero di cond, la norma della matrice e della sua inversa
+        Mat K(N, Vec(N, 0.0));
         for (int i = 0; i < N; ++i) {
             double xi = i * h;
             for (int j = 0; j < N; ++j) {
                 double xj = j * h;
                 K[i][j] = kernel_gaussiano_elemento((xi-xj), sigma);
             }
-    }
-return K;
+        }
+        if (norm_flag) K = matrice_righe_normalizzate(K);
+        double n2K = Norma(2, K);
+        double n2K_inv = Norma(2, calcola_inversa_LU(K));
+        Indicatori = {n2K*n2K_inv, n2K, n2K_inv};
+    return K;
 }       
 
 
@@ -309,6 +323,29 @@ Vec risolvi_colonna(
     return x;
     };
 
+Mat matrice_righe_normalizzate(
+    Mat& K)
+{   
+    // proviamo con un pass by ref e matrice locale
+
+    int M = K.size(); // numero di righe da processare
+    int N = K[0].size(); // prima riga buona per tutte
+    Mat Kn(M, Vec(N, 0.0));
+
+    for (int i=0; i<M; i++) {
+        N = K[i].size(); // numero di elementi per riga
+        double somma = 0;
+        for (int j=0; j<N; j++) {
+            somma+=K[i][j];
+        }
+        if (somma != 0) {
+            for (int j=0; j<N; j++) {
+                Kn[i][j] = K[i][j] / somma;
+            }
+        }
+    }
+    return Kn;
+}
 Mat calcola_trasposta(
     const Mat& A) 
 {
