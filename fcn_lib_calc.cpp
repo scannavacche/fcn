@@ -112,13 +112,26 @@ Mat kernel_gaussiano_matrice(
             }
         }
         if (norm_flag) K = matrice_righe_normalizzate(K);
-        double n2K = Norma(2, K);
-        double n2K_inv = Norma(2, calcola_inversa_LU(K));
+        double n2K = norma_matrice(2, K);
+        double n2K_inv = norma_matrice(2, calcola_inversa_LU(K));
         Indicatori = {n2K*n2K_inv, n2K, n2K_inv};
     return K;
 }       
 
-
+Vec add_rumore(
+    Vec& v, 
+    double e)
+{   
+    // v e' il vettore da perturbare, e l'aliquota in millesimi rispetto alla norma_inf del vettore 
+    int N = v.size();
+    Vec r(N,0.0);
+    double fscala = norma_vettore(2, v);
+    double ampiezza = (e*fscala)/1000;
+    for (int i = 0; i<N; i++) { 
+        r[i]  = v[i] + ampiezza * ((double)rand() / RAND_MAX - 0.5);
+    }
+    return r;
+}
 // ----------------------------------------------------------------------------
 // Funzione di utilità: Display  
 // ----------------------------------------------------------------------------
@@ -611,8 +624,36 @@ double max_autoval_powermethod(
     return lambda;
 }
 
+double norma_vettore(
+    int norma, 
+    const Vec& V)
+{
+    int N = V.size(); 
+    switch (norma) {
+        case 2: // norma euclidea
+        {
+          double somma = 0;
+            for (int i = 0; i<N;  i++) {
+                double el = V[i];
+                somma += el*el;     // possiamo fidarci che sia >= 0 ?
+            }
+            return std::sqrt(somma);
+        }
+        case 0: // norma infinito (max modulo degli el)
+        {
+            double max_el =0;
+            for (int i = 0; i<N;  i++) {
+                double el = std::abs(V[i]);
+                if (el > max_el) max_el = el;
+            }
+            return max_el;
+        }
+        default:
+            return 0;
+    }
+}
 
-double Norma(
+double norma_matrice(
     int norma,
     const Mat& A) 
 {

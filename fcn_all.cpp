@@ -1340,14 +1340,14 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
             Mat T_inv = calcola_inversa_LU (T);
             //stampa_matrice(T_inv, T_inv.size(), "Inversa con LU");
-            double NFT = Norma(-1, T);
-            double NFT_inv = Norma(-1, T_inv);
-            double N1T = Norma(1, T);
-            double N1T_inv = Norma(1, T_inv);   
-            double NIT = Norma(0, T);
-            double NIT_inv = Norma(0, T_inv); 
-            double N2T = Norma(2, T);
-            double N2T_inv = Norma(2, T_inv);   
+            double NFT = norma_matrice(-1, T);
+            double NFT_inv = norma_matrice(-1, T_inv);
+            double N1T = norma_matrice(1, T);
+            double N1T_inv = norma_matrice(1, T_inv);   
+            double NIT = norma_matrice(0, T);
+            double NIT_inv = norma_matrice(0, T_inv); 
+            double N2T = norma_matrice(2, T);
+            double N2T_inv = norma_matrice(2, T_inv);   
             
             Vec v_atan_d = prodotto_matrice_vettore(T_inv, vector_shift(v_atan, -std::atan(a))); // derivata corrispondente, con backshift di centratura
             Vec v_atan_dcn = prodotto_matrice_vettore(T_inv, v_atan); // derivata analiticamente corretta ma sbagliata per cn 
@@ -1505,23 +1505,23 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 Mat A_inv = calcola_inversa_LU(A);
                 
                 // Norma 2 spettrale
-                double norm2_A = Norma(2, A);
-                double norm2_Ainv = Norma(2, A_inv);
+                double norm2_A = norma_matrice(2, A);
+                double norm2_Ainv = norma_matrice(2, A_inv);
                 double kappa2 = norm2_A * norm2_Ainv;
                 
                 // Norma Frobenius
-                double normF_A = Norma(-1, A);
-                double normF_Ainv = Norma(-1, A_inv);
+                double normF_A = norma_matrice(-1, A);
+                double normF_Ainv = norma_matrice(-1, A_inv);
                 double kappaF = normF_A * normF_Ainv;
                 
                 // Norma 1 = max somma colonne
-                double norm1_A = Norma(1, A);
-                double norm1_Ainv = Norma(1, A_inv);
+                double norm1_A = norma_matrice(1, A);
+                double norm1_Ainv = norma_matrice(1, A_inv);
                 double kappa1 = norm1_A * norm1_Ainv;
                 
                 // Norma inf1 = max somma righe
-                double normI_A = Norma(0, A);
-                double normI_Ainv = Norma(0, A_inv);
+                double normI_A = norma_matrice(0, A);
+                double normI_Ainv = norma_matrice(0, A_inv);
                 double kappaI = normI_A * normI_Ainv;
                 
                 std::cout << std::setw(6) << N
@@ -1607,6 +1607,8 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
            
             f->draw();
 
+            
+
             while (!redo && !leave) {
                 std::cout << "Inserire inizio intervallo di integrazione -10..10 (<q> per uscire) > " ;
                 if (std::cin >> a) { if (a>-10 && a<=10) redo=true;} else {cout << "Key: " << a <<endl; leave=true;} ;
@@ -1671,8 +1673,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             cout << endl << endl;
             string KGN_title = ((KG_Normal) ? "Normalizzato " : "");
 
-{    
-    // namespace anonimo per heatmap 
+{   // namespace anonimo per heatmap 
 
             figure_handle f = TableInit(true, "Deconvoluzione", "Kernel di Gauss " + KGN_title+ "a diverse StD base "+std::to_string(sigma), 2,2);
             auto ax = f->current_axes();
@@ -1704,13 +1705,13 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             f->draw();
 }
 
-{
-    // namespace anonimo per plot
+{   // namespace anonimo per plot deconvoluzioni
+    
 
             Vec x_vals = nodi_equidistanti(a,b,N);
             std::string title = "Trasformazioni ("+KGN_title+") a 1x, 2x, 4x StD base ";
 
-            figure_handle f = TableInit(true, "Deconvoluzione", title + std::to_string(sigma*h), 1, 1);
+            figure_handle f = TableInit(true, "Deconvoluzione", title + std::to_string(sigma*h), 2, 2);
 
             legend_align(matplot::legend(), 3, 0,0);
 
@@ -1809,6 +1810,161 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
             f->draw();
 
+}
+
+{   // namespace anonimo per test di condizionamento al rumore
+
+        // vector_dump(ws0, 10, ws0.size(), "Ingresso pulito");
+        // vector_dump(add_rumore(ws0, 1), 10, ws0.size(), "Perturbato 0.1%");
+        // vector_dump(add_rumore(ws0, 10), 10, ws0.size(), "Perturbato 1%");
+
+           
+            Vec ws2_r001 = prodotto_matrice_vettore(K, add_rumore(ws0,0.01));
+            Vec ws2_r01 = prodotto_matrice_vettore(K, add_rumore(ws0,0.1));
+            Vec ws2_r05 = prodotto_matrice_vettore(K, add_rumore(ws0,1));
+            Vec ws2_r2 = prodotto_matrice_vettore(K, add_rumore(ws0,10));
+            Vec fs2_r001 = risolvi_sistema_LU(K,ws2_r001);
+            Vec fs2_r01 = risolvi_sistema_LU(K,ws2_r01);
+            Vec fs2_r05 = risolvi_sistema_LU(K,ws2_r05);
+            Vec fs2_r2 = risolvi_sistema_LU(K,ws2_r2);
+            
+            Vec x_vals = nodi_equidistanti(a,b,N);
+            std::string title = "Perturbazioni ("+KGN_title+") a 1x StD base ";
+
+            figure_handle f = TableInit(true, "Deconvoluzione perturbata", title + format_numstr(sigma), 1, 1);
+
+            legend_align(matplot::legend(), 3, 0,0);
+
+            f->nexttile(0);
+            auto ax = f->current_axes();
+            legend_align(matplot::legend(), 3, 0,0);
+            title = "smoothed q=" + std::to_string((int)sigma)+" I2="+ format_numstr(kappa2[0][0]) + " |K|=" + format_numstr(kappa2[0][1]) + " |K^-1|="+format_numstr(kappa2[0][2]);
+            ax->title(title);
+            hold(on);
+
+            auto in0 = plot( ws1);
+            in0->display_name("smooth 1x");
+            in0->color("blue");
+            in0->line_style("-");
+            in0->marker("");
+            in0->line_width(2);
+            in0->use_y2(false);
+            // ax->ylim({-0.1, 1.1});
+
+            auto out0 = plot( fs1);
+            out0->display_name("deconv 1x");
+            out0->color("red");
+            out0->line_style("-");
+            out0->marker("");
+            out0->line_width(2);
+            out0->use_y2(false);
+            // ax->ylim({-0.1, 1.1});
+
+            auto perturb0 = plot( fs2_r001);
+            perturb0->display_name("deconv noise 0.001%");
+            perturb0->color("magenta");
+            perturb0->line_style("- ");
+            perturb0->marker("");
+            perturb0->line_width(2);
+            perturb0->use_y2(true);
+
+            f->nexttile(1);
+            ax = f->current_axes();
+            legend_align(matplot::legend(), 3, 0,0);
+            title = "smoothed q=" + std::to_string((int)sigma)+" I2="+ format_numstr(kappa2[0][0]) + " |K|=" + format_numstr(kappa2[0][1]) + " |K^-1|="+format_numstr(kappa2[0][2]);
+            ax->title(title);
+            hold(on);
+
+            auto inb1 = plot( ws1);
+            inb1->display_name("smooth 1x");
+            inb1->color("blue");
+            inb1->line_style("-");
+            inb1->marker("");
+            inb1->line_width(2);
+            inb1->use_y2(false);
+
+            auto outb1 = plot( fs1);
+            outb1->display_name("deconv 1x");
+            outb1->color("red");
+            outb1->line_style("-");
+            outb1->marker("");
+            outb1->line_width(2);
+            outb1->use_y2(false);
+
+            auto perturb1 = plot( fs2_r01);
+            perturb1->display_name("deconv noise 0.01%");
+            perturb1->color("magenta");
+            perturb1->line_style("- ");
+            perturb1->marker("");
+            perturb1->line_width(2);
+            perturb1->use_y2(true);
+           
+            f->nexttile(2);
+            ax = f->current_axes();
+            legend_align(matplot::legend(), 3, 0,0);
+            title = "smoothed q=" + std::to_string((int)sigma)+" con I2="+ format_numstr(kappa2[0][0]) + " |K|=" + format_numstr(kappa2[0][1]) + " |K^-1|="+format_numstr(kappa2[0][2]);
+            ax->title(title);
+            hold(on);
+
+            auto inb2 = plot( ws1);
+            inb2->display_name("smooth 1x");
+            inb2->color("blue");
+            inb2->line_style("-");
+            inb2->marker("");
+            inb2->line_width(2);
+            inb2->use_y2(false);
+
+            auto outb2 = plot( fs1);
+            outb2->display_name("deconv 1x");
+            outb2->color("red");
+            outb2->line_style("-");
+            outb2->marker("");
+            outb2->line_width(2);
+            outb2->use_y2(false);
+            
+            auto perturb2 = plot( fs2_r05);
+            perturb2->display_name("deconv noise 0.1%");
+            perturb2->color("magenta");
+            perturb2->line_style("- ");
+            perturb2->marker("");
+            perturb2->line_width(2);
+            perturb2->use_y2(true);
+
+            f->nexttile(3);
+            ax = f->current_axes();
+            legend_align(matplot::legend(), 3, 0,0);
+            title = "smoothed q=" + std::to_string((int)sigma)+" I2="+ format_numstr(kappa2[0][0]) + " |K|=" + format_numstr(kappa2[0][1]) + " |K^-1|="+format_numstr(kappa2[0][2]);
+            ax->title(title);
+            hold(on);
+
+            auto inb4 = plot(ws1);
+            inb4->display_name("smooth 1x");
+            inb4->color("blue");
+            inb4->line_style("-");
+            inb4->marker("");
+            inb4->line_width(2);
+            inb4->use_y2(false);
+
+            auto outb4 = plot(fs1);
+            outb4->display_name("deconv 1x");
+            outb4->color("red");
+            outb4->line_style("-");
+            outb4->marker("");
+            outb4->line_width(2);
+            outb4->use_y2(false);
+            
+            auto perturb4 = plot(fs2_r2);
+            perturb4->display_name("deconv noise 1%");
+            perturb4->color("magenta");
+            perturb4->line_style("- ");
+            perturb4->marker("");
+            perturb4->line_width(2);
+            perturb4->use_y2(true);
+
+            f->draw();
+
+
+        
 }
             bool redo = false;
             while (!redo && !leave) {

@@ -75,6 +75,10 @@ Mat kernel_gaussiano_matrice(
     const double h, 
     bool norm_flag,
     Vec& Indicatori) ;
+    
+Vec add_rumore(
+    Vec& v, 
+    double e);
 
 string color_bool(
     const bool val);
@@ -152,8 +156,11 @@ double max_autoval_powermethod(
     int max_iter, 
     double tol);
 
+double norma_vettore(
+    int norma, 
+    const Vec& V);
 
-double Norma(
+double norma_matrice(
     int norma,
     const Mat& A);
 
