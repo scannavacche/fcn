@@ -595,36 +595,57 @@ double max_autoval_power_A(
     int seed = 1;
     // questa e' la versione per matrici qualsiasi, entra A ed usa AtA senza calcolarlo
     int N = A[0].size(); // n. di colonne di A = dim del vettore q[]
+    int M = A.size(); //n. di righe di A = dim del vettore Aq[]
+
     std::mt19937 rng(seed);
     std::normal_distribution<double> gauss(0.0, 1.0);
 
     Vec q(N);
-    Vec z(N);
+
     for (double& v : q) v = gauss(rng); 
+ 
     double nq = norma_vettore(2,q);
     for (double& v : q) v /= nq;
-
-    double mu = 0.0;
-    double mu_old = 0.0;
-    double nz;
+ 
     Mat At = calcola_trasposta(A);
-    // TODO: iterazione del metodo delle potenze su A^T*A
-    // Suggerimento: mat_trasposta = trasposta(A);
-    //               vec1 = matvec(A, q);
-    //               z    = matvec(mat_trasposta, vec1);
-    for (int iter=0;iter<max_iter;iter++) {
-        z = prodotto_matrice_vettore(A, q);
-        z = prodotto_matrice_vettore(At,z);
-        nz = norma_vettore(2,z);
+
+    // double mu = 0.0;
+    // double mu_old = 0.0;
+    //
+    //iterazione su AtA senza calcolarla esplicitamente
+    //
+    for (int iter=0;iter<max_iter;iter++) {   // iter k.simo
+        Vec Aq = prodotto_matrice_vettore(A, q);  // A q(k)
+        Vec z = prodotto_matrice_vettore(At, Aq); // z = At A q(k)
+
+        // nuovo vettore normalizzato per q(k+1)
+        double nz = norma_vettore(2,z);
+        if (nz == 0.0) return 0.0; // matrice AtA singolare?
+        
         for (int j=0;j<N;j++) q[j]=z[j]/nz; // q = z normalizzato
-        mu = prodotto_scalare(q, prodotto_matrice_vettore(At, prodotto_matrice_vettore(A, q)));  
         //
-        // forse i due passaggi si potevano invertire nel quoziente di Rayleigh
-        //
-        if (std::abs(mu-mu_old)<tol) break;
-        mu_old=mu;
+        // uscita anticipata con controllo su norma2(z) invece di mu
+        static double nz_old = 0.0;
+        if (iter > 0) {
+            double rel = std::abs(nz - nz_old) / std::max(1.0, std::abs(nz));
+            if (rel < tol) break;
+        }
+        nz_old = nz;        
     }
-    return mu;
+    // valutazione finale sull'ultimo q
+    Vec Aq = prodotto_matrice_vettore(A, q);  // A q(n)
+    Vec z = prodotto_matrice_vettore(At, Aq); // z = At A q(n)
+    double mu = prodotto_scalare(Aq, Aq);  // (Aq)^t Aq = q^t A^t A q
+
+    // residuo relativo, per chi non si fida....
+
+    Vec r(q.size()); 
+    for (int j = 0; j<N; j++) r[j] = z[j] - mu * q[j];
+    double res = norma_vettore(2, r) / std::max(1.0, std::abs(mu));
+    //
+    // poi vediamo cosa possiamo fare con res, per ora lascialo li'
+
+    return mu;  // questo e' ancora l'approssimazione dell' autovalore
 }
 
 
