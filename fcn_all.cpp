@@ -1484,11 +1484,13 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             const int N_values[] = {10, 20, 40, 80, 160, 320, 640};
             const int n_tests = 7;
             
-            std::vector<double> x_vals, cond_2_vals, cond_f_vals, cond_1_vals, cond_I_vals;
+            std::vector<double> x_vals, cond_2_vals, cond_12_vals, cond_3_vals, cond_f_vals, cond_1_vals, cond_I_vals;
             
             std::cout << std::setfill(' ')            
                 << std::setw(6) << "N" 
                 << std::setw(12) << "norm2(A)"
+                << std::setw(12) << "norm12(A)"
+                << std::setw(12) << "norm3(A)"
                 << std::setw(12) << "norm2(A^-1)"
                 << std::setw(12) << "kappa2"
                 << std::setw(12) << "kappa2/N^2"
@@ -1504,11 +1506,22 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 A = prodotto_matrice_coeff(A, h); // moltiplica per h
                 Mat A_inv = calcola_inversa_LU(A);
                 
-                // Norma 2 spettrale
+                // Norma 2 spettrale power
                 double norm2_A = norma_matrice(2, A);
                 double norm2_Ainv = norma_matrice(2, A_inv);
                 double kappa2 = norm2_A * norm2_Ainv;
                 
+                // Norma 2 spettrale power + Rayleigh
+                double norm12_A = norma_matrice(12, A);
+                double norm12_Ainv = norma_matrice(12, A_inv);
+                double kappa12 = norm12_A * norm12_Ainv;
+
+                 // Norma 2 LU
+                double norm3_A = norma_matrice(3, A);
+                double norm3_Ainv = norma_matrice(3, A_inv);
+                double kappa3 = norm3_A * norm3_Ainv;
+                
+               
                 // Norma Frobenius
                 double normF_A = norma_matrice(-1, A);
                 double normF_Ainv = norma_matrice(-1, A_inv);
@@ -1526,6 +1539,8 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 
                 std::cout << std::setw(6) << N
                         << std::setw(12) << std::fixed << std::setprecision(2) << norm2_A
+                        << std::setw(12) << norm12_A
+                        << std::setw(12) << norm3_A
                         << std::setw(12) << norm2_Ainv
                         << std::setw(12) << kappa2
                         << std::setw(12) << kappa2 / (N*N)
@@ -1535,6 +1550,8 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
                 x_vals.push_back(N);
                 cond_2_vals.push_back(kappa2);
+                cond_12_vals.push_back(kappa12);
+                cond_3_vals.push_back(kappa3);
                 cond_f_vals.push_back(kappaF);
                 cond_1_vals.push_back(kappa1);
                 cond_I_vals.push_back(kappaI);
@@ -1989,6 +2006,10 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 cin_clear();
             };
         }
+    }
+
+    void f3_svd(){
+
     }
 
     ActionRegistry build_action_registry() 
