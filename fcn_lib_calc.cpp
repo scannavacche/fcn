@@ -617,7 +617,7 @@ double max_autoval_power_A(
         z = prodotto_matrice_vettore(At,z);
         nz = norma_vettore(2,z);
         for (int j=0;j<N;j++) q[j]=z[j]/nz; // q = z normalizzato
-        mu = prodotto_scalare(q, prodotto_matrice_vettore(A, q));  
+        mu = prodotto_scalare(q, prodotto_matrice_vettore(At, prodotto_matrice_vettore(A, q)));  
         //
         // forse i due passaggi si potevano invertire nel quoziente di Rayleigh
         //
