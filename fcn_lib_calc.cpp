@@ -595,6 +595,47 @@ double max_autoval_power_A(
     int seed = 1;
     // questa e' la versione per matrici qualsiasi, entra A ed usa AtA senza calcolarlo
     int N = A[0].size(); // n. di colonne di A = dim del vettore q[]
+    std::mt19937 rng(seed);
+    std::normal_distribution<double> gauss(0.0, 1.0);
+
+    Vec q(N);
+    Vec z(N);
+    for (double& v : q) v = gauss(rng); 
+    double nq = norma_vettore(2,q);
+    for (double& v : q) v /= nq;
+
+    double mu = 0.0;
+    double mu_old = 0.0;
+    double nz;
+    Mat At = calcola_trasposta(A);
+    // TODO: iterazione del metodo delle potenze su A^T*A
+    // Suggerimento: mat_trasposta = trasposta(A);
+    //               vec1 = matvec(A, q);
+    //               z    = matvec(mat_trasposta, vec1);
+    for (int iter=0;iter<max_iter;iter++) {
+        z = prodotto_matrice_vettore(A, q);
+        z = prodotto_matrice_vettore(At,z);
+        nz = norma_vettore(2,z);
+        for (int j=0;j<N;j++) q[j]=z[j]/nz; // q = z normalizzato
+        mu = prodotto_scalare(q, prodotto_matrice_vettore(At, prodotto_matrice_vettore(A, q)));  
+        //
+        // forse i due passaggi si potevano invertire nel quoziente di Rayleigh
+        //
+        if (std::abs(mu-mu_old)<tol) break;
+        mu_old=mu;
+    }
+    return mu;
+}
+
+
+double max_autoval_power_A_res(
+    const Mat& A, 
+    int max_iter, 
+    double tol) 
+{
+    int seed = 1;
+    // questa e' la versione per matrici qualsiasi, entra A ed usa AtA senza calcolarlo
+    int N = A[0].size(); // n. di colonne di A = dim del vettore q[]
     int M = A.size(); //n. di righe di A = dim del vettore Aq[]
 
     std::mt19937 rng(seed);
@@ -752,15 +793,21 @@ double norma_matrice(
                 // vector_dump(AutoAtA, 10, AutoAtA.size(), "Autovalori");
                 return std::sqrt(max_autovalore); // la norma 2 è la radice quadrata del massimo autovalore di A^T A    
             }
-        case 12: // versione metodo delle potenze per AtA
+        case 2: // versione metodo delle potenze per A con uscita a res (non calcola AtA esplicita)
+            {
+                return std::sqrt(max_autoval_power_A_res(A, 1000, 1e-12));
+            }
+           
+        case 12: // versione metodo delle potenze per A con uscita abs senza economia (non calcola AtA esplicita)
+            {
+                return std::sqrt(max_autoval_power_A(A, 1000, 1e-12));
+            }
+            
+        case 22: // versione metodo delle potenze per AtA
             {
                 Mat At = calcola_trasposta(A);
                 Mat AtA = prodotto_matrici(At, A);
                 return std::sqrt(max_autoval_power_AtA(AtA, 1000, 1e-12));
-            }
-        case 2: // versione metodo delle potenze per A (non calcola AtA esplicita)
-            {
-                return std::sqrt(max_autoval_power_A(A, 1000, 1e-12));
             }
 
         case 1: // norma 1: massimo assoluto della somma delle colonne

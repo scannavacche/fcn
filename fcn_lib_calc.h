@@ -151,6 +151,11 @@ Mat prodotto_matrice_coeff(
     const Mat& A, 
     const double coeff) ;
 
+double max_autoval_power_A_res(
+    const Mat& M, 
+    int max_iter, 
+    double tol);
+
 double max_autoval_power_A(
     const Mat& M, 
     int max_iter, 

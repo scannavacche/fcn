@@ -1484,12 +1484,13 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             const int N_values[] = {10, 20, 40, 80, 160, 320, 640};
             const int n_tests = 7;
             
-            std::vector<double> x_vals, cond_2_vals, cond_12_vals, cond_3_vals, cond_f_vals, cond_1_vals, cond_I_vals;
+            std::vector<double> x_vals, cond_2_vals, cond_12_vals, cond_22_vals, cond_3_vals, cond_f_vals, cond_1_vals, cond_I_vals;
             
             std::cout << std::setfill(' ')            
                 << std::setw(6) << "N" 
                 << std::setw(12) << "norm2(A)"
                 << std::setw(12) << "norm12(A)"
+                << std::setw(12) << "norm22(A)"
                 << std::setw(12) << "norm3(A)"
                 << std::setw(12) << "norm2(A^-1)"
                 << std::setw(12) << "kappa2"
@@ -1506,15 +1507,20 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 A = prodotto_matrice_coeff(A, h); // moltiplica per h
                 Mat A_inv = calcola_inversa_LU(A);
                 
-                // Norma 2 spettrale power
+                // Norma 2 spettrale power con economia
                 double norm2_A = norma_matrice(2, A);
                 double norm2_Ainv = norma_matrice(2, A_inv);
                 double kappa2 = norm2_A * norm2_Ainv;
                 
-                // Norma 2 spettrale power + Rayleigh
+                // Norma 2 spettrale power senza economia
                 double norm12_A = norma_matrice(12, A);
                 double norm12_Ainv = norma_matrice(12, A_inv);
                 double kappa12 = norm12_A * norm12_Ainv;
+
+                // Norma 2 spettrale power + Rayleigh
+                double norm22_A = norma_matrice(22, A);
+                double norm22_Ainv = norma_matrice(22, A_inv);
+                double kappa22 = norm22_A * norm22_Ainv;
 
                  // Norma 2 LU
                 double norm3_A = norma_matrice(3, A);
@@ -1540,6 +1546,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 std::cout << std::setw(6) << N
                         << std::setw(12) << std::fixed << std::setprecision(2) << norm2_A
                         << std::setw(12) << norm12_A
+                        << std::setw(12) << norm22_A
                         << std::setw(12) << norm3_A
                         << std::setw(12) << norm2_Ainv
                         << std::setw(12) << kappa2
@@ -1551,6 +1558,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 x_vals.push_back(N);
                 cond_2_vals.push_back(kappa2);
                 cond_12_vals.push_back(kappa12);
+                cond_12_vals.push_back(kappa22);
                 cond_3_vals.push_back(kappa3);
                 cond_f_vals.push_back(kappaF);
                 cond_1_vals.push_back(kappa1);
