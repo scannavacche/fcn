@@ -240,7 +240,7 @@ void stampa_matrice(
 		      << G[i][j] << " ";
 		      // << G[i][j] << " ";
         color_rst();
-        std::cout << "\n";
+        std::cout << "\n\n";
     }
 }
 
@@ -387,6 +387,24 @@ Mat calcola_trasposta(
     }
     return At;
 };
+
+Mat converti_vettore_a_matrice(
+    const Vec& v,
+    bool transp)
+{
+    int n = v.size();
+    if (transp) {   // vettore va in riga di M 1xn
+        Mat M = crea_matrice(1, n);
+        for (int i=0;i<n;i++) {
+            M[0][i] = v[i];
+        }
+        return M;
+    } else {        // vettore va in colonna di M nx1
+        Mat M = crea_matrice(n,1);
+        for (int i=0;i<n;i++) M[i][0] = v[i];
+        return M;
+    }
+}
 
 Mat calcola_inversa_LU (
     const Mat& T) {          
@@ -1036,9 +1054,11 @@ Vec householder_colonna(const Vec& v) {
     if (n2 == 0) 
     {
         w[0]=1;
+        cout << "preso palo\n";
         return w; // restituisce e1
     } else {
         int sgn_v0 = 1;
+        cout << "norma di v " << std::to_string(n2) << endl;
         for (int i=0;i<m;i++) w[i]=v[i];
         if (w[0]<0) sgn_v0 = -1;
         w[0] += sgn_v0 * n2;
@@ -1085,21 +1105,71 @@ void bidiagonalizza(
     Mat& B, 
     Mat& V0) 
 {
-    int n = X.size();
-    int d = X[0].size();
-    int p = std::min(n, d);
+    bool sdraiata = true;
 
     Mat A = X;                 // copia di lavoro
+
+    int n = A.size();
+    int d = A[0].size();
+    if (n>d) {
+        A = calcola_trasposta(A);
+        sdraiata = false;
+        n = A.size();
+        d = A[0].size();
+
+    }
+    int p = std::min(n, d);
+
     U0 = identita(n);          // n x n
     V0 = identita(d);          // d x d
 
-    for (int k = 0; k < p; ++k) {
+    stampa_matrice(A, n, "Originale"); 
+
+    for (int k = 0; k < p-1; k++) {
+        int m = n-k;
+        int q = d - k;
+
+        Vec v(m, 0.0);
 
         // ── Householder colonna: azzera A[k+1:, k] ──────────────────────────
         // 1. Estrai la sotto-colonna: v = A[k:, k]  (lunghezza n-k)
+        for (int i = 0; i<m; i++) v[i] = A[k+i][k];
+        // vector_dump(v, 10, v.size(), "Colonna di A sotto diag con k="+std::to_string(k));
+
         // 2. Calcola w = householder_colonna(v)
+        Vec w = householder_colonna(v);
+        // vector_dump(w, 10, w.size(), "W di householder");
+
         // 3. Aggiorna A[k:, :] <- A[k:, :] - 2*w*(w^T * A[k:, :])
+        Mat Aj = crea_matrice(n-k, q);
+
+        for (int i=0;i<n-k;i++){
+            for (int j=0; j<q; j++) Aj[i][j] = A[k+i][k+j];
+        }
+        // stampa_matrice(Aj, Aj.size(), "Aj a giro "+std::to_string(k));
+        //
+        // debug da qui 
+        // 
+        Mat Wt = converti_vettore_a_matrice(w,true);
+        // stampa_matrice(Wt, Wt.size(), "Wt come matrice 1 x n");
+
+        Mat WtA = prodotto_matrici(Wt, Aj); // w va direttamente trasposto con true
+        // stampa_matrice(WtA, WtA.size(), "Wt A" + std::to_string(k));
+
+        Mat WWtA = prodotto_matrici(converti_vettore_a_matrice(w, false), WtA);
+        // stampa_matrice(WWtA, WWtA.size(), "WWt A" + std::to_string(k));
+
+        Mat TwoWWtA = prodotto_matrice_coeff(WWtA, 2.0);
+        // stampa_matrice(TwoWWtA, TwoWWtA.size(), "2 W Wt A" + std::to_string(k));
+
+        for (int i=0;i<n-k;i++){
+            for (int j=0;j<q;j++) A[k+i][k+j] -= TwoWWtA[i][j];
+             // e torna indietro ma sarebbe da lasciar stare gli zeri per economia
+        }
+        // stampa_matrice(A, A.size(), "A al passo " + std::to_string(k));
+
         // 4. Aggiorna U0[:, k:] <- U0[:, k:] - 2*(U0[:,k:]*w)*w^T
+
 
         // TODO
 
@@ -1114,7 +1184,7 @@ void bidiagonalizza(
             // TODO
         }
     }
-
+    if (!sdraiata) A = calcola_trasposta(A); // se non era sdraiata, l'abbiamo sdraiata e ora si rialza
     B = A;
 }
 

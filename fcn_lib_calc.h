@@ -193,6 +193,10 @@ void LU(
 Mat matrice_righe_normalizzate(
     Mat& K);
 
+Mat converti_vettore_a_matrice(
+    const Vec& v,
+    bool transp);
+
 Mat calcola_trasposta(
     const Mat& A);
 

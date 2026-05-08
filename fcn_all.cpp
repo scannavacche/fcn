@@ -2078,7 +2078,6 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 // Mat R = X - matmat(U0, matmat(B, trasposta(V0)));
                 // printf("||X - U0*B*V0^T||_F = %.2e\n\n", norma_F(R));
             }
-
             // ── TODO 5: norma spettrale dell'errore di bidiagonalizzazione ───────────
             {
                 // Dopo aver implementato norma_spettrale e matmat:
