@@ -1121,65 +1121,123 @@ void bidiagonalizza(
     U0 = identita(n);          // n x n
     V0 = identita(d);          // d x d
 
-    stampa_matrice(A, n, "Originale"); 
+    Vec v, w;
+
+    // stampa_matrice(A, n, "Originale"); 
 
     for (int k = 0; k < p-1; k++) {
+        //
+        // occhio a queste due che vengono reimpostate ad ogni loop
+        // a sinistra m = n-k righe, q = d-k colonne
+        // a destra   m = n-k righe, q = q-k-1 colonne
+        //
+        cout << std::string(80,'_') << endl;
         int m = n-k;
         int q = d - k;
 
-        Vec v(m, 0.0);
+        v.assign(m, 0.0);
 
         // ── Householder colonna: azzera A[k+1:, k] ──────────────────────────
         // 1. Estrai la sotto-colonna: v = A[k:, k]  (lunghezza n-k)
         for (int i = 0; i<m; i++) v[i] = A[k+i][k];
-        // vector_dump(v, 10, v.size(), "Colonna di A sotto diag con k="+std::to_string(k));
+        // vector_dump(vv, 10, vv.size(), "Colonna di A sotto diag con k="+std::to_string(k));
 
-        // 2. Calcola w = householder_colonna(v)
-        Vec w = householder_colonna(v);
-        // vector_dump(w, 10, w.size(), "W di householder");
+        // 2. Calcola w = householder_colonna(vv)
+        w = householder_colonna(v);
+        // vector_dump(w, 10, w.size(), "W di householder colonna sinsitra");
 
         // 3. Aggiorna A[k:, :] <- A[k:, :] - 2*w*(w^T * A[k:, :])
         Mat A_k = crea_matrice(m, q);
 
-        for (int i=0;i<m;i++){
-            for (int j=0; j<q; j++) A_k[i][j] = A[k+i][k+j];
+        for (int i = 0; i < m; i++){
+            for (int j = 0; j < q; j++) A_k[i][j] = A[k+i][k+j];
         }
         // stampa_matrice(A_k, A_k.size(), "A_k a giro "+std::to_string(k));
-        //
-        // debug da qui 
-        // 
         Mat Wt = converti_vettore_a_matrice(w,true);
         // stampa_matrice(Wt, Wt.size(), "Wt come matrice 1 x n");
-
         Mat Wt_Ak = prodotto_matrici(Wt, A_k); // w va direttamente trasposto con true
         // stampa_matrice(Wt_Ak, Wt_Ak.size(), "Wt A_k" + std::to_string(k));
-
         Mat W_Wt_Ak = prodotto_matrici(converti_vettore_a_matrice(w, false), Wt_Ak);
         // stampa_matrice(W_Wt_Ak, W_Wt_Ak.size(), "W Wt A_k" + std::to_string(k));
-
         Mat Two_W_Wt_Ak = prodotto_matrice_coeff(W_Wt_Ak, 2.0);
         // stampa_matrice(Two_W_Wt_Ak, Two_W_Wt_Ak.size(), "2 W Wt A_k" + std::to_string(k));
 
         for (int i=0; i<m; i++){
-            for (int j=0; j<q; j++) A[k+i][k+j] -= Two_W_Wt_Ak[i][j];
-             // e torna indietro ma sarebbe da lasciar stare gli zeri per economia
+            for (int j = 0; j < q; j++) A[k+i][k+j] -= Two_W_Wt_Ak[i][j];
         }
-        // stampa_matrice(A, A.size(), "A al passo " + std::to_string(k));
+        // stampa_matrice(A, A.size(), "A al passo sx " + std::to_string(k));
 
         // 4. Aggiorna U0[:, k:] <- U0[:, k:] - 2*(U0[:,k:]*w)*w^T
 
+        Mat U0_k = crea_matrice(n,m); //tutte le righe e tante colonne quanto e' lungo w                                                                           
 
-        // TODO
+        for (int i = 0; i < n; i++){
+            for (int j = 0; j < m; j++) U0_k[i][j] = U0[i][k+j];
+        }
+        Mat U0_W =  converti_vettore_a_matrice(prodotto_matrice_vettore(U0_k, w), false);
+        Mat U0_W_Wt = prodotto_matrici(U0_W, converti_vettore_a_matrice(w, true));
+        // stampa_matrice(U0_W_Wt, U0_W_Wt.size(), "U0_k W W_t " + std::to_string(k));
+        Mat Two_U0_W_Wt = prodotto_matrice_coeff(U0_W_Wt, 2.0);
 
-        // ── Householder riga: azzera A[k, k+2:] ─────────────────────────────
-        // Solo se k < d-2
-        // 1. Estrai la sotto-riga: v = A[k, k+1:]  (lunghezza d-k-1)
-        // 2. Calcola w = householder_riga(v)
-        // 3. Aggiorna A[k:, k+1:] <- A[k:, k+1:] - 2*(A[k:,k+1:]*w)*w^T
-        // 4. Aggiorna V0[:, k+1:] <- V0[:, k+1:] - 2*(V0[:,k+1:]*w)*w^T
+        for (int i = 0; i < n; i++){
+            for (int j = 0; j < m; j++) U0[i][k+j] -= Two_U0_W_Wt[i][j];
+        }
+        // stampa_matrice(U0, U0.size(), "U0 al passo " + std::to_string(k));
+
 
         if (k < d - 2) {
             // TODO
+            // ── Householder riga: azzera A[k, k+2:] ─────────────────────────────
+            // Solo se k < d-2
+            // 1. Estrai la sotto-riga: v = A[k, k+1:]  (lunghezza d-k-1)
+            m = n-k;
+            q = d - k -1;
+            v.assign(q, 0.0);
+
+            for (int j = 0; j < q; j++) v[j] = A[k][k+j+1];
+            // 2. Calcola w = householder_riga(v)
+            w = householder_riga(v);
+            // vector_dump(w, 10, w.size(), "W di householder riga destra");
+            // 3. Aggiorna A[k:, k+1:] <- A[k:, k+1:] - 2*(A[k:,k+1:]*w)*w^T
+            Mat A_k = crea_matrice(m, q);
+            for (int i = 0; i < m; i++){
+                for (int j = 0; j < q; j++) A_k[i][j] = A[k+i][k+j+1];
+            };
+            Mat Ak_W =  converti_vettore_a_matrice(prodotto_matrice_vettore(A_k, w), false);
+            Mat Ak_W_Wt = prodotto_matrici(Ak_W, converti_vettore_a_matrice(w, true));
+            // stampa_matrice(Ak_W_Wt, Ak_W_Wt.size(), "A_k W W_t " + std::to_string(k));
+            Mat Two_Ak_W_Wt = prodotto_matrice_coeff(Ak_W_Wt, 2.0);
+            for (int i = 0; i < m; i++){
+                for (int j = 0; j < q; j++) A[k+i][k+j+1] -=  Two_Ak_W_Wt[i][j];
+            };
+            // stampa_matrice(A, A.size(), "A al passo dx " + std::to_string(k));
+
+            // 4. Aggiorna V0[:, k+1:] <- V0[:, k+1:] - 2*(V0[:,k+1:]*w)*w^T
+
+            Mat V0_k = crea_matrice(d,q); //tutte le righe e tante colonne quanto e' lungo w                                                                           
+
+            for (int i = 0; i < d; i++){
+                for (int j = 0; j < q; j++) V0_k[i][j] = V0[i][k+j+1];
+            }
+            Mat V0_W =  converti_vettore_a_matrice(prodotto_matrice_vettore(V0_k, w), false);
+            Mat V0_W_Wt = prodotto_matrici(V0_W, converti_vettore_a_matrice(w, true));
+            // stampa_matrice(V0_W_Wt, V0_W_Wt.size(), "V0_k W W_t " + std::to_string(k));
+            Mat Two_V0_W_Wt = prodotto_matrice_coeff(V0_W_Wt, 2.0);
+
+            for (int i = 0; i < d; i++){
+                for (int j = 0; j < q; j++) V0[i][k+j+1] -= Two_V0_W_Wt[i][j];
+            }
+            // stampa_matrice(V0, V0.size(), "V0 al passo " + std::to_string(k));
+            //
+            //  Verifica di U0 e V0 ortogonali
+            //
+            Mat V0t_V0 = prodotto_matrici(calcola_trasposta(V0), V0);
+            Mat U0t_U0 = prodotto_matrici(calcola_trasposta(U0), U0);
+            // stampa_matrice(U0t_U0, U0t_U0.size(), "U0_t U0");
+            // stampa_matrice(V0t_V0, V0t_V0.size(), "V0_t V0");
+
+            
+            
         }
     }
     if (!sdraiata) A = calcola_trasposta(A); // se non era sdraiata, l'abbiamo sdraiata e ora si rialza

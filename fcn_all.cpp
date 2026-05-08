@@ -2040,6 +2040,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
     void f3_svd(){
         bool leave = false;
+        int dummy = system("clear");
 
         while (!leave) 
         {
@@ -2072,11 +2073,19 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 bidiagonalizza(X, U0, B, V0);
 
                 std::cout << "B (deve essere bidiagonale superiore):\n";
-                stampa_matrice(B,B.size(),"Bidiagonale?");
+                stampa_matrice(U0,U0.size(),"Ortogonale");
+                stampa_matrice(B,B.size(),"Bidiagonale");
+                stampa_matrice(V0,V0.size(),"Ortogonale");
+                //
+                // Verifiche
+                //
 
                 // TODO 4: verifica ||X - U0*B*V0^T||_F
-                // Mat R = X - matmat(U0, matmat(B, trasposta(V0)));
-                // printf("||X - U0*B*V0^T||_F = %.2e\n\n", norma_F(R));
+                Mat X0 = prodotto_matrici(U0, prodotto_matrici(B, calcola_trasposta(V0)));
+                stampa_matrice(X,X.size(),"Originale");
+                stampa_matrice(X0,X0.size(),"Ricostruita");
+
+                printf("||X - U0*B*V0^T||_F = %.2e\n\n", errore_F(X, X0));
             }
             // ── TODO 5: norma spettrale dell'errore di bidiagonalizzazione ───────────
             {
@@ -2084,7 +2093,6 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 // double err_2 = norma_spettrale(R);
                 // printf("||R||_2 = %.2e\n", err_2);
             }
-
             // ── TODO 6: SVD completa ─────────────────────────────────────────────────
             {
                 std::mt19937 rng(7);
