@@ -1,7 +1,8 @@
 #!/bin/bash
 
 CXX="g++"
-CXXFLAGS="-std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-unused-local-typedefs -Wpedantic"
+# CXXFLAGS="-std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-unused-local-typedefs -Wpedantic"
+CXXFLAGS="-std=c++17 -O2 -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -Wno-unused-local-typedefs -Wpedantic -Wno-unused-function -Wno-sign-compare"
 
 LDFLAGS="-L/usr/local/lib -L/usr/local/lib/Matplot++"
 LDLIBS="-Wl,--start-group -lmatplot -lnodesoup -lpng -ltiff -lz -ljpeg -lm -Wl,--end-group"

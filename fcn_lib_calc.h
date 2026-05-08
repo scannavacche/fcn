@@ -130,6 +130,9 @@ Mat crea_matrice(
     int righe, 
     int colonne);
 
+Mat identita(
+    int n);
+
 Mat costruisci_triangolare(
     int n);
 Mat costruisci_inv_triangolare_sint(
@@ -217,6 +220,22 @@ Vec segnale_finestra(
     double a, 
     double b, 
     double t);
+
+Vec householder_colonna(
+    const Vec& v);
+
+Vec householder_riga(
+    const Vec& v);
+
+void bidiagonalizza(
+    const Mat& X, 
+    Mat& U0, 
+    Mat& B, 
+    Mat& V0);
+
+double errore_F(
+    const Mat& A, 
+    const Mat& B);
 
 figure_handle TableInit (
     const bool ahold, 

@@ -295,6 +295,13 @@ Mat crea_matrice(
     return Mat(righe, Vec(colonne, 0.0));
 }
 
+// Alloca matrice identità n x n di nome I
+Mat identita(int n) {
+    Mat I = crea_matrice(n, n);
+    for (int i = 0; i < n; ++i) I[i][i] = 1.0;
+    return I;
+}
+
 Mat costruisci_triangolare(
     int n) 
 {
@@ -523,6 +530,12 @@ Mat prodotto_matrici(
     int colsA = A[0].size();
     int rowsB = B.size();
     int colsB = B[0].size();
+
+    //
+    // nella versione di foglio 3 usa assert  per il controllo di compatibilita'
+    //     assert(colsA == rowsB);
+    // questa era ancora tipo pedestre, poi proveremo con assert visto che la importiamo
+    // 
 
     if (colsA != rowsB) {
         throw std::runtime_error(
@@ -773,17 +786,17 @@ double norma_matrice(
         case 3: 
             // norma 2: versione limitata LU
             {
-                //  vediamo se funziona con la LU di Tt * T, 
-                // ma non e' detto che funzioni perche' Tt*T e' simmetrica e positiva semidefinita, 
-                // quindi la sua LU potrebbe essere instabile o non definita. 
-                // piu' avanti implementeremo la SVD per calcolare la norma 2 in modo piu' robusto,
-                //  ma per ora proviamo con questa approssimazione.
+                    //  vediamo se funziona con la LU di Tt * T, 
+                    // ma non e' detto che funzioni perche' Tt*T e' simmetrica e positiva semidefinita, 
+                    // quindi la sua LU potrebbe essere instabile o non definita. 
+                    // nel frattempo sono implementati altri 3 metodi delle potenze per calcolare la norma 2 in modo piu' robusto,
+                    //  questo e' solo un test e la risposta e' dentro di te...ma e' sbagliata!
                 Mat At = calcola_trasposta(A);
                 Mat AtA = prodotto_matrici(At, A);
                 Vec AutoAtA = calcola_autovalori_LU(AtA); // ci riesce.... se non e' singolare ;)  
-                // fosse SVD avremmo gia' il massimo valore singolare come primo autovalore di AtA, 
-                // ma con la LU non e' detto che sia ordinato o che sia stabile, 
-                // quindi cerchiamo il massimo tra tutti gli autovalori di AtA.
+                    // fosse SVD avremmo gia' il massimo valore singolare come primo autovalore di AtA, 
+                    // ma con la LU non e' detto che sia ordinato o che sia stabile, 
+                    // quindi cerchiamo il massimo tra tutti gli autovalori di AtA.
                 double max_autovalore = 0.0;
                 for (double val : AutoAtA) {
                     if (std::abs(val) > max_autovalore) {
@@ -802,7 +815,7 @@ double norma_matrice(
             {
                 return std::sqrt(max_autoval_power_A(A, 1000, 1e-12));
             }
-            
+
         case 22: // versione metodo delle potenze per AtA
             {
                 Mat At = calcola_trasposta(A);
@@ -998,6 +1011,126 @@ void legend_align(
         lg->vertical_location(VA::top);
     };
 };
+
+
+// =============================================================================
+//  TODO 1 – Riflessione di Householder su una colonna
+//
+//  Dato v ∈ R^m, restituisce w normalizzato tale che
+//     (I - 2ww^T) v = -sgn(v[0]) * ||v||_2 * e_1
+//
+//  Costruzione:
+//     u = v;
+//     u[0] += sgn(v[0]) * ||v||_2;    // sgn(0) = +1 per convenzione
+//     w = u / ||u||_2;
+//
+//  ATTENZIONE: se ||v||_2 == 0, restituisci w = e_1 (nessuna trasformazione).
+//
+//  Verifica nella funzione main: per v = {3, 1, -2},
+//  w risultante deve dare H*v = [-sqrt(14), 0, 0].
+// =============================================================================
+Vec householder_colonna(const Vec& v) {
+    int m = v.size();
+    Vec w(m, 0.0);
+    double n2 = norma_vettore(2,v);
+    if (n2 == 0) 
+    {
+        w[0]=1;
+        return w; // restituisce e1
+    } else {
+        int sgn_v0 = 1;
+        for (int i=0;i<m;i++) w[i]=v[i];
+        if (w[0]<0) sgn_v0 = -1;
+        w[0] += sgn_v0 * n2;
+        n2 = norma_vettore(2, w);   // ricicliamo, non ci serviva piu' norma di v
+        for (int i=0;i<m;i++) w[i] /= n2;
+        return w;
+    }
+}
+// =============================================================================
+//  TODO 2 – Riflessione di Householder su una riga
+//
+//  Matematicamente identico a householder_colonna.
+//  La distinzione è solo nell'uso: verrà applicato a destra (su righe).
+//  Puoi semplicemente delegare a householder_colonna.
+// =============================================================================
+Vec householder_riga(
+    const Vec& v) 
+{
+    // TODO: return householder_colonna(v);
+    return householder_colonna(v);
+}
+
+// =============================================================================
+//  TODO 3 – Bidiagonalizzazione di Golub–Kahan
+//
+//  Input:  X  ∈ R^{n×d}
+//  Output: U0 ∈ R^{n×n} ortogonale,
+//          B  ∈ R^{n×d} bidiagonale superiore,
+//          V0 ∈ R^{d×d} ortogonale
+//          tali che  X = U0 * B * V0^T
+//
+//  Segui l'Algoritmo 1 nel foglio.
+//  Ricorda la formula efficiente:  H*A = A - 2*w*(w^T*A)
+//
+//  Aggiornamento di U0: U0 <- U0 * H_k  (H_k si applica a destra)
+//    U0[:, k:] <- U0[:, k:] - 2 * (U0[:, k:] * w) * w^T
+//
+//  Aggiornamento di V0: V0 <- V0 * G_k  (G_k si applica a destra)
+//    V0[:, k+1:] <- V0[:, k+1:] - 2 * (V0[:, k+1:] * w) * w^T
+// =============================================================================
+void bidiagonalizza(
+    const Mat& X, 
+    Mat& U0, 
+    Mat& B, 
+    Mat& V0) 
+{
+    int n = X.size();
+    int d = X[0].size();
+    int p = std::min(n, d);
+
+    Mat A = X;                 // copia di lavoro
+    U0 = identita(n);          // n x n
+    V0 = identita(d);          // d x d
+
+    for (int k = 0; k < p; ++k) {
+
+        // ── Householder colonna: azzera A[k+1:, k] ──────────────────────────
+        // 1. Estrai la sotto-colonna: v = A[k:, k]  (lunghezza n-k)
+        // 2. Calcola w = householder_colonna(v)
+        // 3. Aggiorna A[k:, :] <- A[k:, :] - 2*w*(w^T * A[k:, :])
+        // 4. Aggiorna U0[:, k:] <- U0[:, k:] - 2*(U0[:,k:]*w)*w^T
+
+        // TODO
+
+        // ── Householder riga: azzera A[k, k+2:] ─────────────────────────────
+        // Solo se k < d-2
+        // 1. Estrai la sotto-riga: v = A[k, k+1:]  (lunghezza d-k-1)
+        // 2. Calcola w = householder_riga(v)
+        // 3. Aggiorna A[k:, k+1:] <- A[k:, k+1:] - 2*(A[k:,k+1:]*w)*w^T
+        // 4. Aggiorna V0[:, k+1:] <- V0[:, k+1:] - 2*(V0[:,k+1:]*w)*w^T
+
+        if (k < d - 2) {
+            // TODO
+        }
+    }
+
+    B = A;
+}
+
+// Norma di Frobenius di A - B
+double errore_F(
+    const Mat& A, 
+    const Mat& B) 
+{
+    double s = 0;
+    for (int i = 0; i < (int)A.size(); ++i)
+        for (int j = 0; j < (int)A[0].size(); ++j) {
+            double d = A[i][j] - B[i][j];
+            s += d*d;
+        }
+    return std::sqrt(s);
+}
 
 //
 // gestione del menu principale e dei suoi item
