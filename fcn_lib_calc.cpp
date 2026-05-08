@@ -1141,7 +1141,7 @@ void bidiagonalizza(
         // 3. Aggiorna A[k:, :] <- A[k:, :] - 2*w*(w^T * A[k:, :])
         Mat A_k = crea_matrice(m, q);
 
-        for (int i=0;i<n-k;i++){
+        for (int i=0;i<m;i++){
             for (int j=0; j<q; j++) A_k[i][j] = A[k+i][k+j];
         }
         // stampa_matrice(A_k, A_k.size(), "A_k a giro "+std::to_string(k));
@@ -1160,8 +1160,8 @@ void bidiagonalizza(
         Mat Two_W_Wt_Ak = prodotto_matrice_coeff(W_Wt_Ak, 2.0);
         // stampa_matrice(Two_W_Wt_Ak, Two_W_Wt_Ak.size(), "2 W Wt A_k" + std::to_string(k));
 
-        for (int i=0;i<n-k;i++){
-            for (int j=0;j<q;j++) A[k+i][k+j] -= Two_W_Wt_Ak[i][j];
+        for (int i=0; i<m; i++){
+            for (int j=0; j<q; j++) A[k+i][k+j] -= Two_W_Wt_Ak[i][j];
              // e torna indietro ma sarebbe da lasciar stare gli zeri per economia
         }
         // stampa_matrice(A, A.size(), "A al passo " + std::to_string(k));
