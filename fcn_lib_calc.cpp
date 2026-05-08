@@ -1054,11 +1054,9 @@ Vec householder_colonna(const Vec& v) {
     if (n2 == 0) 
     {
         w[0]=1;
-        cout << "preso palo\n";
         return w; // restituisce e1
     } else {
         int sgn_v0 = 1;
-        cout << "norma di v " << std::to_string(n2) << endl;
         for (int i=0;i<m;i++) w[i]=v[i];
         if (w[0]<0) sgn_v0 = -1;
         w[0] += sgn_v0 * n2;
@@ -1141,29 +1139,29 @@ void bidiagonalizza(
         // vector_dump(w, 10, w.size(), "W di householder");
 
         // 3. Aggiorna A[k:, :] <- A[k:, :] - 2*w*(w^T * A[k:, :])
-        Mat Aj = crea_matrice(n-k, q);
+        Mat A_k = crea_matrice(m, q);
 
         for (int i=0;i<n-k;i++){
-            for (int j=0; j<q; j++) Aj[i][j] = A[k+i][k+j];
+            for (int j=0; j<q; j++) A_k[i][j] = A[k+i][k+j];
         }
-        // stampa_matrice(Aj, Aj.size(), "Aj a giro "+std::to_string(k));
+        // stampa_matrice(A_k, A_k.size(), "A_k a giro "+std::to_string(k));
         //
         // debug da qui 
         // 
         Mat Wt = converti_vettore_a_matrice(w,true);
         // stampa_matrice(Wt, Wt.size(), "Wt come matrice 1 x n");
 
-        Mat WtA = prodotto_matrici(Wt, Aj); // w va direttamente trasposto con true
-        // stampa_matrice(WtA, WtA.size(), "Wt A" + std::to_string(k));
+        Mat Wt_Ak = prodotto_matrici(Wt, A_k); // w va direttamente trasposto con true
+        // stampa_matrice(Wt_Ak, Wt_Ak.size(), "Wt A_k" + std::to_string(k));
 
-        Mat WWtA = prodotto_matrici(converti_vettore_a_matrice(w, false), WtA);
-        // stampa_matrice(WWtA, WWtA.size(), "WWt A" + std::to_string(k));
+        Mat W_Wt_Ak = prodotto_matrici(converti_vettore_a_matrice(w, false), Wt_Ak);
+        // stampa_matrice(W_Wt_Ak, W_Wt_Ak.size(), "W Wt A_k" + std::to_string(k));
 
-        Mat TwoWWtA = prodotto_matrice_coeff(WWtA, 2.0);
-        // stampa_matrice(TwoWWtA, TwoWWtA.size(), "2 W Wt A" + std::to_string(k));
+        Mat Two_W_Wt_Ak = prodotto_matrice_coeff(W_Wt_Ak, 2.0);
+        // stampa_matrice(Two_W_Wt_Ak, Two_W_Wt_Ak.size(), "2 W Wt A_k" + std::to_string(k));
 
         for (int i=0;i<n-k;i++){
-            for (int j=0;j<q;j++) A[k+i][k+j] -= TwoWWtA[i][j];
+            for (int j=0;j<q;j++) A[k+i][k+j] -= Two_W_Wt_Ak[i][j];
              // e torna indietro ma sarebbe da lasciar stare gli zeri per economia
         }
         // stampa_matrice(A, A.size(), "A al passo " + std::to_string(k));
