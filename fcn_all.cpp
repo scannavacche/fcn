@@ -2084,35 +2084,90 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 Mat X0 = prodotto_matrici(U0, prodotto_matrici(B, calcola_trasposta(V0)));
                 stampa_matrice(X,X.size(),"Originale");
                 stampa_matrice(X0,X0.size(),"Ricostruita");
-
-                printf("||X - U0*B*V0^T||_F = %.2e\n\n", errore_F(X, X0));
-            }
+                Mat R = differenza_matrici(X,X0);
+                printf(" Error_F_lab ||X - U0*B*V0^T||_F = %.2e\n\n", errore_F(X, X0));
+                printf(" Error_F_mia ||X - U0*B*V0^T||_F = %.2e\n\n", norma_matrice(-1, R));
+            
             // ── TODO 5: norma spettrale dell'errore di bidiagonalizzazione ───────────
-            {
+            
                 // Dopo aver implementato norma_spettrale e matmat:
-                // double err_2 = norma_spettrale(R);
-                // printf("||R||_2 = %.2e\n", err_2);
-            }
+                printf("Norma spettrale PM eco ||R||_2 = %.2e\n",  norma_matrice(2,R));
+                printf("Norma spettrale PM lab ||R||_2 = %.2e\n",  norma_matrice(12,R));
+                printf("Norma spettrale PM ray ||R||_2 = %.2e\n",  norma_matrice(22,R));
+                //  test condizione di errore: Mat E = differenza_matrici(U0, V0);
+           }
             // ── TODO 6: SVD completa ─────────────────────────────────────────────────
             {
                 std::mt19937 rng(7);
                 std::normal_distribution<double> g(0.0, 1.0);
-                int n = 6, d = 4;
+                // int n = 6, d = 4;
+                int n = 6, d = 11;
                 Mat X = crea_matrice(n, d);
                 for (auto& r : X) for (double& v : r) v = g(rng);
 
                 Mat U0, B, V0;
-                bidiagonalizza(X, U0, B, V0);
+                bidiagonalizza(X, U0, B, V0, false);
+
+                stampa_matrice(U0,U0.size(),"U0 Ortogonale");
+                stampa_matrice(B,B.size(),"B Bidiagonale");
+                stampa_matrice(V0,V0.size(),"V0 Ortogonale");
+                //
+                // Verifiche
+                //
+
+                // TODO 4: verifica ||X - U0*B*V0^T||_F
+                Mat X0 = prodotto_matrici(U0, prodotto_matrici(B, calcola_trasposta(V0)));
+                stampa_matrice(X,X.size(),"X Originale");
+                stampa_matrice(X0,X0.size(),"X = U0 * B * V0_t Ricostruita");
+                Mat R = differenza_matrici(X,X0);
+                printf(" Error_F_lab ||X - U0*B*V0^T||_F = %.2e\n\n", errore_F(X, X0));
+                printf(" Error_F_mia ||X - U0*B*V0^T||_F = %.2e\n\n", norma_matrice(-1, R));
+
 
                 Mat Ub, Vb;
                 Vec sigma;
                 svd_bidiagonale(B, Ub, Vb, sigma);
+                stampa_matrice(Ub, Ub.size(), "Ub");
+                stampa_matrice(Vb, Vb.size(), "Vb");
+
+                Mat Sigma = matrice_diagonale(sigma, X.size(), X.size()); // Sigma ridotta, seghiamo V0 di conseguenza
+                stampa_matrice(Sigma, Sigma.size(), "Sigma");
+
+                Mat Ub_S = prodotto_matrici(Ub, Sigma);
+                Mat Ub_S_Vbt = prodotto_matrici(Ub_S, calcola_trasposta(matrice_ridotta(Vb, Sigma.size(), true)));
+                Mat RB = differenza_matrici(B , Ub_S_Vbt);
+                printf(" Error_F_mia ||X - U*Sigma*V^T||_F = %.2e\n\n", norma_matrice(-1, RB));
+
+                stampa_matrice(RB, RB.size(), "Matrice differenza B = B - Ub * Sigma * Vb_t");
+
 
                 // TODO: U = U0 * Ub,  V = V0 * Vb
-                // Mat U = matmat(U0, Ub);
-                // Mat V = matmat(V0, Vb);
+                Mat U = prodotto_matrici(U0, Ub);
+                stampa_matrice(U, U.size(), "U = U0 * Ub");
+
+                Mat Vb_red = matrice_ridotta(Vb, sigma.size(), true); // true limita le colonne
+                stampa_matrice(Vb_red, Vb_red.size(), "Vb Ridotta alle col di Sigma");
+
+                Mat V = prodotto_matrici(V0, Vb_red);
+                stampa_matrice(V, V.size(), "V = V0 * VB_red");
+
+                Mat U_S = prodotto_matrici(U, Sigma);
+                Mat U_S_Vt = prodotto_matrici(U_S, calcola_trasposta(V));
+                stampa_matrice(X, X.size(), "X");
+                stampa_matrice(U_S_Vt, U_S_Vt.size(), "U * Sigma * Vt");
+
 
                 // TODO: verifica ||X - U*Sigma*V^T||_F, ||U^T*U - I||_F, ||V^T*V - I||_F
+
+                Mat RX = differenza_matrici(X, U_S_Vt);
+                Mat RU = differenza_matrici(identita(U.size()), prodotto_matrici(U, calcola_trasposta(U)));
+                Mat RV = differenza_matrici(identita(V.size()), prodotto_matrici(V, calcola_trasposta(V)));
+                printf(" Error_F_mia ||X - U*Sigma*V^T||_F = %.2e\n\n", norma_matrice(-1, RX));
+                printf(" Error_F_mia ||U^T*U - I||_F = %.2e\n\n", norma_matrice(-1, RU));
+                printf(" Error_F_mia ||V^T*V - I||_F = %.2e\n\n", norma_matrice(-1, RV));
+
+                stampa_matrice(RX, RX.size(), "Matrice differenza RX = X - U * Sigma * V_t");
+
                 // TODO: stampa valori singolari
 
                 std::cout << "Valori singolari sigma (attesi in ordine decrescente):\n";

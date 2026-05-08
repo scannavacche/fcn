@@ -73,7 +73,8 @@ double fcallb(
 double h_ticks(
     const double a_start, 
     const double a_stop, 
-    const int a_points){
+    const int a_points)
+{
         //  ora si chiama a_points per disambiguazione.
         // h e' la lunghezza dell' intervallo e gli intervalli sono points - 1
     if (a_stop>a_start) {
@@ -166,7 +167,6 @@ string color_bool(
     37 bianco
 */    
 }
-
 
 string color_dbl(
     const double val) {
@@ -289,14 +289,17 @@ void vector_dump (
 
 Mat crea_matrice(
     int righe, 
-    int colonne) {
+    int colonne)
+{
     // Crea una matrice N x N inizializzata a zero
 
     return Mat(righe, Vec(colonne, 0.0));
 }
 
 // Alloca matrice identità n x n di nome I
-Mat identita(int n) {
+Mat identita(
+    int n) 
+{
     Mat I = crea_matrice(n, n);
     for (int i = 0; i < n; ++i) I[i][i] = 1.0;
     return I;
@@ -459,6 +462,7 @@ Vec calcola_autovalori_LU (
     };
     return autovalori;
 };  
+
 Vec nodi_equidistanti(
     const double amin, 
     const double amax, 
@@ -539,6 +543,72 @@ double prodotto_scalare(
     // DONE: prodotto scalare
 }
 
+Mat matrice_ridotta(
+    const Mat& A, 
+    int n, 
+    bool bycol)
+{
+    int cols = A[0].size();
+    int rows = A.size();
+    
+    cout << "Entriamo con n = " << n << ( bycol ? "Colonne" : "Righe") << endl ;
+
+    if (bycol) {
+        if (cols > n) {
+            Mat B = crea_matrice(rows, n);
+            for (int i = 0; i < rows; i++) { 
+                for (int j = 0; j < n; j++ ) {
+                    B[i][j] = A[i][j];
+                };
+            };
+            cout << "Rendo B\n";
+            return B;
+        } else {
+            cout << "Rendo A\n";
+            return A;
+        }
+    } else {
+        if (rows>n) {
+            Mat B = crea_matrice(n, cols);
+            for (int i = 0; i < n; i++) {
+                for (int j = 0; j <  cols; j++) {
+                    B[i][j] = A[i][j];
+                }
+            }
+            cout << "Rendo B\n";
+            return B;
+        } else {
+            cout << "Rendo A\n";
+            return A;
+        };
+    }
+
+}
+
+Mat differenza_matrici(
+    const Mat& A, 
+    const Mat& B)
+{
+    int ra = A.size(); 
+    int ca = A[0].size();
+    int rb = B.size();
+    int cb = B[0].size();
+    if ((ra == rb) && (ca == cb)) {
+        Mat R = crea_matrice(ra, ca);
+        for (int i = 0; i < ra; i++) {
+            for (int j = 0; j < ca; j++) {
+                R[i][j] = A[i][j] - B[i][j];
+            }
+        };
+        return R;
+    } else {
+        cout << "Matrici di dimensioni incompatibili per sottrazione A: "
+            << ra << "x" << ca << " e B: "
+            << rb << "x" << cb << endl; 
+        exit(-1);
+    }
+       
+}
 
 Mat prodotto_matrici(
     const Mat& A, 
@@ -657,7 +727,6 @@ double max_autoval_power_A(
     }
     return mu;
 }
-
 
 double max_autoval_power_A_res(
     const Mat& A, 
@@ -1047,7 +1116,9 @@ void legend_align(
 //  Verifica nella funzione main: per v = {3, 1, -2},
 //  w risultante deve dare H*v = [-sqrt(14), 0, 0].
 // =============================================================================
-Vec householder_colonna(const Vec& v) {
+Vec householder_colonna(
+    const Vec& v) 
+{
     int m = v.size();
     Vec w(m, 0.0);
     double n2 = norma_vettore(2,v);
@@ -1097,25 +1168,21 @@ Vec householder_riga(
 //  Aggiornamento di V0: V0 <- V0 * G_k  (G_k si applica a destra)
 //    V0[:, k+1:] <- V0[:, k+1:] - 2 * (V0[:, k+1:] * w) * w^T
 // =============================================================================
-void bidiagonalizza(
+void bidiagonalizza_undercond(
     const Mat& X, 
     Mat& U0, 
     Mat& B, 
-    Mat& V0) 
+    Mat& V0,
+    bool d_flag) 
 {
-    bool sdraiata = true;
 
     Mat A = X;                 // copia di lavoro
 
     int n = A.size();
     int d = A[0].size();
-    if (n>d) {
-        A = calcola_trasposta(A);
-        sdraiata = false;
-        n = A.size();
-        d = A[0].size();
+    
+    if (d_flag) stampa_matrice(A, n, "Originale"); 
 
-    }
     int p = std::min(n, d);
 
     U0 = identita(n);          // n x n
@@ -1123,7 +1190,6 @@ void bidiagonalizza(
 
     Vec v, w;
 
-    // stampa_matrice(A, n, "Originale"); 
 
     for (int k = 0; k < p-1; k++) {
         //
@@ -1165,7 +1231,7 @@ void bidiagonalizza(
         for (int i=0; i<m; i++){
             for (int j = 0; j < q; j++) A[k+i][k+j] -= Two_W_Wt_Ak[i][j];
         }
-        // stampa_matrice(A, A.size(), "A al passo sx " + std::to_string(k));
+        if (d_flag) stampa_matrice(A, A.size(), "A al passo sx " + std::to_string(k));
 
         // 4. Aggiorna U0[:, k:] <- U0[:, k:] - 2*(U0[:,k:]*w)*w^T
 
@@ -1210,7 +1276,7 @@ void bidiagonalizza(
             for (int i = 0; i < m; i++){
                 for (int j = 0; j < q; j++) A[k+i][k+j+1] -=  Two_Ak_W_Wt[i][j];
             };
-            // stampa_matrice(A, A.size(), "A al passo dx " + std::to_string(k));
+            if (d_flag) stampa_matrice(A, A.size(), "A al passo dx " + std::to_string(k));
 
             // 4. Aggiorna V0[:, k+1:] <- V0[:, k+1:] - 2*(V0[:,k+1:]*w)*w^T
 
@@ -1240,8 +1306,45 @@ void bidiagonalizza(
             
         }
     }
-    if (!sdraiata) A = calcola_trasposta(A); // se non era sdraiata, l'abbiamo sdraiata e ora si rialza
     B = A;
+}
+// A = U0 * B * V0^T
+
+// wrapper generale
+void bidiagonalizza(
+    const Mat& A, 
+    Mat& U0, 
+    Mat& B, 
+    Mat& V0, 
+    bool d_flag) 
+{
+    int m = A.size();
+    int n = A[0].size();
+
+    if (m <= n) {
+        bidiagonalizza_undercond(A, U0, B, V0, d_flag);
+    } else {
+        Mat At = calcola_trasposta(A);
+
+        Mat Ut, Bt, Vt;
+        bidiagonalizza_undercond(At, Ut, Bt, Vt, d_flag);   // At = Ut * Bt * Vt^T
+
+        U0 = Vt;           // A = Vt * Bt^T * Ut^T
+        B  = calcola_trasposta(Bt);
+        V0 = Ut;
+    }
+}
+
+Mat matrice_diagonale(
+    const Vec& s, 
+    int m, 
+    int n) 
+{
+    Mat S = crea_matrice(m, n);
+    int r = std::min<int>(s.size(), std::min(m, n));
+    for (int i = 0; i < r; ++i)
+        S[i][i] = s[i];
+    return S;
 }
 
 // Norma di Frobenius di A - B

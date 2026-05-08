@@ -142,6 +142,15 @@ double prodotto_scalare(
     const Vec &u,
     const Vec &v);
 
+Mat matrice_ridotta(
+    const Mat& A, 
+    int n, 
+    bool bycol);
+
+Mat differenza_matrici(
+    const Mat& A, 
+    const Mat& B);
+
 Mat prodotto_matrici(
     const Mat& A, 
     const Mat& B);
@@ -231,11 +240,25 @@ Vec householder_colonna(
 Vec householder_riga(
     const Vec& v);
 
-void bidiagonalizza(
+void bidiagonalizza_undercond(
     const Mat& X, 
     Mat& U0, 
     Mat& B, 
-    Mat& V0);
+    Mat& V0,
+    bool d_flag = false);
+
+void bidiagonalizza(
+    const Mat& A, 
+    Mat& U0, 
+    Mat& B, 
+    Mat& V0, 
+    bool d_flag = false);
+
+Mat matrice_diagonale(
+    const Vec& s, 
+    int m, 
+    int n) ;
+
 
 double errore_F(
     const Mat& A, 
