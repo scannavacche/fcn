@@ -3,4 +3,4 @@ clear
 echo Compilazione $srcname $exename
 
 #g++ -std=c++17 -O2 -lm es1_derivate.cpp -lmatplot -o deriv
-g++ -std=c++17 -O2 es1_derivate.cpp fcn_lib_calc.cpp -lmatplot -lm -o deriv
+g++ -std=c++17 -O2 svd_testprog.cpp -lmatplot -lm -o svdtest

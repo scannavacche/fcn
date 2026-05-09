@@ -177,15 +177,15 @@ string color_dbl(
 
     string s = "";
     if (val > precision1) 
-        s =  "\033[92m";  // verde chiaro positivo 
+        s =  "\033[92m";  // verde chiaro positivo oltre +eps_f
     else if (val > precision2) 
-        s =  "\033[37m";  // azzurro scuro zero+
+        s =  "\033[90m";  // grigio zero+ tra +eps_d e +eps_f
     else if (val < -precision1)
-        s = "\033[91m";  // rosso chiaro negativo
+        s = "\033[91m";  // rosso chiaro negativo  oltre -eps_f
     else if (val < -precision2)
-        s = "\033[90m";  // giallo scuro zero-
+        s = "\033[90m";  // grigio zero- tra -eps_d e -eps_f
     else
-        s = "\033[97m";  // bianco per zero zero nullo;
+        s = "\033[97m";  // bianco per zero zero nullo, entro +/- eps_d
     return s;
 
 /*
@@ -1197,7 +1197,6 @@ void bidiagonalizza_undercond(
         // a sinistra m = n-k righe, q = d-k colonne
         // a destra   m = n-k righe, q = q-k-1 colonne
         //
-        cout << std::string(80,'_') << endl;
         int m = n-k;
         int q = d - k;
 

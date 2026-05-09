@@ -2038,12 +2038,14 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         }
     }
 
-    void f3_svd(){
+    void f3_svd_test(){
         bool leave = false;
         int dummy = system("clear");
+        int n = 4, d = 5;
 
         while (!leave) 
         {
+            int dummy = system("clear");
             {
                 Vec v = {3.0, 1.0, -2.0};
                 Vec w = householder_colonna(v);
@@ -2058,6 +2060,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 printf("  v = [%.3f, %.3f, %.3f]\n", v[0], v[1], v[2]);
                 printf("  H*v = [%.6f, %.6f, %.6f]\n", Hv[0], Hv[1], Hv[2]);
                 printf("  atteso: [%.6f, 0, 0]\n\n", -std::sqrt(14.0));
+                cout << std::string(80, '_') << endl;
             }
 
             // ── Verifica TODO 3: bidiagonalizzazione su matrice piccola ──────────────
@@ -2065,108 +2068,161 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 // Matrice 4x5 casuale
                 std::mt19937 rng(42);
                 std::normal_distribution<double> g(0.0, 1.0);
-                int n = 4, d = 5;
                 Mat X = crea_matrice(n, d);
                 for (auto& r : X) for (double& v : r) v = g(rng);
 
                 Mat U0, B, V0;
                 bidiagonalizza(X, U0, B, V0);
-
-                std::cout << "B (deve essere bidiagonale superiore):\n";
-                stampa_matrice(U0,U0.size(),"Ortogonale");
-                stampa_matrice(B,B.size(),"Bidiagonale");
-                stampa_matrice(V0,V0.size(),"Ortogonale");
+                Mat V0_t = calcola_trasposta(V0);
+                Mat In = identita(n);
+                Mat Id = identita(d);
+                Mat U0_U0t = prodotto_matrici(U0, calcola_trasposta(U0));
+                Mat V0_V0t = prodotto_matrici(V0, V0_t);
+                stampa_matrice(U0,U0.size(),"U0 - Ortogonale?");
+                stampa_matrice(U0_U0t,U0_U0t.size(),"U0 * U0_t - test ortogonalita'");
+                stampa_matrice(B,B.size(),"B - Bidiagonale");
+                stampa_matrice(V0,V0.size(),"V0 - Ortogonale?");
+                stampa_matrice(V0_t,V0_t.size(),"V0_t - Ortogonale trasposta");
+                stampa_matrice(V0_V0t,V0_V0t.size(),"V0 * V0_t - test ortogonalita'");
                 //
                 // Verifiche
                 //
 
                 // TODO 4: verifica ||X - U0*B*V0^T||_F
-                Mat X0 = prodotto_matrici(U0, prodotto_matrici(B, calcola_trasposta(V0)));
-                stampa_matrice(X,X.size(),"Originale");
-                stampa_matrice(X0,X0.size(),"Ricostruita");
+                Mat X0 = prodotto_matrici(U0, prodotto_matrici(B, V0_t));
+                stampa_matrice(X,X.size(),"X - Originale");
+                stampa_matrice(X0,X0.size(),"X - Ricostruita U0 * (B * V0^T)");
                 Mat R = differenza_matrici(X,X0);
-                printf(" Error_F_lab ||X - U0*B*V0^T||_F = %.2e\n\n", errore_F(X, X0));
+                stampa_matrice(R,R.size(),"R - Differenza X - U0 * B * V0^T");
+
+                printf(" Error_F_lab ||X - U0*B*V0^T||_F = %.2e\n", errore_F(X, X0));
                 printf(" Error_F_mia ||X - U0*B*V0^T||_F = %.2e\n\n", norma_matrice(-1, R));
-            
+                printf(" Error_F_lab ||In - U0*U0^T ||_F = %.2e\n", errore_F(In, U0_U0t));
+                printf(" Error_F_lab ||Id - V0*V0^T ||_F = %.2e\n\n", errore_F(Id, V0_V0t));
+           
             // ── TODO 5: norma spettrale dell'errore di bidiagonalizzazione ───────────
             
                 // Dopo aver implementato norma_spettrale e matmat:
-                printf("Norma spettrale PM eco ||R||_2 = %.2e\n",  norma_matrice(2,R));
-                printf("Norma spettrale PM lab ||R||_2 = %.2e\n",  norma_matrice(12,R));
-                printf("Norma spettrale PM ray ||R||_2 = %.2e\n",  norma_matrice(22,R));
+                printf(" Norma spettrale PM econ ||R||_2 = %.2e\n",  norma_matrice(2,R));
+                printf(" Norma spettrale PM lab. ||R||_2 = %.2e\n",  norma_matrice(12,R));
+                printf(" Norma spettrale PM rayl ||R||_2 = %.2e\n\n",  norma_matrice(22,R));
                 //  test condizione di errore: Mat E = differenza_matrici(U0, V0);
            }
+ 
+            bool redo = false;
+            while (!redo && !leave) {
+
+                std::cout << "Numero di righe della matrice di test = n [3..20] (<q> per uscire) > " ;
+                if (std::cin >> n) { if (n>=3 && n<=20) redo=true;} else {cout << "Key: " << n <<endl; leave=true;} ;
+                if (redo) {
+                    std::cout << " numero di colonne = d da n a "<< 30 <<" (<q> per uscire) > " ;
+                    if (std::cin >> d) { if (d >=n && d<=30) redo=true;} else {cout << "Key: " << d <<endl; leave=true;} ;
+                }
+                cin_clear();
+            };
+       }
+    }
+    
+    void f3_svd(){
+        bool leave = false;
+        int n = 6, d = 6;
+
+        while (!leave) 
+        {
+            int dummy = system("clear");
             // ── TODO 6: SVD completa ─────────────────────────────────────────────────
             {
                 std::mt19937 rng(7);
                 std::normal_distribution<double> g(0.0, 1.0);
                 // int n = 6, d = 4;
-                int n = 6, d = 11;
                 Mat X = crea_matrice(n, d);
                 for (auto& r : X) for (double& v : r) v = g(rng);
 
                 Mat U0, B, V0;
                 bidiagonalizza(X, U0, B, V0, false);
 
-                stampa_matrice(U0,U0.size(),"U0 Ortogonale");
-                stampa_matrice(B,B.size(),"B Bidiagonale");
-                stampa_matrice(V0,V0.size(),"V0 Ortogonale");
-                //
-                // Verifiche
-                //
-
                 // TODO 4: verifica ||X - U0*B*V0^T||_F
-                Mat X0 = prodotto_matrici(U0, prodotto_matrici(B, calcola_trasposta(V0)));
-                stampa_matrice(X,X.size(),"X Originale");
-                stampa_matrice(X0,X0.size(),"X = U0 * B * V0_t Ricostruita");
-                Mat R = differenza_matrici(X,X0);
-                printf(" Error_F_lab ||X - U0*B*V0^T||_F = %.2e\n\n", errore_F(X, X0));
-                printf(" Error_F_mia ||X - U0*B*V0^T||_F = %.2e\n\n", norma_matrice(-1, R));
 
+                Mat V0_t = calcola_trasposta(V0);
+                Mat X0 = prodotto_matrici(prodotto_matrici(U0, B), V0_t);
+                // stampa_matrice(X,X.size(),"X Originale");
+                // stampa_matrice(X0,X0.size(),"X = U0 * B * V0_t Ricostruita");
+                Mat R = differenza_matrici(X,X0);
+
+
+                printf(" Error_F_lab         ||X - U0*B*V0^T||_F = %.2e\n", errore_F(X, X0));
+                printf(" Error_F_mia         ||X - U0*B*V0^T||_F = %.2e\n", norma_matrice(-1, R));
+                printf(" Norma spettrale err ||X - U0*B*V0^T||_2 = %.2e\n\n", norma_matrice(2, R));
+
+                cout << "\n" << std::string(80, '-')<< endl;
+                cout << "*** Fine collaudo: teniamo U0 e V0 per dopo e diamo B a SVD per avere Ub e Vb ***\n\n";
+                cout << std::string(80, '-')<< endl << endl;
 
                 Mat Ub, Vb;
-                Vec sigma;
+                Vec sigma; // s minuscolo vettore, poi S maiuscolo matrice diagonale
+                stampa_matrice(B,B.size(),"B All'entrata di SVD");
                 svd_bidiagonale(B, Ub, Vb, sigma);
-                stampa_matrice(Ub, Ub.size(), "Ub");
-                stampa_matrice(Vb, Vb.size(), "Vb");
+                Mat Vb_t = calcola_trasposta(Vb);
 
-                Mat Sigma = matrice_diagonale(sigma, X.size(), X.size()); // Sigma ridotta, seghiamo V0 di conseguenza
+                stampa_matrice(Ub, Ub.size(), "Ub");
+                Mat Sigma = matrice_diagonale(sigma, X.size(), X[0].size()); 
                 stampa_matrice(Sigma, Sigma.size(), "Sigma");
+                stampa_matrice(Vb, Vb.size(), "Vb");
+                stampa_matrice(Vb_t, Vb_t.size(), "Vb_t");
+
+                cout << "\n" << std::string(80, '-')<< endl;
+                cout << ">>                 Prodotti della SVD\n";
+                cout << std::string(80, '-')<< endl << endl;
 
                 Mat Ub_S = prodotto_matrici(Ub, Sigma);
-                Mat Ub_S_Vbt = prodotto_matrici(Ub_S, calcola_trasposta(matrice_ridotta(Vb, Sigma.size(), true)));
-                Mat RB = differenza_matrici(B , Ub_S_Vbt);
-                printf(" Error_F_mia ||X - U*Sigma*V^T||_F = %.2e\n\n", norma_matrice(-1, RB));
+                Mat Ub_S_Vbt = prodotto_matrici(Ub_S, Vb_t);
+                stampa_matrice(Ub_S_Vbt, Ub_S_Vbt.size(), "Ub_S_Vbt");
+                stampa_matrice(B,B.size(),"B Originale");
 
-                stampa_matrice(RB, RB.size(), "Matrice differenza B = B - Ub * Sigma * Vb_t");
+                Mat RB = differenza_matrici(B , Ub_S_Vbt);
+                printf(" Error_F_mia || B - Ub * (Sigma * Vb_t)||_F = %.2e\n\n", norma_matrice(-1, RB));
+                stampa_matrice(RB, RB.size(), "Matrice differenza B = B - Ub * (Sigma * Vb_t)");
+
+                cout << "\n" << std::string(80, '-')<< endl;
+                cout << ">>  Gia' testati con entrambe le associazioni U(SV^) e (US)V^, non cambia nulla  <<\n";
+                cout << std::string(80, '-')<< endl << endl;
 
 
                 // TODO: U = U0 * Ub,  V = V0 * Vb
                 Mat U = prodotto_matrici(U0, Ub);
                 stampa_matrice(U, U.size(), "U = U0 * Ub");
 
-                Mat Vb_red = matrice_ridotta(Vb, sigma.size(), true); // true limita le colonne
-                stampa_matrice(Vb_red, Vb_red.size(), "Vb Ridotta alle col di Sigma");
+                //Mat Vb_red = matrice_ridotta(Vb, sigma.size(), true); // true limita le colonne
+                // stampa_matrice(Vb_red, Vb_red.size(), "Vb Ridotta alle col di Sigma");
+                Mat V = prodotto_matrici(V0, Vb);
+                Mat V_t = prodotto_matrici(Vb_t, V0_t);
+                stampa_matrice(V_t, V_t.size(), "V_T = Vb_t * V0_t");
 
-                Mat V = prodotto_matrici(V0, Vb_red);
-                stampa_matrice(V, V.size(), "V = V0 * VB_red");
+                Mat IU = prodotto_matrici(U, calcola_trasposta(U));
+                Mat IV = prodotto_matrici(V, calcola_trasposta(V));
+                stampa_matrice(IU, IU.size(), "U * U_t = I"+std::to_string(n));
+                stampa_matrice(IV, IV.size(), "V * V_t = I"+std::to_string(d));
+                cout << "\n" << std::string(80, '-')<< endl;
+                cout << ">>                 Test di ortogonalita'\n";
+                cout << std::string(80, '-')<< endl << endl;
+
 
                 Mat U_S = prodotto_matrici(U, Sigma);
-                Mat U_S_Vt = prodotto_matrici(U_S, calcola_trasposta(V));
-                stampa_matrice(X, X.size(), "X");
-                stampa_matrice(U_S_Vt, U_S_Vt.size(), "U * Sigma * Vt");
+                Mat U_S_Vt = prodotto_matrici(U_S, V_t);
+                // stampa_matrice(X, X.size(), "X");
+                // stampa_matrice(U_S_Vt, U_S_Vt.size(), "U * Sigma * Vt");
 
 
                 // TODO: verifica ||X - U*Sigma*V^T||_F, ||U^T*U - I||_F, ||V^T*V - I||_F
 
                 Mat RX = differenza_matrici(X, U_S_Vt);
                 Mat RU = differenza_matrici(identita(U.size()), prodotto_matrici(U, calcola_trasposta(U)));
-                Mat RV = differenza_matrici(identita(V.size()), prodotto_matrici(V, calcola_trasposta(V)));
-                printf(" Error_F_mia ||X - U*Sigma*V^T||_F = %.2e\n\n", norma_matrice(-1, RX));
-                printf(" Error_F_mia ||U^T*U - I||_F = %.2e\n\n", norma_matrice(-1, RU));
+                Mat RV = differenza_matrici(identita(V.size()), prodotto_matrici(V, V_t));
+                printf(" Error_F_mia ||X - U*Sigma*V^T||_F = %.2e\n", norma_matrice(-1, RX));
+                printf(" Error_F_mia ||U^T*U - I||_F = %.2e\n", norma_matrice(-1, RU));
                 printf(" Error_F_mia ||V^T*V - I||_F = %.2e\n\n", norma_matrice(-1, RV));
 
-                stampa_matrice(RX, RX.size(), "Matrice differenza RX = X - U * Sigma * V_t");
+                // stampa_matrice(RX, RX.size(), "Matrice differenza RX = X - U * Sigma * V_t");
 
                 // TODO: stampa valori singolari
 
@@ -2174,9 +2230,32 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 for (double s : sigma) printf("  %.6f\n", s);
             }
 
+
+        
+
+            bool redo = false;
+            while (!redo && !leave) {
+
+                std::cout << "Numero di righe della matrice per SVD = n [3..20] (<q> per uscire) > " ;
+                if (std::cin >> n) { if (n>=3 && n<=20) redo=true;} else {cout << "Key: " << n <<endl; leave=true;} ;
+                if (redo) {
+                    std::cout << " numero di colonne = d da n a "<< 30 <<" (<q> per uscire) > " ;
+                    if (std::cin >> d) { if (d >=n && d<=30) redo=true;} else {cout << "Key: " << d <<endl; leave=true;} ;
+                }
+                cin_clear();
+            };
+       }
+    }
+
+    void f3_svd_pca(){
+        bool leave = false;
+        int dummy = system("clear");
+        int n = 200, d = 10;
+
+        while (!leave) 
+        {
             // ── TODO 7: PCA e scatter plot ────────────────────────────────────────────
             {
-                int n = 200, d = 10;
                 auto [X, label] = genera_cluster(n, d, /*seed=*/42);
 
                 // a) Centrare X: sottrai la media di ogni colonna
@@ -2213,6 +2292,8 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 matplot::legend();
                 matplot::show();
 
+                
+
                 // e) Prova con d variabile: {2, 5, 20, 50}
                 // f) Stampa sigma[0], sigma[1] vs il resto: cosa noti?
             }
@@ -2222,33 +2303,17 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             bool redo = false;
             while (!redo && !leave) {
 
-                //
-                // domande da rifolmulare per il caso specifico 
-                //
-                /*
-                std::cout << "Numero di punti N sul lato della griglia [2..1024](<q> per uscire) > " ;
-                if (std::cin >> N) { if (N>=2 && N<=1025) redo=true;} else {cout << "Key: " << N <<endl; leave=true;} ;
+                std::cout << "Numero di righe della matrice per PCA = n [3..20] (<q> per uscire) > " ;
+                if (std::cin >> n) { if (n>=3 && n<=20) redo=true;} else {cout << "Key: " << n <<endl; leave=true;} ;
                 if (redo) {
-                    std::cout << "Inserire nuova Deviazione Sigma in q multipli di h=(1/(N-1)) da 1 a "<< N-1 <<" (<q> per uscire) > " ;
-                    if (std::cin >> sigma) { if (sigma >=1 && sigma<=N-1) redo=true;} else {cout << "Key: " << sigma <<endl; leave=true;} ;
-                }
-                if (redo) {
-                    std::cout << "Il Kernel K va normalizzato? (<s/n> | <0> per uscire) > " ;
-                    if (std::cin >> KG_key) {
-                         if (KG_key == 'q') { 
-                            redo=false; 
-                            leave=true;
-                        } else {
-                            KG_Normal = (KG_key == 's'); 
-                            redo=true;
-                        }
-                    }
+                    std::cout << " numero di colonne = d da n a "<< 30 <<" (<q> per uscire) > " ;
+                    if (std::cin >> d) { if (d >=n && d<=30) redo=true;} else {cout << "Key: " << d <<endl; leave=true;} ;
                 }
                 cin_clear();
-                */
             };
        }
     }
+
 
     ActionRegistry build_action_registry() 
         {
@@ -2263,7 +2328,9 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             {"f2_integral",    f2_integral},
             {"f2_norme",       f2_norme},
             {"f2_deconv",       f2_deconv},
-            {"f3_svd",          f3_svd}
+            {"f3_svd_test",     f3_svd_test},
+            {"f3_svd",          f3_svd},
+            {"f3_svd_pca",      f3_svd_pca}
             };
         };
 };  
