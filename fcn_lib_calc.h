@@ -21,6 +21,8 @@ using KA = matplot::keyword_automatic_type ;
 
 const double PI = std::acos(-1.0);
 
+enum class SortOrder { Asc, Desc };
+
 
 struct MenuItem {
     int key;
@@ -90,7 +92,6 @@ void color_rst();
 
 void stampa_matrice(
     const Mat &A, 
-    const double NR, 
     const std::string &nome);
 
 Vec vector_shift(
@@ -240,7 +241,7 @@ Vec householder_colonna(
 Vec householder_riga(
     const Vec& v);
 
-void bidiagonalizza_undercond(
+void bidiagonalizza_underd(
     const Mat& X, 
     Mat& U0, 
     Mat& B, 
@@ -254,6 +255,11 @@ void bidiagonalizza(
     Mat& V0, 
     bool d_flag = false);
 
+Mat matrice_At_A (
+    const Mat& A,
+    bool A_right = true
+);
+
 Mat matrice_diagonale(
     const Vec& s, 
     int m, 
@@ -263,6 +269,54 @@ Mat matrice_diagonale(
 double errore_F(
     const Mat& A, 
     const Mat& B);
+
+void calcola_medie_matrice(
+    const Mat& A, 
+    Vec& avg_col, 
+    Vec& avg_row);
+
+Mat centra_matrice(
+    const Mat& A, 
+    const Vec& avg_vec,
+    bool by_col = true);
+
+void test_ortogonalita(
+    const Mat& A,
+    string s);
+
+void svd_bidiagonale_ridotta(
+    const Mat& B,      // p x d, p <= d, bidiagonale superiore
+    Mat& Ub,           // p x p
+    Vec& sigma,        // p
+    Mat& Vb_red,       // d x p
+    double ev_tol = 1e-12  // soglia per autovalori quasi nulli
+);
+
+void svd_bidiagonale_compat(
+    const Mat& B,
+    Mat& Ub,
+    Mat& Vb,
+    Vec& sigma
+);
+
+void jacobi_simmetrica(
+    const Mat& A, 
+    Vec& lambda, 
+    Mat& V);
+
+void ordina_autocoppie(
+    Vec& lambda,
+    Mat& V,
+    double zero_tol = 0.0,
+    SortOrder order = SortOrder::Desc);   // default: discendente
+
+void gram_schmidt_modificato(
+    Mat& Q, 
+    int j0 = 0);
+
+void check_sv_vs_lambda(
+    Vec lambda,
+    const Vec& sigma);
 
 figure_handle TableInit (
     const bool ahold, 

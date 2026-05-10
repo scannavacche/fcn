@@ -10,6 +10,7 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <algorithm>
 
 using std::cout;
 using std::endl;
@@ -226,11 +227,11 @@ void stampa_matrice(const Mat &A, const std::string &nome) {
 
 void stampa_matrice(
     const Mat& G, 
-    const double NR, 
     const std::string &nome) 
 {
+    int NR = G.size();
     std::cout << "\n── " << nome << " " << NR << "(" <<  G.size() << ")" <<" ──\n";
-    for (int i = 0; i < (int)G.size(); ++i) {
+    for (int i = 0; i < (int)NR; ++i) {
         for (int j = 0; j < (int)G[i].size(); ++j)
             std::cout << std::fixed
 		      << std::setprecision(8)
@@ -1168,7 +1169,7 @@ Vec householder_riga(
 //  Aggiornamento di V0: V0 <- V0 * G_k  (G_k si applica a destra)
 //    V0[:, k+1:] <- V0[:, k+1:] - 2 * (V0[:, k+1:] * w) * w^T
 // =============================================================================
-void bidiagonalizza_undercond(
+void bidiagonalizza_underd(
     const Mat& X, 
     Mat& U0, 
     Mat& B, 
@@ -1181,7 +1182,7 @@ void bidiagonalizza_undercond(
     int n = A.size();
     int d = A[0].size();
     
-    if (d_flag) stampa_matrice(A, n, "Originale"); 
+    if (d_flag) stampa_matrice(A, "Originale"); 
 
     int p = std::min(n, d);
 
@@ -1218,20 +1219,20 @@ void bidiagonalizza_undercond(
             for (int i = 0; i < m; i++){
                 for (int j = 0; j < q; j++) A_k[i][j] = A[k+i][k+j];
             }
-            // stampa_matrice(A_k, A_k.size(), "A_k a giro "+std::to_string(k));
+            // stampa_matrice(A_k, "A_k a giro "+std::to_string(k));
             Mat Wt = converti_vettore_a_matrice(w,true);
-            // stampa_matrice(Wt, Wt.size(), "Wt come matrice 1 x n");
+            // stampa_matrice(Wt, "Wt come matrice 1 x n");
             Mat Wt_Ak = prodotto_matrici(Wt, A_k); // w va direttamente trasposto con true
-            // stampa_matrice(Wt_Ak, Wt_Ak.size(), "Wt A_k" + std::to_string(k));
+            // stampa_matrice(Wt_Ak, "Wt A_k" + std::to_string(k));
             Mat W_Wt_Ak = prodotto_matrici(converti_vettore_a_matrice(w, false), Wt_Ak);
-            // stampa_matrice(W_Wt_Ak, W_Wt_Ak.size(), "W Wt A_k" + std::to_string(k));
+            // stampa_matrice(W_Wt_Ak, "W Wt A_k" + std::to_string(k));
             Mat Two_W_Wt_Ak = prodotto_matrice_coeff(W_Wt_Ak, 2.0);
-            // stampa_matrice(Two_W_Wt_Ak, Two_W_Wt_Ak.size(), "2 W Wt A_k" + std::to_string(k));
+            // stampa_matrice(Two_W_Wt_Ak, "2 W Wt A_k" + std::to_string(k));
 
             for (int i=0; i<m; i++){
                 for (int j = 0; j < q; j++) A[k+i][k+j] -= Two_W_Wt_Ak[i][j];
             }
-            if (d_flag) stampa_matrice(A, A.size(), "A al passo sx " + std::to_string(k));
+            if (d_flag) stampa_matrice(A, "A al passo sx " + std::to_string(k));
 
             // 4. Aggiorna U0[:, k:] <- U0[:, k:] - 2*(U0[:,k:]*w)*w^T
 
@@ -1242,13 +1243,13 @@ void bidiagonalizza_undercond(
             }
             Mat U0_W =  converti_vettore_a_matrice(prodotto_matrice_vettore(U0_k, w), false);
             Mat U0_W_Wt = prodotto_matrici(U0_W, converti_vettore_a_matrice(w, true));
-            // stampa_matrice(U0_W_Wt, U0_W_Wt.size(), "U0_k W W_t " + std::to_string(k));
+            // stampa_matrice(U0_W_Wt, "U0_k W W_t " + std::to_string(k));
             Mat Two_U0_W_Wt = prodotto_matrice_coeff(U0_W_Wt, 2.0);
 
             for (int i = 0; i < n; i++){
                 for (int j = 0; j < m; j++) U0[i][k+j] -= Two_U0_W_Wt[i][j];
             }
-            // stampa_matrice(U0, U0.size(), "U0 al passo " + std::to_string(k));
+            // stampa_matrice(U0, "U0 al passo " + std::to_string(k));
         }
 
         if (k < d - 2) {
@@ -1271,12 +1272,12 @@ void bidiagonalizza_undercond(
             };
             Mat Ak_W =  converti_vettore_a_matrice(prodotto_matrice_vettore(A_k, w), false);
             Mat Ak_W_Wt = prodotto_matrici(Ak_W, converti_vettore_a_matrice(w, true));
-            // stampa_matrice(Ak_W_Wt, Ak_W_Wt.size(), "A_k W W_t " + std::to_string(k));
+            // stampa_matrice(Ak_W_Wt, "A_k W W_t " + std::to_string(k));
             Mat Two_Ak_W_Wt = prodotto_matrice_coeff(Ak_W_Wt, 2.0);
             for (int i = 0; i < m; i++){
                 for (int j = 0; j < q; j++) A[k+i][k+j+1] -=  Two_Ak_W_Wt[i][j];
             };
-            if (d_flag) stampa_matrice(A, A.size(), "A al passo dx " + std::to_string(k));
+            if (d_flag) stampa_matrice(A, "A al passo dx " + std::to_string(k));
 
             // 4. Aggiorna V0[:, k+1:] <- V0[:, k+1:] - 2*(V0[:,k+1:]*w)*w^T
 
@@ -1287,20 +1288,20 @@ void bidiagonalizza_undercond(
             }
             Mat V0_W =  converti_vettore_a_matrice(prodotto_matrice_vettore(V0_k, w), false);
             Mat V0_W_Wt = prodotto_matrici(V0_W, converti_vettore_a_matrice(w, true));
-            // stampa_matrice(V0_W_Wt, V0_W_Wt.size(), "V0_k W W_t " + std::to_string(k));
+            // stampa_matrice(V0_W_Wt, "V0_k W W_t " + std::to_string(k));
             Mat Two_V0_W_Wt = prodotto_matrice_coeff(V0_W_Wt, 2.0);
 
             for (int i = 0; i < d; i++){
                 for (int j = 0; j < q; j++) V0[i][k+j+1] -= Two_V0_W_Wt[i][j];
             }
-            // stampa_matrice(V0, V0.size(), "V0 al passo " + std::to_string(k));
+            // stampa_matrice(V0, "V0 al passo " + std::to_string(k));
             //
             //  Verifica di U0 e V0 ortogonali
             //
             Mat V0t_V0 = prodotto_matrici(calcola_trasposta(V0), V0);
             Mat U0t_U0 = prodotto_matrici(calcola_trasposta(U0), U0);
-            // stampa_matrice(U0t_U0, U0t_U0.size(), "U0_t U0");
-            // stampa_matrice(V0t_V0, V0t_V0.size(), "V0_t V0");
+            // stampa_matrice(U0t_U0, "U0_t U0");
+            // stampa_matrice(V0t_V0, "V0_t V0");
 
             
             
@@ -1322,17 +1323,32 @@ void bidiagonalizza(
     int n = A[0].size();
 
     if (m <= n) {
-        bidiagonalizza_undercond(A, U0, B, V0, d_flag);
+        bidiagonalizza_underd(A, U0, B, V0, d_flag);
     } else {
         Mat At = calcola_trasposta(A);
 
         Mat Ut, Bt, Vt;
-        bidiagonalizza_undercond(At, Ut, Bt, Vt, d_flag);   // At = Ut * Bt * Vt^T
+        bidiagonalizza_underd(At, Ut, Bt, Vt, d_flag);   // At = Ut * Bt * Vt^T
 
         U0 = Vt;           // A = Vt * Bt^T * Ut^T
         B  = calcola_trasposta(Bt);
         V0 = Ut;
     }
+}
+
+Mat matrice_At_A (
+    const Mat& A, 
+    bool A_right)  // default true. Come da nome fa At A (con A destra) se no fa A At
+{   Mat B;
+    if (A_right) {
+        int n = A[0].size(); // A = mXn => At A = nXm mXn = nXn
+        B = prodotto_matrici(calcola_trasposta(A), A);
+    } else {
+        int n = A.size(); // A = mXn => A At = mXn nXm = mXm
+        Mat B(n, Vec(n, 0.0));
+        B = prodotto_matrici(A, calcola_trasposta(A));
+    };
+    return B;
 }
 
 Mat matrice_diagonale(
@@ -1359,6 +1375,459 @@ double errore_F(
             s += d*d;
         }
     return std::sqrt(s);
+}
+
+void calcola_medie_matrice(
+    const Mat& A, 
+    Vec& somma_col, 
+    Vec& somma_row) 
+{   
+    int m = A.size();
+    int n = A[0].size();
+    for (int i = 0; i < m; i++) {
+
+        for (int j = 0; j < n; j++) {
+            double Aij = A[i][j];
+            somma_row[i] += Aij;
+            somma_col[j] += Aij;
+        }
+        somma_row[i] /= (double) m;
+        for (int j = 0; j < n; j++) 
+            somma_col[j] /= (double) n;
+    }
+}
+
+Mat centra_matrice(
+    const Mat& A, 
+    const Vec& avg_vec,
+    bool by_col)
+{
+    int m = A.size();
+    int n = A[0].size();
+    Mat Res = crea_matrice(m,n);
+    for (int i = 0; i < m; i++)
+        for (int j = 0; j < n; j++)
+            if (by_col) {
+                Res[i][j]=A[i][j] - avg_vec[j];
+            }else{
+                Res[i][j]=A[i][j] - avg_vec[i];
+            }
+    return Res;
+}
+    
+void test_ortogonalita(
+    const Mat& A,
+    string s)
+{
+    stampa_matrice(prodotto_matrici(calcola_trasposta(A), A), "Test di ortogonalita' di "+s);
+}
+//
+//  SVD sostitutiva in attesa di istruzioni 
+//
+
+void jacobi_simmetrica(
+    const Mat& D, 
+    Vec& lambda, 
+    Mat& V)
+{
+    Mat A = D; 
+    int n = A.size();
+    V = identita(n);
+
+    const int max_iter = 100 * n * n;
+    const double tol = 1e-12;
+
+    for (int iter = 0; iter < max_iter; ++iter)
+    {
+        int p = 0, q = 1;
+        double max_off = 0.0;
+
+        for (int i = 0; i < n; ++i)
+            for (int j = i + 1; j < n; ++j)
+                if (std::abs(A[i][j]) > max_off)
+                {
+                    max_off = std::abs(A[i][j]);
+                    p = i;
+                    q = j;
+                }
+
+        if (max_off < tol)
+            break;
+
+        double app = A[p][p];
+        double aqq = A[q][q];
+        double apq = A[p][q];
+
+        double tau = (aqq - app) / (2.0 * apq);
+        double t = (tau >= 0.0)
+                 ? 1.0 / (tau + std::sqrt(1.0 + tau * tau))
+                 : -1.0 / (-tau + std::sqrt(1.0 + tau * tau));
+
+        double c = 1.0 / std::sqrt(1.0 + t * t);
+        double s = t * c;
+
+        for (int k = 0; k < n; ++k)
+        {
+            if (k != p && k != q)
+            {
+                double aik = A[k][p];
+                double akq = A[k][q];
+
+                A[k][p] = c * aik - s * akq;
+                A[p][k] = A[k][p];
+
+                A[k][q] = s * aik + c * akq;
+                A[q][k] = A[k][q];
+            }
+        }
+
+        A[p][p] = c*c*app - 2.0*s*c*apq + s*s*aqq;
+        A[q][q] = s*s*app + 2.0*s*c*apq + c*c*aqq;
+        A[p][q] = 0.0;
+        A[q][p] = 0.0;
+
+        for (int k = 0; k < n; ++k)
+        {
+            double vip = V[k][p];
+            double viq = V[k][q];
+
+            V[k][p] = c * vip - s * viq;
+            V[k][q] = s * vip + c * viq;
+        }
+    }
+
+    lambda.resize(n);
+    for (int i = 0; i < n; ++i)
+        lambda[i] = A[i][i];
+}
+
+void ordina_autocoppie(
+    Vec& lambda,
+    Mat& V,
+    double zero_tol,
+    SortOrder order)   // default: discendente
+{
+    const int n = static_cast<int>(lambda.size());
+    // vettore indici 0..n-1
+    std::vector<int> idx(n);
+    for (int i = 0; i < n; ++i) idx[i] = i;
+
+    auto key = [&](int i) {
+        double a = lambda[i];
+        if (std::abs(a) < zero_tol) a = 0.0;  // filtro nullità
+        return a;
+    };
+
+    std::sort(idx.begin(), idx.end(),
+              [&](int i, int j) {
+                  double ai = key(i);
+                  double aj = key(j);
+                  return (order == SortOrder::Asc) ? (ai < aj) : (ai > aj);
+              });
+
+    // applica permutazione
+    Vec lambda_sorted(n);
+    Mat V_sorted = V;   // stessa dimensione
+
+    for (int k = 0; k < n; ++k)
+    {
+        int old = idx[k];
+        lambda_sorted[k] = lambda[old];
+        for (int r = 0; r < static_cast<int>(V.size()); ++r)
+            V_sorted[r][k] = V[r][old];
+    }
+
+    lambda.swap(lambda_sorted);
+    V.swap(V_sorted);
+}
+
+void gram_schmidt_modificato(
+    Mat& Q, 
+    int j0)
+{
+    if (Q.empty() || Q[0].empty()) return;
+    const int m = static_cast<int>(Q[0].size()); // colonne
+    const int n = static_cast<int>(Q.size());    // righe
+    if (j0 < 0) j0 = 0;
+    if (j0 >= m) return;
+
+    for (int j = j0; j < m; ++j)
+    {
+        // v_j = colonna j
+        // ortogonalizza rispetto a q_0, ..., q_{j-1}
+        for (int k = 0; k < j; ++k) // ortogonalizza rispetto a TUTTE le precedenti
+        {
+            // prodotto scalare q_k^T v_j
+            double dot = 0.0;
+            for (int i = 0; i < n; ++i)
+                dot += Q[i][k] * Q[i][j];
+
+            // v_j -= dot * q_k
+            for (int i = 0; i < n; ++i)
+                Q[i][j] -= dot * Q[i][k];
+        }
+
+        // normalizza v_j -> q_j
+        double norm2 = 0.0;
+        for (int i = 0; i < n; ++i)
+            norm2 += Q[i][j] * Q[i][j];
+
+        double norm = std::sqrt(norm2);
+        if (norm > 0.0)
+        {
+            double inv = 1.0 / norm;
+            for (int i = 0; i < n; ++i)
+                Q[i][j] *= inv;
+        } else {
+            // colonna quasi nulla: lasciala zero, se capita
+        }
+    }
+}
+
+Mat completa_base_ortonormale(
+    const Mat& A)
+// completa una matrice V ridotta da dXn a dXd aggiungendo (n-d) versori di Rd e poi la ri ortonorma
+{
+    int d = A.size();
+    int n = A[0].size();
+    //
+    // debug ortonormalizzazione
+    //
+    // stampa_matrice(A, "Verifica ridotta prima di completamento a dXd");
+    //
+    // fine debug
+    //
+    Mat Vb(d, Vec(d, 0.0));
+    if (n>=d) return A;
+
+    for (int j = 0; j < n; j++)
+        for (int i = 0; i< d; i++) Vb[i][j] = A[i][j];
+    for (int k = n; k < d; k++)
+        Vb[k][k]=1.0; // andiamo in ordine con gli ultimi d-n versori della base canonica
+    gram_schmidt_modificato(Vb, n);
+    return Vb;
+}
+
+/*
+    SVD ridotta di una matrice bidiagonale superiore B (p x d, p <= d).
+
+    IDEA MATEMATICA
+    ----------------
+    1) Calcolo di BtB = B^T B (d x d), simmetrica, semidefinita positiva.
+       Gli autovalori di BtB sono i quadrati dei valori singolari di B:
+           BtB v_i = lambda_i v_i   =>   sigma_i = sqrt(lambda_i)  (lambda_i >= 0).
+
+    2) Problema agli autovalori simmetrico:
+           jacobi_simmetrica(BtB, lambda, V)
+       dove:
+           - lambda[i]  = autovalori (non necessariamente ordinati);
+           - V[:,i]     = autovettori ortonormali corrispondenti.
+
+    3) Ordinamento autovalori/autovettori:
+       - applichiamo una soglia ev_tol:
+           se |lambda_i| < ev_tol => lambda_i := 0 (schiacciamo i quasi-null).
+       - ordiniamo lambda in ordine decrescente, trascinando le colonne di V
+         con la stessa permutazione:
+           ordina_autocoppie(lambda, V, ev_tol, SortOrder::Desc).
+
+    4) Costruzione dei valori singolari e di V_ridotta:
+       - per k = 0..p-1:
+             sigma[k] = sqrt(max(lambda[k], 0));
+             Vbred[:,k] = V[:,k];
+       => Vbred (d x p) contiene i vettori singolari destri ridotti.
+
+    5) Costruzione di Ub (vettori singolari sinistri ridotti):
+       - per ogni k:
+             v_k = Vbred[:,k];
+             w_k = B * v_k;
+             se sigma[k] > 0:
+                 u_k = (1/sigma[k]) * w_k;
+             altrimenti:
+                 u_k = 0 (colonna nel kernel).
+       - le colonne u_k formano Ub (p x p).
+
+       Questa è la relazione classica:
+           u_i = (1 / sigma_i) * B v_i,
+       valida per tutti i sigma_i > 0.
+
+    6) (Opzionale) Rifinitura dell'ortonormalità:
+       - gram_schmidt_modificato(Ub);
+       in pratica Ub^T Ub ≈ I_p e Vbred^T Vbred ≈ I_p.
+
+    7) Identità finale (SVD ridotta di B):
+           B = Ub * Sigma * Vbred^T,
+       con Sigma = diag(sigma[0..p-1]) (p x p).
+
+    USO NELLA PIPELINE COMPLETA:
+    ----------------------------
+       X = U0 * B * V0^T
+       B = Ub * Sigma * Vbred^T
+
+       => X = (U0 * Ub) * Sigma * (V0 * Vbred)^T
+
+       dove:
+         U  = U0 * Ub   (vettori singolari sinistri di X, forma ridotta),
+         Vr = V0 * Vbred (vettori singolari destri di X, forma ridotta).
+*/
+
+void svd_bidiagonale_ridotta(
+    const Mat& B,
+    Mat& Ub,
+    Vec& sigma,
+    Mat& Vb_red,
+    double ev_tol)
+{
+    //
+    // continuo a chiamnarla bidiagonale ma in realta' lavora su matrici qualsiasi
+    // e' solo per sottolineare che sostituisce la svd_bidiagonale fornita 
+    //
+
+    const int p = static_cast<int>(B.size());          // righe
+    const int d = static_cast<int>(B[0].size());       // colonne
+
+    // 1) Costruisci BtB = B^T B (d x d)
+    Mat Bt = calcola_trasposta(B);                             // d x p
+    Mat BtB = prodotto_matrici(Bt, B);                 // d x d
+
+    // 2) Autovalori/autovettori di BtB (d x d)
+    Vec lambda;
+    Mat V;                                             // d x d
+    jacobi_simmetrica(BtB, lambda, V);
+
+    // 3) Ordina autovalori (desc) + colonne di V, con filtro nullità
+    ordina_autocoppie(lambda, V, ev_tol, SortOrder::Desc);
+
+    // 4) Prepara sigma e Vb_red: tieni solo i primi p autovalori > 0
+    sigma.assign(p, 0.0);
+    Vb_red.assign(d, Vec(p, 0.0));                     // d x p
+
+    for (int k = 0; k < p; ++k)
+    {
+        double lam = lambda[k];
+        if (lam < 0.0 && std::abs(lam) < ev_tol)
+            lam = 0.0;                                 // schiaccia negatività numeriche
+
+        sigma[k] = (lam > 0.0) ? std::sqrt(lam) : 0.0;
+
+        for (int i = 0; i < d; ++i)
+            Vb_red[i][k] = V[i][k];                    // colonna k
+    }
+
+    // 5) Calcola Ub: per ogni i, u_i = (1/sigma_i) * B * v_i
+    Ub.assign(p, Vec(p, 0.0));                         // p x p
+
+    for (int k = 0; k < p; ++k)
+    {
+        // prendi v_k (colonna k di Vb_red, dimensione d)
+        Vec vk(d);
+        for (int j = 0; j < d; ++j)
+            vk[j] = Vb_red[j][k];
+
+        // w = B * v_k  (p)
+        Vec wk = prodotto_matrice_vettore(B, vk);              // p
+
+        if (sigma[k] > 0.0)
+        {
+            double inv_sigma = 1.0 / sigma[k];
+            for (int i = 0; i < p; ++i)
+                Ub[i][k] = wk[i] * inv_sigma;
+        }
+        else
+        {
+            // sigma[k] ~ 0: vettore nel kernel, puoi lasciare colonna a zero
+            for (int i = 0; i < p; ++i)
+                Ub[i][k] = 0.0;
+        }
+    }
+
+    //
+    // a quanto pare U esce gia' ortonormale ....  senza esplicita MGS
+    // non so se tenerla fuori per questioni di economia o se 
+    // passarla a priori per pettinare errori di arrotondamento.
+    //
+    // invece serve nel completamento di V da ridotta ad integrale della svd_bidiagonmale_compat
+    // alcuni versori di base canonica potrebbero non essere indipendenti
+    // dalle colonne di Vb ridotta (se hanno piu' componenti che elementi della base)
+    // 
+}
+void svd_bidiagonale_compat(
+    const Mat& B,
+    Mat& Ub,
+    Mat& Vb,
+    Vec& sigma)
+{
+    //
+    // wrapper esterno per riordinare i parametri formali come quelli della svd_bidiagonale fornita
+    // e per far completare correttamente Vbred -> Vb (non tocca Ub perche' lavoriamo sempre underdet)
+    //
+
+    Mat Vbred;
+    double ev_tol = 1e-12;
+
+    int m = B.size();
+    int n = B[0].size();
+
+    if (m <= n) {
+        svd_bidiagonale_ridotta(B, Ub, sigma, Vbred, ev_tol);
+        Vb = completa_base_ortonormale(Vbred);
+    } else {
+        Mat Bt = calcola_trasposta(B);
+        Mat U_bt, V_bt, V_btred;
+
+        svd_bidiagonale_ridotta(Bt, U_bt, sigma, V_btred, ev_tol);
+        V_bt = completa_base_ortonormale(V_btred);
+
+        Ub = V_bt;           
+        Vb = U_bt;
+    }
+    //
+    // lascio sigma() come vettore per compatibilita' con la svd fornita
+    // bisogna ricordare sempre che viene completata all'esterno e 
+    // le dimnmesioni devono accordarsi sempre con Ub[0].size() e Vb[0].size 
+    // perche' le colonne di Vb cono le righe di Vb_t
+    // questo dovrebbe essere corretto sia per la versione ridotta che per la integrale
+    //
+
+};
+
+
+void check_sv_vs_lambda(
+    Vec lambda,
+    const Vec& sigma)
+{
+    const int n = (int)sigma.size();
+
+    // ordina gli autovalori in senso decrescente
+    std::sort(lambda.begin(), lambda.end(), std::greater<double>());
+
+    std::cout << std::setprecision(10) << std::scientific;
+
+    double max_abs_diff_sq  = 0.0;
+    double max_abs_diff_val = 0.0;
+
+    for (int i = 0; i < n; ++i) {
+        double lam  = lambda[i];
+        double sv   = sigma[i];
+        double sv2  = sv * sv;
+        double root = std::sqrt(lam);
+
+        double diff_sq  = sv2 - lam;
+        double diff_val = sv - root;
+
+        max_abs_diff_sq  = std::max(max_abs_diff_sq,  std::abs(diff_sq));
+        max_abs_diff_val = std::max(max_abs_diff_val, std::abs(diff_val));
+
+        std::cout << "i = " << i
+                  << "  lambda = " << lam
+                  << "  sigma = "  << sv
+                  << "  sigma^2-lambda = " << diff_sq
+                  << "  sigma-sqrt(lambda) = " << diff_val
+                  << "\n";
+    }
+
+    std::cout << "\nMax |sigma^2 - lambda| = " << max_abs_diff_sq
+              << "\nMax |sigma - sqrt(lambda)| = " << max_abs_diff_val
+              << "\n";
 }
 
 //
