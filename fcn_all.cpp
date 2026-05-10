@@ -2134,7 +2134,6 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             {
                 std::mt19937 rng(7);
                 std::normal_distribution<double> g(0.0, 1.0);
-                // int n = 6, d = 4;
                 Mat X = crea_matrice(n, d);
                 for (auto& r : X) for (double& v : r) v = g(rng);
 

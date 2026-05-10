@@ -11,8 +11,8 @@
     { "key": 8, "label": " F2-E2  Integrazione numerica",   "action": "f2_integral",   "enabled": true },
     { "key": 9, "label": " F2-E2a Confronto Norme",   "action": "f2_norme",   "enabled": true },
     { "key": 10, "label": "F2-E3  Deconvoluzione",   "action": "f2_deconv",   "enabled": true },
-    { "key": 11, "label": "F3-E1  SVD Test",   "action": "f3_svd_test",   "enabled": true },
-    { "key": 12, "label": "F3-E1a SVD (in debug)",   "action": "f3_svd",   "enabled": true },
+    { "key": 11, "label": "F3-E1  SVD Test (OK)",   "action": "f3_svd_test",   "enabled": true },
+    { "key": 12, "label": "F3-E1a SVD (chiedere di svd_bidiag)",   "action": "f3_svd",   "enabled": true },
     { "key": 13, "label": "F3-E1b SVD PCA",   "action": "f3_svd_pca",   "enabled": false },
     { "key": 0, "label": " Esci",      "action": "exit",      "enabled": true }
   ]
