@@ -2419,6 +2419,124 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
        }
     }
 
+    void f3_svd_an(){
+        bool leave = false;
+        
+        while (!leave) 
+        {
+			int n = 200;
+			vector<int> d = {2, 5, 20, 50};
+			
+            // ── TODO 7: PCA e scatter plot ────────────────────────────────────────────
+            
+            int dummy = system("clear");
+            bool first_run = true;
+			auto fig = TableInit(true, "PCA", "PCA — prime due componenti principali", 2, 2 );
+
+			for (int ik = 0; ik < 4; ik++) 
+			{
+				int npoints;
+				int ncols;
+
+				npoints = n;
+				ncols = d[ik];
+
+				cout << "in generazione cluster da " << npoints << " X " << ncols << " punti\n";
+
+				auto [X, label] = genera_cluster(npoints, ncols, /*seed=*/42);
+				// a) Centrare X: sottrai la media di ogni colonna
+
+				// TODO: calcola mean_j = sum_i X[i][j] / n
+				//       Xtilde[i][j] = X[i][j] - mean_j
+				Vec avg_col(X[0].size(), 0.0);
+				Vec avg_row(X.size(), 0.0);
+				calcola_medie_matrice(X, avg_col, avg_row);
+				// vector_dump(avg_col, 10, avg_col.size(), "Medie in colonna");
+				// vector_dump(avg_row, 10, avg_row.size(), "Medie in riga");
+				Mat Xtilde = centra_matrice(X, avg_col);
+				// stampa_matrice(X, "Matrice originale");
+				// stampa_matrice(Xtilde, "Matrice centrasta");
+
+				// b) SVD di Xtilde
+
+				Mat U0, B, V0;
+				bidiagonalizza(Xtilde, U0, B, V0);
+				Mat Ub, Vb; Vec sigma;
+				// svd_bidiagonale(B, Ub, Vb, sigma);
+				svd_bidiagonale_compat(B, Ub, Vb, sigma);
+				Mat U = prodotto_matrici(U0, Ub);
+				Mat V = prodotto_matrici(V0, Vb);
+				// test_ortogonalita(V, "V");
+				vector_dump(sigma, 10, sigma.size(), "sigmas al giro "+ std::to_string(ik+1));
+
+				// c) Coordinate PCA: pc_k(i) = sum_j Xtilde[i][j] * V[j][k]
+				// Mat pc1(4, Vec(npoints, 0.0));
+				// Mat pc2(4, Vec(npoints, 0.0));
+				Vec pc1(npoints, 0.0);
+				Vec pc2(npoints, 0.0);
+				// for (int i = 0; i < n; i++)
+					// for (int j = 0; j < d; j++) {
+					//    pc1[ik][i] += Xtilde[i][j] * V[j][1];
+					//    pc2[ik][i] += Xtilde[i][j] * V[j][2];
+					// }
+				for (int i =0; i < npoints; i++) {
+					pc1[i] += U[i][1] * sigma[1];
+					pc2[i] += U[i][2] * sigma[2];
+					
+				}
+				//    (equivalente a U[i][k] * sigma[k]) // ok X_v_i = sigma_i_u_i
+
+				// TODO
+				cout << std::setw(12) << std::fixed << std::setprecision(2) 
+					<< "matrice " << npoints << "_X_" << ncols << " sigma_1 " 
+					<< sigma[0] << " sigma_2 " << sigma[1] 
+					<< " S_1/_2 ratio " << sigma[0]/sigma[1] << endl;
+
+
+				// d) Scatter plot colorato per etichetta
+				Vec x0, y0, x1, y1;
+				for (int i = 0; i < npoints; ++i) {
+					if (label[i] == 0) { x0.push_back(pc1[i]); y0.push_back(pc2[i]); }
+					else               { x1.push_back(pc1[i]); y1.push_back(pc2[i]); }
+				}
+				fig->nexttile(ik);
+				auto ax = fig->current_axes();
+				ax->hold(on);
+				ax->legend();
+				ax->scatter(x0, y0)->marker_color({0,0,1}).display_name("Cluster 0");
+				ax->scatter(x1, y1)->marker_color({1,0,0}).display_name("Cluster 1");
+				ax->xlabel("PC 1 a punti " + std::to_string(npoints) + " X " + std::to_string(ncols));
+				ax->ylabel("PC 2");
+
+
+                fig->draw();
+            }   
+            // e) Prova con d variabile: {2, 5, 20, 50}
+            // f) Stampa sigma[0], sigma[1] vs il resto: cosa noti?
+
+
+        
+
+            bool redo = false;
+            /* 
+            while (!redo && !leave) {
+
+                std::cout << "Numero di righe della matrice per PCA = n [3..500] (<q> per uscire) > " ;
+                if (std::cin >> n) { if (n>=3 && n<=500) redo=true;} else {cout << "Key: " << n <<endl; leave=true;} ;
+                if (redo) {
+                    std::cout << " numero di colonne = d da n a "<< 500 <<" (<q> per uscire) > " ;
+                    if (std::cin >> d) { if (d >=n && d<=500) redo=true;} else {cout << "Key: " << d <<endl; leave=true;} ;
+                }
+                cin_clear();
+            };
+            */ 
+            wait_return_to_menu(false);
+            wait_return_to_menu(false);
+            leave = true;
+       }
+    }
+
+    
 
     ActionRegistry build_action_registry() 
         {
@@ -2435,7 +2553,8 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             {"f2_deconv",       f2_deconv},
             {"f3_svd_test",     f3_svd_test},
             {"f3_svd",          f3_svd},
-            {"f3_svd_pca",      f3_svd_pca}
+            {"f3_svd_pca",      f3_svd_pca},
+            {"f3_svd_an",      f3_svd_an}
             };
         };
 };  

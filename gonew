@@ -1,11 +1,18 @@
 #!/bin/bash
 
 CXX="g++"
-# CXXFLAGS="-std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-unused-local-typedefs -Wpedantic"
-CXXFLAGS="-std=c++17 -O2 -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -Wno-unused-local-typedefs -Wpedantic -Wno-unused-function -Wno-sign-compare"
+CXXFLAGS="-std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-unused-local-typedefs -Wpedantic -Wno-sign-compare -Wno-unused-function"
 
 LDFLAGS="-L/usr/local/lib -L/usr/local/lib/Matplot++"
+#  
+# versione wsl notebook
+#
 LDLIBS="-Wl,--start-group -lmatplot -lnodesoup -lpng -ltiff -lz -ljpeg -lm -Wl,--end-group"
+#
+# versione lab
+#
+# LDLIBS="-Wl,--start-group -lmatplot -lm -Wl,--end-group"
+
 
 SOURCES="fcn_all.cpp fcn_lib_calc.cpp"
 HEADERS="fcn_lib_calc.h menu_config.h json.hpp"

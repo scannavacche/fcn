@@ -11,6 +11,7 @@
 using std::cout;
 using std::endl;
 using Vec = std::vector<double>;
+using VecN = std::vector<int>;
 using Mat = std::vector<Vec>;
 using namespace matplot;
 using namespace std;
