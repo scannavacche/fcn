@@ -1,0 +1,13 @@
+// ln -s alglib/ap.h
+// ln -s alglib/alglibinternal.h
+// ln -s alglib/linalg.h
+// ln -s alglib/alglibmisc.h
+
+
+g++ -O2 -std=c++17 -c svd_qr.cpp -o svd_qr.o
+g++ -O2 -std=c++17 -c alglib/ap.cpp -o ap.o
+g++ -O2 -std=c++17 -c alglib/linalg.cpp -o linalg.o
+g++ -O2 -std=c++17 -c alglib/alglibinternal.cpp -o alglibinternal.o
+g++ -O2 -std=c++17 -c alglib/alglibmisc.cpp -o alglibmisc.o
+
+ar rcs libsvdqr.a svd_qr.o ap.o linalg.o alglibinternal.o alglibmisc.o

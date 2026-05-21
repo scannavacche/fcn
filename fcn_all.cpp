@@ -15,7 +15,7 @@
 
 #include <cassert>
 #include "dataset.hpp"
-#include "svd_qr.cpp"
+#include "svd_qr.cpp" // magari basta solo un header visto che e' compilato nella lib statica
 
 using std::cout;
 using std::endl;
