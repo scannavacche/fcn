@@ -15,6 +15,7 @@
 using std::cout;
 using std::endl;
 using Vec = std::vector<double>;
+using VecN = std::vector<int>;
 using Mat = std::vector<Vec>;
 using namespace matplot;
 using namespace std;
@@ -1169,12 +1170,13 @@ Vec householder_riga(
 //  Aggiornamento di V0: V0 <- V0 * G_k  (G_k si applica a destra)
 //    V0[:, k+1:] <- V0[:, k+1:] - 2 * (V0[:, k+1:] * w) * w^T
 // =============================================================================
-void bidiagonalizza_underd(
+void bidiagonalizza_underdet(
     const Mat& X, 
     Mat& U0, 
     Mat& B, 
     Mat& V0,
-    bool d_flag) 
+    bool sup_diag,
+    bool dump_flag) 
 {
 
     Mat A = X;                 // copia di lavoro
@@ -1182,7 +1184,7 @@ void bidiagonalizza_underd(
     int n = A.size();
     int d = A[0].size();
     
-    if (d_flag) stampa_matrice(A, "Originale"); 
+    if (dump_flag) stampa_matrice(A, "Originale"); 
 
     int p = std::min(n, d);
 
@@ -1190,16 +1192,23 @@ void bidiagonalizza_underd(
     V0 = identita(d);          // d x d
 
     Vec v, w;
+    int sup_inf_bias;
+    if (sup_diag) sup_inf_bias = 0; else sup_inf_bias=1; 
 
 
     for (int k = 0; k < p; k++) {
         //
         // occhio a queste due che vengono reimpostate ad ogni loop
+        // modalita' originale gkb e jacobi
         // a sinistra m = n-k righe, q = d-k colonne
         // a destra   m = n-k righe, q = q-k-1 colonne
         //
-        if (k < n-1) {
-            int m = n-k;
+        // nuova modalita' con alglib
+        // a sinistra m = n-k-1 righe, q = d-k colonne
+        // a destra   m = n-k righe, q = q-k colonne
+        //
+        if (k < n-1-sup_inf_bias) {
+            int m = n - k - sup_inf_bias;
             int q = d - k;
 
             v.assign(m, 0.0);
@@ -1232,7 +1241,7 @@ void bidiagonalizza_underd(
             for (int i=0; i<m; i++){
                 for (int j = 0; j < q; j++) A[k+i][k+j] -= Two_W_Wt_Ak[i][j];
             }
-            if (d_flag) stampa_matrice(A, "A al passo sx " + std::to_string(k));
+            if (dump_flag) stampa_matrice(A, "A al passo sx " + std::to_string(k));
 
             // 4. Aggiorna U0[:, k:] <- U0[:, k:] - 2*(U0[:,k:]*w)*w^T
 
@@ -1252,13 +1261,13 @@ void bidiagonalizza_underd(
             // stampa_matrice(U0, "U0 al passo " + std::to_string(k));
         }
 
-        if (k < d - 2) {
+        if (k < d - 2 + sup_inf_bias) {
             // TODO
             // ── Householder riga: azzera A[k, k+2:] ─────────────────────────────
             // Solo se k < d-2
             // 1. Estrai la sotto-riga: v = A[k, k+1:]  (lunghezza d-k-1)
             int m = n-k;
-            int q = d - k -1;
+            int q = d - k + sup_inf_bias - 1;
             v.assign(q, 0.0);
 
             for (int j = 0; j < q; j++) v[j] = A[k][k+j+1];
@@ -1277,7 +1286,7 @@ void bidiagonalizza_underd(
             for (int i = 0; i < m; i++){
                 for (int j = 0; j < q; j++) A[k+i][k+j+1] -=  Two_Ak_W_Wt[i][j];
             };
-            if (d_flag) stampa_matrice(A, "A al passo dx " + std::to_string(k));
+            if (dump_flag) stampa_matrice(A, "A al passo dx " + std::to_string(k));
 
             // 4. Aggiorna V0[:, k+1:] <- V0[:, k+1:] - 2*(V0[:,k+1:]*w)*w^T
 
@@ -1317,18 +1326,19 @@ void bidiagonalizza(
     Mat& U0, 
     Mat& B, 
     Mat& V0, 
-    bool d_flag) 
+    bool sup_diag,
+    bool dump_flag) 
 {
     int m = A.size();
     int n = A[0].size();
 
     if (m <= n) {
-        bidiagonalizza_underd(A, U0, B, V0, d_flag);
+        bidiagonalizza_underdet(A, U0, B, V0, sup_diag, dump_flag);
     } else {
         Mat At = calcola_trasposta(A);
 
         Mat Ut, Bt, Vt;
-        bidiagonalizza_underd(At, Ut, Bt, Vt, d_flag);   // At = Ut * Bt * Vt^T
+        bidiagonalizza_underdet(At, Ut, Bt, Vt, sup_diag, dump_flag);   // At = Ut * Bt * Vt^T
 
         U0 = Vt;           // A = Vt * Bt^T * Ut^T
         B  = calcola_trasposta(Bt);
@@ -1783,7 +1793,7 @@ void svd_bidiagonale_compat(
     //
     // lascio sigma() come vettore per compatibilita' con la svd fornita
     // bisogna ricordare sempre che viene completata all'esterno e 
-    // le dimnmesioni devono accordarsi sempre con Ub[0].size() e Vb[0].size 
+    // le dimensioni devono accordarsi sempre con Ub[0].size() e Vb[0].size 
     // perche' le colonne di Vb cono le righe di Vb_t
     // questo dovrebbe essere corretto sia per la versione ridotta che per la integrale
     //

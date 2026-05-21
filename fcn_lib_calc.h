@@ -242,19 +242,21 @@ Vec householder_colonna(
 Vec householder_riga(
     const Vec& v);
 
-void bidiagonalizza_underd(
+void bidiagonalizza_underdet(
     const Mat& X, 
     Mat& U0, 
     Mat& B, 
     Mat& V0,
-    bool d_flag = false);
+    bool sup_diag,
+    bool dump_flag = false);
 
 void bidiagonalizza(
     const Mat& A, 
     Mat& U0, 
     Mat& B, 
     Mat& V0, 
-    bool d_flag = false);
+    bool sup_diag = false,  
+    bool dump_flag = false);
 
 Mat matrice_At_A (
     const Mat& A,

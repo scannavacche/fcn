@@ -2,8 +2,8 @@
 
 CXX="g++"
 CXXFLAGS="-std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-unused-local-typedefs -Wpedantic -Wno-sign-compare -Wno-unused-function"
-
-LDFLAGS="-L/usr/local/lib -L/usr/local/lib/Matplot++ -L."
+HDFLAGS="-I ./alglib"
+LDFLAGS="-L/usr/local/lib -L. -L/usr/local/lib/Matplot++"
 #  
 # versione wsl notebook
 #
@@ -11,7 +11,7 @@ LDLIBS="-Wl,--start-group -lmatplot -lsvdqr -lnodesoup -lpng -ltiff -lz -ljpeg -
 #
 # versione lab
 #
-# LDLIBS="-Wl,--start-group -lmatplot lsvdqr -lm -Wl,--end-group"
+# LDLIBS="-Wl,--start-group -lmatplot -lsvdqr -lm -Wl,--end-group"
 
 
 SOURCES="fcn_all.cpp fcn_lib_calc.cpp"
@@ -27,7 +27,7 @@ for src in $SOURCES; do
 done
 
 echo "Compilazione in corso..."
-$CXX $CXXFLAGS $LDFLAGS $SOURCES -o $TARGET $LDLIBS
+$CXX $CXXFLAGS $HDFLAGS $LDFLAGS $SOURCES -o $TARGET $LDLIBS
 
 if [[ $? -eq 0 ]]; then
     echo "Compilazione completata: ./$TARGET"

@@ -30,6 +30,8 @@ using Vecd = std::vector<double>;
 using Vecf = std::vector<float>;
 using Vecn = std::vector<int>;
 
+const bool bidiag_mode = false; // true superior, false inferior bidiag
+
 namespace {     
     //
     // namespace anonimo per funzioni di utilità locali al file, non visibili all'esterno
@@ -2072,7 +2074,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 for (auto& r : X) for (double& v : r) v = g(rng);
 
                 Mat U0, B, V0;
-                bidiagonalizza(X, U0, B, V0);
+                bidiagonalizza(X, U0, B, V0, bidiag_mode);
                 Mat V0_t = calcola_trasposta(V0);
                 Mat In = identita(n);
                 Mat Id = identita(d);
@@ -2149,7 +2151,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
 
                 Mat U0, B, V0;
-                bidiagonalizza(X, U0, B, V0, false);
+                bidiagonalizza(X, U0, B, V0, bidiag_mode); // ora l'arg optional e' il sesto (debug)
 
                 // TODO 4: verifica ||X - U0*B*V0^T||_F
 
@@ -2168,7 +2170,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 cout << "*** Fine collaudo bidiagonalizza: teniamo U0 e V0 per dopo e diamo B a SVD per avere Ub e Vb ***\n\n";
                 cout << std::string(80, '-')<< endl << endl;
 
-                Mat Ub, Vb;
+                Mat Ub, Vb_t;
                 Vec sigma; // s minuscolo vettore, poi S maiuscolo matrice diagonale
 
                 stampa_matrice(B, "B All'entrata di SVD");
@@ -2218,10 +2220,10 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 //
 */
                 
-                svd_bidiagonale(B, Ub, Vb, sigma);  // questa e' l' originale sostituita dalla compat
+                svd_bidiagonale(B, Ub, Vb_t, sigma);  // questa e' la versione alglib
 
-                // svd_bidiagonale_compat(B, Ub, Vb, sigma);
-                Mat Vb_t = calcola_trasposta(Vb);
+                // svd_bidiagonale_compat(B, Ub, Vb, sigma);  
+                Mat Vb = calcola_trasposta(Vb_t);
 
                 stampa_matrice(Ub, "Ub");
                 Mat Sigma = matrice_diagonale(sigma, Ub[0].size(), Vb[0].size()); 
@@ -2351,7 +2353,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                     // b) SVD di Xtilde
 
                     Mat U0, B, V0;
-                    bidiagonalizza(Xtilde, U0, B, V0);
+                    bidiagonalizza(Xtilde, U0, B, V0, bidiag_mode);
                     Mat Ub, Vb; Vec sigma;
                     // svd_bidiagonale(B, Ub, Vb, sigma);
                     svd_bidiagonale_compat(B, Ub, Vb, sigma);
@@ -2451,19 +2453,19 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 				Vec avg_col(X[0].size(), 0.0);
 				Vec avg_row(X.size(), 0.0);
 				calcola_medie_matrice(X, avg_col, avg_row);
-				vector_dump(avg_col, 10, avg_col.size(), "Medie in colonna");
-				vector_dump(avg_row, 10, avg_row.size(), "Medie in riga");
+				// vector_dump(avg_col, 10, avg_col.size(), "Medie in colonna");
+				// vector_dump(avg_row, 10, avg_row.size(), "Medie in riga");
 				Mat Xtilde = centra_matrice(X, avg_col);
-				stampa_matrice(X, "Matrice originale");
-				stampa_matrice(Xtilde, "Matrice centrata");
+				// stampa_matrice(X, "Matrice originale");
+				// stampa_matrice(Xtilde, "Matrice centrasta");
 
 				// b) SVD di Xtilde
 
 				Mat U0, B, V0;
-				bidiagonalizza(Xtilde, U0, B, V0);
+				bidiagonalizza(Xtilde, U0, B, V0, bidiag_mode);
 				Mat Ub, Vb; Vec sigma;
-				svd_bidiagonale(B, Ub, Vb, sigma);
-				// svd_bidiagonale_compat(B, Ub, Vb, sigma);
+				// svd_bidiagonale(B, Ub, Vb, sigma);
+				svd_bidiagonale_compat(B, Ub, Vb, sigma);
 				Mat U = prodotto_matrici(U0, Ub);
 				Mat V = prodotto_matrici(V0, Vb);
 				// test_ortogonalita(V, "V");
