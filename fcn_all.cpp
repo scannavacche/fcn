@@ -2043,7 +2043,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
     void f3_svd_test(){
         bool leave = false;
         int dummy = system("clear");
-        int n = 4, d = 5;
+        int n = 6, d = 5;
 
         while (!leave) 
         {
@@ -2074,7 +2074,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 for (auto& r : X) for (double& v : r) v = g(rng);
 
                 Mat U0, B, V0;
-                bidiagonalizza(X, U0, B, V0, bidiag_mode);
+                bidiagonalizza(X, U0, B, V0, bidiag_mode, false);
                 Mat V0_t = calcola_trasposta(V0);
                 Mat In = identita(n);
                 Mat Id = identita(d);

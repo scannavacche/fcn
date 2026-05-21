@@ -105,6 +105,9 @@ void vector_dump (
     int totnum, 
     const std::string s);
 
+Vec vector_reverse(
+    const Vec& v);
+
 std::string itostr(
     const int nn);
 
@@ -241,14 +244,6 @@ Vec householder_colonna(
 
 Vec householder_riga(
     const Vec& v);
-
-void bidiagonalizza_underdet(
-    const Mat& X, 
-    Mat& U0, 
-    Mat& B, 
-    Mat& V0,
-    bool sup_diag,
-    bool dump_flag = false);
 
 void bidiagonalizza(
     const Mat& A, 
