@@ -15,7 +15,7 @@
 
 #include <cassert>
 #include "dataset.hpp"
-#include "svd_qr.hpp"
+#include "svd_qr.cpp"
 
 using std::cout;
 using std::endl;
@@ -2218,9 +2218,9 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 //
 */
                 
-                // svd_bidiagonale(B, Ub, Vb, sigma);  // questa e' l' originale sostituita dalla compat
+                svd_bidiagonale(B, Ub, Vb, sigma);  // questa e' l' originale sostituita dalla compat
 
-                svd_bidiagonale_compat(B, Ub, Vb, sigma);
+                // svd_bidiagonale_compat(B, Ub, Vb, sigma);
                 Mat Vb_t = calcola_trasposta(Vb);
 
                 stampa_matrice(Ub, "Ub");
@@ -2451,19 +2451,19 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 				Vec avg_col(X[0].size(), 0.0);
 				Vec avg_row(X.size(), 0.0);
 				calcola_medie_matrice(X, avg_col, avg_row);
-				// vector_dump(avg_col, 10, avg_col.size(), "Medie in colonna");
-				// vector_dump(avg_row, 10, avg_row.size(), "Medie in riga");
+				vector_dump(avg_col, 10, avg_col.size(), "Medie in colonna");
+				vector_dump(avg_row, 10, avg_row.size(), "Medie in riga");
 				Mat Xtilde = centra_matrice(X, avg_col);
-				// stampa_matrice(X, "Matrice originale");
-				// stampa_matrice(Xtilde, "Matrice centrasta");
+				stampa_matrice(X, "Matrice originale");
+				stampa_matrice(Xtilde, "Matrice centrata");
 
 				// b) SVD di Xtilde
 
 				Mat U0, B, V0;
 				bidiagonalizza(Xtilde, U0, B, V0);
 				Mat Ub, Vb; Vec sigma;
-				// svd_bidiagonale(B, Ub, Vb, sigma);
-				svd_bidiagonale_compat(B, Ub, Vb, sigma);
+				svd_bidiagonale(B, Ub, Vb, sigma);
+				// svd_bidiagonale_compat(B, Ub, Vb, sigma);
 				Mat U = prodotto_matrici(U0, Ub);
 				Mat V = prodotto_matrici(V0, Vb);
 				// test_ortogonalita(V, "V");
