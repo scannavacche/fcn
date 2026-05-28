@@ -66,6 +66,11 @@ double f_atan_d(double t) {
     return 1.0 / (1.0 + t * t); // derivata di atan(t), giuro che mi ha letto nel pensiero
 }
 
+double f_sin2plus1(double t){
+    double s = std::sin(t);
+    return 1.0 / (1.0 + s*s);
+}
+
 double fcallb(
     double t,  
     double (*f)(double)) {

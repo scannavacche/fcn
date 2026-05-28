@@ -2538,7 +2538,72 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
        }
     }
 
-    
+    void sym_cauchy() {
+        int n = 100;          // numero di punti della griglia
+        double t0 = -PI;     // tempo iniziale
+        double T  = PI;     // tempo finale
+        double x0 = -1.0;     // condizione iniziale x(t0)
+
+        Vec t, fvals, b;
+        Mat L;
+        
+        bool leave = false;
+        bool redo = false;
+        while (!leave) {
+            int dummy = system("clear");
+            redo = false;
+
+            // Costruzione del sistema triangolare L x = b
+            costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_sin2plus1);
+            vector_dump(b, 10, 50, " b = 1/(1+sin^2) "); 
+            // Risoluzione con sostituzione indietro
+            Vec x = forward_substitution(L, b);
+            vector_dump(x, 10, 50, " x da Lx = b"); 
+
+            auto fig = TableInit(true, "Cauchy", "Soluzione numerica del problema di Cauchy", 1, 1);
+            
+            // migliorie: aggiornare titolo con parametri 
+            
+            // Verifica della matrice L
+            
+            matplot::legend();
+            fig->nexttile(0);
+            ;
+            imagesc(L)->display_name("Verifica matrice");
+            colorbar();
+            
+            // Visualizzazione della soluzione numerica x(t)
+            fig->nexttile(1);
+            auto p = plot(t, x);
+            p->line_width(2);
+            p->display_name("1 / (1 + sin^2(t))");
+            xlabel("t");
+            ylabel("f(x(t))");
+            auto ax=fig->current_axes();
+            // ax->y_axis().limits({-1.00e-1, 1.00e-1 });
+
+
+            fig->draw();
+        
+            redo = false;
+            while (!redo && !leave) {
+                std::cout << "Inserire nuovo T finale -10 .. 10 (<q> per uscire) > ";
+
+                cin_clear();
+
+                if (std::cin >> T) { if (T>=-10 && T<=-10) redo=true;} else {cout << "Key: " << T <<endl; leave=true;} ;
+                if (!leave) {
+                    std::cout << "Inserire nuovo valore iniziale x0 (<q> per uscire) > " ;
+                    if (std::cin >> x0) { if (x0>=t0 && x0<=T) redo=true;} else {cout << "Key: " << x0 <<endl; leave=true;} ;
+                    std::cout << "Inserire numero di nodi n (<q> per uscire) > " ;
+                    if (std::cin >> n) { if (n>=1 && n<=2000) redo=true;} else {cout << "Key: " << n <<endl; leave=true;} ;
+
+                };
+                cin_clear();
+            };
+        };
+    };
+ 
 
     ActionRegistry build_action_registry() 
         {
@@ -2556,7 +2621,8 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             {"f3_svd_test",     f3_svd_test},
             {"f3_svd",          f3_svd},
             {"f3_svd_pca",      f3_svd_pca},
-            {"f3_svd_an",      f3_svd_an}
+            {"f3_svd_an",       f3_svd_an},
+            {"sym_cauchy",      sym_cauchy}
             };
         };
 };  

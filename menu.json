@@ -15,6 +15,7 @@
     { "key": 12, "label": "F3-E1a SVD (con SVD_QR)",   "action": "f3_svd",   "enabled": true },
     { "key": 13, "label": "F3-E1b SVD PCA",   "action": "f3_svd_pca",   "enabled": true },
     { "key": 14, "label": "F3-E1c SVD PCA analysis",   "action": "f3_svd_an",   "enabled": true },
+    { "key": 15, "label": "SYM-E1b Cauchy 1/1+sin2",   "action": "sym_cauchy",   "enabled": true },
     { "key": 0, "label": " Esci",      "action": "exit",      "enabled": true }
   ]
 }

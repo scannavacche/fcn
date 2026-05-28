@@ -68,6 +68,9 @@ double f_atan(
 double f_atan_d(
     double t);
 
+double f_sin2plus1(
+    double t);
+
 double fcallb(
     double t, 
     double (*f)(double));   
