@@ -501,7 +501,8 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         Vec &fvals, 
         Mat &L, 
         Vec &b, 
-        double (*ft)(double)) 
+        double (*ft)(double),
+        bool backw) 
         {
         t = Vec(n);
         fvals = Vec(n);
@@ -519,16 +520,28 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         };
 
         // TODO 2: costruire L e b
-        // Riga 0: x_0 = x0  => L[0][0] = 1, b[0] = x0
-        // Righe i>=1: - (1+h) x_{i-1} + x_i = h f(t_{i-1})
-        // X[0][0] sta sulla diagonale, potrei assegnargli 1 come agli altri Xii
-        // ma i termini sotto diagonale sono uno in meno: condiziono o li conto in riga)
-        L[0][0] = 1;
-        b[0] = x0;
-        for (int i = 1; i < n; i++) {
-            L[i][i] = 1;
-            L[i][i-1] = -(1+h);
-            b[i] = h*fvals[i-1];
+        if (backw) {
+        	// qui abbiamo -(1+h) sulla diagonale e 1 a destra
+        	b[n-1] = x0;  // condizione finale
+			for (int i = 0; i < n-1; i++) {
+				L[i][i+1] = 1;
+				L[i][i] = -(1+h);
+				b[i] = h*fvals[i-1];
+			}
+        	L[n-1][n-1] = -(1+h);
+        }
+        else {
+			// Riga 0: x_0 = x0  => L[0][0] = 1, b[0] = x0
+			// Righe i>=1: - (1+h) x_{i-1} + x_i = h f(t_{i-1})
+			// X[0][0] sta sulla diagonale, potrei assegnargli 1 come agli altri Xii
+			// ma i termini sotto diagonale sono uno in meno: condiziono o li conto in riga)
+        	L[0][0] = 1;
+        	b[0] = x0;
+			for (int i = 1; i < n; i++) {
+				L[i][i] = 1;
+				L[i][i-1] = -(1+h);
+				b[i] = h*fvals[i-1];
+			}
         }
     }
 
@@ -1140,7 +1153,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             redo = false;
 
             // Costruzione del sistema triangolare L x = b
-            costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_x);
+            costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_x, false);
             vector_dump(b, 10, 50, " b = t"); 
             // Risoluzione con sostituzione in avanti
             Vec x = forward_substitution(L, b);
@@ -1166,7 +1179,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             xlabel("t");
             ylabel("x(t)");
 
-            costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_sin);
+            costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_sin, false);
             vector_dump(b, 10, 50, " b = sin(t) "); 
             // Risoluzione con sostituzione in avanti
             x = forward_substitution(L, b);
@@ -1179,7 +1192,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             xlabel("t");
             ylabel("sin(t)");
 
-            costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_cos); 
+            costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_cos, false); 
             vector_dump(b, 10, 50, " b = cos(t) "); 
             // Risoluzione con sostituzione in avanti
             x = forward_substitution(L, b);
@@ -2554,10 +2567,10 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             redo = false;
 
             // Costruzione del sistema triangolare L x = b
-            costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_sin2plus1);
+            costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_sin2plus1, true);
             vector_dump(b, 10, 50, " b = 1/(1+sin^2) "); 
             // Risoluzione con sostituzione indietro
-            Vec x = forward_substitution(L, b);
+            Vec x = backward_substitution(L, b);
             vector_dump(x, 10, 50, " x da Lx = b"); 
 
             auto fig = TableInit(true, "Cauchy", "Soluzione numerica del problema di Cauchy", 1, 1);
