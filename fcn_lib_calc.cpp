@@ -12,28 +12,18 @@
 #include <stdexcept>
 #include <algorithm>
 
-using std::cout;
-using std::endl;
+using namespace std;
 using Vec = std::vector<double>;
 using VecN = std::vector<int>;
 using Mat = std::vector<Vec>;
+
 using namespace matplot;
-using namespace std;
+
 using json = nlohmann::json;
 
-std::string itostr(const int nn) {
-    return std::to_string(nn);
-} 
-
-double deg2rad(const int alpha) {
-    return (((double) alpha) * PI / 180.0);
-}
-
-std::string format_numstr(double value) {
-    std::stringstream ss;
-    ss << std::scientific << std::setprecision(2) << value;
-    return ss.str();
-}
+// 
+// gestione interfaccia utente 
+// 
 
 void cin_clear() {
     if (std::cin.fail()) {
@@ -45,112 +35,6 @@ void cin_clear() {
         std::cin.ignore(max_ignore, '\n'); // ignora fino a max_ignore caratteri o fino a newline
     };
 };
-
-// -----------------------------------------------------------------------------
-// Funzione f(t) nota nel problema di Cauchy.
-// Cambiare definizione per provare altri casi (es. cos(t), t, ...).
-// -----------------------------------------------------------------------------
-double f_x(double t) {
-    return  t;
-}
-double f_sin(double t) {
-    return  std::sin(t); // esempio: f(t) = sin(t)
-}
-double f_cos(double t) {
-    return  std::cos(t); // esempio: f(t) = cos(t)
-}
-double f_atan(double t) {
-    return  std::atan(t); // esempio: f(t) = atan(t)
-}
-double f_atan_d(double t) {
-    return 1.0 / (1.0 + t * t); // derivata di atan(t), giuro che mi ha letto nel pensiero
-}
-
-double f_sin2plus1(double t){
-    double s = std::sin(t);
-    return 1.0 / (1.0 + s*s);
-}
-
-double fcallb(
-    double t,  
-    double (*f)(double)) {
-    return f(t);
-}
-
-double h_ticks(
-    const double a_start, 
-    const double a_stop, 
-    const int a_points)
-{
-        //  ora si chiama a_points per disambiguazione.
-        // h e' la lunghezza dell' intervallo e gli intervalli sono points - 1
-    if (a_stop>a_start) {
-        return (a_stop-a_start)/double(a_points - 1);
-    } else {
-        cout << "Intervallo da " << a_start << " a " << a_stop << " non valido!\n";
-        exit(1);
-    }
-}
-
-double kernel_gaussiano_elemento(  // forse non vale neanche la pena esportarla
-    const double t, 
-    const double s) 
-{
-    if (s!= 0) {
-        return std::exp( - (t*t)/(2*s*s));
-    }else {
-        throw std::invalid_argument("Sigma nmullo in calcolo Kernel Gaussiano per t = " + std::to_string(t));
-    }
-}
-
-Mat kernel_gaussiano_matrice(
-    const int N, 
-    const double sigma,
-    const double h, 
-    bool norm_flag, 
-    Vec& Indicatori) 
-    {
-        // indicatori deve restituire il numero di cond, la norma della matrice e della sua inversa
-        Mat K(N, Vec(N, 0.0));
-        for (int i = 0; i < N; ++i) {
-            double xi = i * h;
-            for (int j = 0; j < N; ++j) {
-                double xj = j * h;
-                K[i][j] = kernel_gaussiano_elemento((xi-xj), sigma);
-            }
-        }
-        if (norm_flag) K = matrice_righe_normalizzate(K);
-        double n2K = norma_matrice(12, K);
-        // double n12K = norma_matrice(12, K);
-        // cout << "Confronto norme: nuova 2 " << n2K << " contro vecchia ora 12 " << n12K <<endl;
-        //
-        // test norma spettrale
-        //
-        double n2K_inv = norma_matrice(12, calcola_inversa_LU(K));
-        // double n12K_inv = norma_matrice(12, calcola_inversa_LU(K));
-        // cout << "Confronto norme: nuova 2 " << n2K_inv << " contro vecchia ora 12 " << n12K_inv <<endl<<endl;
-
-        Indicatori = {n2K*n2K_inv, n2K, n2K_inv};
-    return K;
-}       
-
-Vec add_rumore(
-    Vec& v, 
-    double e)
-{   
-    // v e' il vettore da perturbare, e l'aliquota in millesimi rispetto alla norma_inf del vettore 
-    int N = v.size();
-    Vec r(N,0.0);
-    double fscala = norma_vettore(2, v);
-    double ampiezza = (e*fscala)/1000;
-    for (int i = 0; i<N; i++) { 
-        r[i]  = v[i] + ampiezza * ((double)rand() / RAND_MAX - 0.5);
-    }
-    return r;
-}
-// ----------------------------------------------------------------------------
-// Funzione di utilità: Display  
-// ----------------------------------------------------------------------------
 
 string color_bool(
     const bool val) {
@@ -212,269 +96,44 @@ void color_rst(){
     std::cout << "\033[0m";       // reset colore - importante!
 }
 
-/*
 //
-// questa e' la versione di bordo
-//
-void stampa_matrice(const Mat &A, const std::string &nome) {
-    cout << "\n-- " << nome << " --\n";
-    for (const auto &row : A) {
-        for (double v : row) {
-            cout << v << " ";
-        }
-        cout << "\n";
-    }
-}
-*/
-
-//
-// questa e' la versione di campionamento
+// funzioni di conversione formato ed equivalenza unita' di misura
 //
 
-void stampa_matrice(
-    const Mat& G, 
-    const std::string &nome) 
-{
-    int NR = G.size();
-    std::cout << "\n── " << nome << " " << NR << "(" <<  G.size() << ")" <<" ──\n";
-    for (int i = 0; i < (int)NR; ++i) {
-        for (int j = 0; j < (int)G[i].size(); ++j)
-            std::cout << std::fixed
-		      << std::setprecision(8)
-              << color_dbl(G[i][j]) 
-              << std::setw(12) 
-              << std::setfill(' ')
-		      << G[i][j] << " ";
-		      // << G[i][j] << " ";
-        color_rst();
-        std::cout << "\n\n";
-    }
+
+std::string itostr(const int nn) {
+    return std::to_string(nn);
+} 
+
+double deg2rad(const int alpha) {
+    return (((double) alpha) * PI / 180.0);
 }
 
-Vec vector_shift(
-    const Vec &v, 
-    const double shift) {
-    Vec v_shifted = v;
-    for (int i = 0; i < (int)v.size(); ++i) {
-        v_shifted[i] += shift;
-    }
-    return v_shifted;
+std::string format_numstr(double value) {
+    std::stringstream ss;
+    ss << std::scientific << std::setprecision(2) << value;
+    return ss.str();
 }
 
-Vec vector_reverse(const Vec& v) {
-    Vec r = v;
-    std::reverse(r.begin(), r.end());
-    return r;
-}
-
-void vector_dump (
-    Vec x, 
-    int colspan, 
-    int totnum, 
-    const std::string s) {
-    int icol = 0, ipos = 0;
-//    cout << "entro con " << totnum;
-	std::cout << "Inspect vector: " << s << endl;
-    do
-    {
-        while (icol<colspan && ipos<totnum)
-        {
-            cout << std::fixed
-                << std::setprecision(7)
-                << std::setw(10)       
-                << std::setfill('0')            
-                << x[ipos] << "  ";
-            icol++;
-            ipos++;
-        };
-        icol = 0;
-        cout <<endl;
-//        cout << "Fine riga ad " << ipos;
-//        exit(1);
-    } while (ipos<totnum);
-    cout  << endl;
-//    cout << "Uscito con "  << ipos;   
-}
 
 //
-// Funzioni algebriche 
+// funzioni di base per intervalli 
 //
 
-Mat crea_matrice(
-    int righe, 
-    int colonne)
+double h_ticks(
+    const double a_start, 
+    const double a_stop, 
+    const int a_points)
 {
-    // Crea una matrice N x N inizializzata a zero
-
-    return Mat(righe, Vec(colonne, 0.0));
-}
-
-// Alloca matrice identità n x n di nome I
-Mat identita(
-    int n) 
-{
-    Mat I = crea_matrice(n, n);
-    for (int i = 0; i < n; ++i) I[i][i] = 1.0;
-    return I;
-}
-
-Mat costruisci_triangolare(
-    int n) 
-{
-    Mat T(n, Vec(n, 0.0)); // vettore anonimo
-    for (int i = 0; i < n; ++i)
-        for (int j = 0; j <= i; ++j)
-            T[i][j] = 1.0;
-    return T;
-};
-
-Mat costruisci_inv_triangolare_sint(
-    int n)
-{
-    Mat T(n, Vec(n, 0.0)); // vettore anonimo
-    for (int i = 0; i < n; ++i)
-        for (int j = 0; j <= i; ++j)
-            if (i==j){
-                T[i][j] = 1.0; 
-            } else {
-                if (i==j+1) T[i][j] = -1.0;
-            } ;
-    return T;
-}
-
-Vec versore_canonico(
-    int j, 
-    int N)
-{
-    Vec e(N, 0.0);
-    e[j] = 1.0;
-    return e;
-}
-
-Vec risolvi_colonna(
-    const Mat& L,
-    const Mat& U,
-    Vec e){
-        // Risolveva  T x = e usando LU
-        // Risolve L U x = e_j usando sostituzione in avanti e indietro
-        // ora risolve un vettore generico e 
-
-    int n = L.size();
-    Vec y = forward_substitution(L, e);
-    // vector_dump(y, 10, y.size(), "y");
-    Vec x = backward_substitution(U, y);
-    // vector_dump(x, 10, x.size(), "x");
-    return x;
-    };
-
-Mat matrice_righe_normalizzate(
-    Mat& K)
-{   
-    // proviamo con un pass by ref e matrice locale
-
-    int M = K.size(); // numero di righe da processare
-    int N = K[0].size(); // prima riga buona per tutte
-    Mat Kn(M, Vec(N, 0.0));
-
-    for (int i=0; i<M; i++) {
-        N = K[i].size(); // numero di elementi per riga
-        double somma = 0;
-        for (int j=0; j<N; j++) {
-            somma+=K[i][j];
-        }
-        if (somma != 0) {
-            for (int j=0; j<N; j++) {
-                Kn[i][j] = K[i][j] / somma;
-            }
-        }
-    }
-    return Kn;
-}
-Mat calcola_trasposta(
-    const Mat& A) 
-{
-    int rows = A.size();
-    int cols = A[0].size();
-    Mat At(cols, Vec(rows, 0.0));
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            At[j][i] = A[i][j];
-        }
-    }
-    return At;
-};
-
-Mat converti_vettore_a_matrice(
-    const Vec& v,
-    bool transp)
-{
-    int n = v.size();
-    if (transp) {   // vettore va in riga di M 1xn
-        Mat M = crea_matrice(1, n);
-        for (int i=0;i<n;i++) {
-            M[0][i] = v[i];
-        }
-        return M;
-    } else {        // vettore va in colonna di M nx1
-        Mat M = crea_matrice(n,1);
-        for (int i=0;i<n;i++) M[i][0] = v[i];
-        return M;
+        //  ora si chiama a_points per disambiguazione.
+        // h e' la lunghezza dell' intervallo e gli intervalli sono points - 1
+    if (a_stop>a_start) {
+        return (a_stop-a_start)/double(a_points - 1);
+    } else {
+        cout << "Intervallo da " << a_start << " a " << a_stop << " non valido!\n";
+        exit(1);
     }
 }
-
-Mat calcola_inversa_LU (
-    const Mat& T) {          
-    // Calcola l' inversa di A usando la fattorizzazione LUx = e_i
-
-    Mat  L, U , T_inv;
-    Vec T_inv_j;
-
-    T_inv=crea_matrice(T.size(), T[0].size()); // alloca l' inversa della stessa dim di T
-
-    LU(T, L, U); 
-    
-    // Se T fosse triangolare unitaria (caso dell' integrale se  h=1)
-    // L = T e U = I ma lasciamoglielo calcolare perche' h e' funzione dell' intervallo e del numero di nodi e quindi non sappiamo se e' unitaria o no.
-    // Quindi se Tx = e_i allora x è la i-esima colonna di T^-1
-    // cosa succede qui:
-    // Tx = e_i ==> LUx = e_i => Ly = e_i => Ux = y 
-
-    for (std::size_t j=0;j<T[0].size();j++) {
-        T_inv_j = risolvi_colonna(L, U, versore_canonico(j, T.size())); // risolvi per e_j e ottieni la colonna j di T^-1
-        for (std::size_t i=0;i<T_inv.size();i++) {
-            T_inv[i][j] = T_inv_j[i];
-        };
-    };
-    return T_inv;
-}
-
-Vec risolvi_sistema_LU(
-    const Mat& T,
-    const Vec& x)
-{
-    Mat L, U;
-    int N = T.size(); 
-    LU(T, L, U); 
-    Vec g = risolvi_colonna(L, U, x);
-    return g;
-}
-
-
-Vec calcola_autovalori_LU (
-    const Mat& A) 
-{
-    // Calcola gli autovalori di A usando la fattorizzazione LU
-    // Non e' detto che funzioni perche' A potrebbe essere singolare ma proviamoci lo stesso
-    // da usare solo su matrici simmetriche e positive semidefinite come Tt*T,
-    // altrimenti la LU potrebbe essere instabile o non definita.
-    Mat L, U;
-    LU(A, L, U);
-    Vec autovalori(U.size(), 0.0);
-    for (std::size_t i=0;i<U.size();i++) {
-        autovalori[i] = U[i][i]; // gli autovalori di A sono approssimativamente i valori diagonali di U
-    };
-    return autovalori;
-};  
 
 Vec nodi_equidistanti(
     const double amin, 
@@ -537,171 +196,186 @@ Vec nodi_bubblesort (
     return x;
 }
 
-double prodotto_scalare(
-    const Vec &u, 
-    const Vec &v) {
-    double s = 0.0;
-    int usize = (int) u.size();
-    int vsize = (int) v.size();
-    if (usize==vsize) 
-    { 
-        for (int i = 0; i < usize; i++)  s += u[i]*v[i];
-    }
-    else 
-    {
-        cout << "Prodotto scalare impossibile tra dim " << usize << " e " << vsize << endl;
-        exit(1);
+
+//
+// funzioni matematiche ad uso callback 
+//
+
+double fcallb(
+    double t,  
+    double (*f)(double)) {
+    return f(t);
+}
+
+double f_x(double t) {
+    return  t;
+}
+double f_sin(double t) {
+    return  std::sin(t); // esempio: f(t) = sin(t)
+}
+double f_cos(double t) {
+    return  std::cos(t); // esempio: f(t) = cos(t)
+}
+double f_atan(double t) {
+    return  std::atan(t); // esempio: f(t) = atan(t)
+}
+double f_atan_d(double t) {
+    return 1.0 / (1.0 + t * t); // derivata di atan(t), giuro che mi ha letto nel pensiero
+}
+
+double f_sin2plus1(double t){
+    double s = std::sin(t);
+    return 1.0 / (1.0 + s*s);
+}
+
+//
+// funzioni macro di algebra lineare
+//
+
+Vec linear_BW_subst(
+    const Mat &U, 
+    const Vec &y) {
+    int m = static_cast<int>(U.size());
+    Vec x(m, 0.0);
+
+    // TODO 3: implementare la sostituzione in avanti
+    x[0] = y[0] / U[0][0];
+    for (int i = m-1; i > 0; --i) {
+        double s = y[i];
+        for (int j = i+1; j < m - 1; ++j) {
+            s -= U[i][j] * x[j];
+        }
+        x[i] = s / U[i][i];
     };
-    return s;
-    // DONE: prodotto scalare
+    return x;
 }
 
-Mat matrice_ridotta(
-    const Mat& A, 
-    int n, 
-    bool bycol)
-{
-    int cols = A[0].size();
-    int rows = A.size();
-    
-    cout << "Entriamo con n = " << n << ( bycol ? "Colonne" : "Righe") << endl ;
-
-    if (bycol) {
-        if (cols > n) {
-            Mat B = crea_matrice(rows, n);
-            for (int i = 0; i < rows; i++) { 
-                for (int j = 0; j < n; j++ ) {
-                    B[i][j] = A[i][j];
-                };
-            };
-            cout << "Rendo B\n";
-            return B;
-        } else {
-            cout << "Rendo A\n";
-            return A;
+Vec linear_FW_subst(
+    const Mat &L, 
+    const Vec &b) {
+        // -----------------------------------------------------------------------------
+        // TODO: implementare la sostituzione in avanti per L x = b
+        // L triangolare inferiore con L[i][i] != 0.
+        // -----------------------------------------------------------------------------
+    int n = static_cast<int>(L.size());
+    Vec x(n, 0.0);
+    x[0] = b[0] / L[0][0];
+    for (int i = 1; i < n; ++i) {
+        double s = b[i];
+        for (int j = 0; j < i; ++j) {
+            s -= L[i][j] * x[j];
         }
-    } else {
-        if (rows>n) {
-            Mat B = crea_matrice(n, cols);
-            for (int i = 0; i < n; i++) {
-                for (int j = 0; j <  cols; j++) {
-                    B[i][j] = A[i][j];
-                }
-            }
-            cout << "Rendo B\n";
-            return B;
-        } else {
-            cout << "Rendo A\n";
-            return A;
-        };
-    }
-
+        x[i] = s / L[i][i];
+    };
+    return x;
 }
 
-Mat differenza_matrici(
-    const Mat& A, 
-    const Mat& B)
+
+Vec linear_risolvi_colonna(
+    const Mat& L,
+    const Mat& U,
+    Vec e){
+        // Risolveva  T x = e usando LU
+        // Risolve L U x = e_j usando sostituzione in avanti e indietro
+        // ora risolve un vettore generico e 
+
+    int n = L.size();
+    Vec y = linear_FW_subst(L, e);
+    // vector_dump(y, 10, y.size(), "y");
+    Vec x = linear_BW_subst(U, y);
+    // vector_dump(x, 10, x.size(), "x");
+    return x;
+    };
+
+Vec linear_LU_calcola_autovalori (
+    const Mat& A) 
 {
-    int ra = A.size(); 
-    int ca = A[0].size();
-    int rb = B.size();
-    int cb = B[0].size();
-    if ((ra == rb) && (ca == cb)) {
-        Mat R = crea_matrice(ra, ca);
-        for (int i = 0; i < ra; i++) {
-            for (int j = 0; j < ca; j++) {
-                R[i][j] = A[i][j] - B[i][j];
-            }
-        };
-        return R;
-    } else {
-        cout << "Matrici di dimensioni incompatibili per sottrazione A: "
-            << ra << "x" << ca << " e B: "
-            << rb << "x" << cb << endl; 
-        exit(-1);
-    }
-       
-}
-
-Mat prodotto_matrici(
-    const Mat& A, 
-    const Mat& B) 
-{
-    int rowsA = A.size();
-    int colsA = A[0].size();
-    int rowsB = B.size();
-    int colsB = B[0].size();
-
-    //
-    // nella versione di foglio 3 usa assert  per il controllo di compatibilita'
-    //     assert(colsA == rowsB);
-    // questa era ancora tipo pedestre, poi proveremo con assert visto che la importiamo
-    // 
-
-    if (colsA != rowsB) {
-        throw std::runtime_error(
-            "Dimensioni incompatibili per il prodotto matrici: A è " \
-            + std::to_string(rowsA) + "x" + std::to_string(colsA) \
-            + " e B è " + std::to_string(rowsB) + "x" + std::to_string(colsB)
-        );
-    }
-
-    Mat C(rowsA, Vec(colsB, 0.0));
-
-    for (int i = 0; i < rowsA; ++i) {
-        for (int j = 0; j < colsB; ++j) {
-            for (int k = 0; k < colsA; ++k) {
-                C[i][j] += A[i][k] * B[k][j];
-            }
-        }
-    }
-
-    return C;
-};
-
-Vec prodotto_matrice_vettore(
-    const Mat& A, 
-    const Vec& v) 
-{
-    // u = Av
-
-    int rowsA = A.size();
-    int colsA = A[0].size();
-    int sizeV = v.size();
-
-    if (colsA != sizeV) {
-        throw std::runtime_error(
-            "Dimensioni incompatibili per il prodotto matrice-vettore: A è " \
-            + std::to_string(rowsA) + "x" + std::to_string(colsA) \
-            + " e v è di dimensione " + std::to_string(sizeV)
-        );
-    }
-
-    Vec u(rowsA, 0.0);
-
-    for (int i = 0; i < rowsA; ++i) {
-        for (int j = 0; j < colsA; ++j) {
-            u[i] += A[i][j] * v[j];
-        }
-    }
-
-    return u;
+    // Calcola gli autovalori di A usando la fattorizzazione LU
+    // Non e' detto che funzioni perche' A potrebbe essere singolare ma proviamoci lo stesso
+    // da usare solo su matrici simmetriche e positive semidefinite come Tt*T,
+    // altrimenti la LU potrebbe essere instabile o non definita.
+    Mat L, U;
+    linear_LU_dec(A, L, U);
+    Vec autovalori(U.size(), 0.0);
+    for (std::size_t i=0;i<U.size();i++) {
+        autovalori[i] = U[i][i]; // gli autovalori di A sono approssimativamente i valori diagonali di U
+    };
+    return autovalori;
 };  
 
-Mat prodotto_matrice_coeff(
-    const Mat& A, 
-    const double coeff) 
+void linear_LU_dec(
+    const Mat &A, 
+    Mat &L, 
+    Mat &U) 
 {
-    Mat C = A; // copia di A
-    for (std::size_t i = 0; i < C.size(); ++i) {
-        for (std::size_t j = 0; j < C[i].size(); ++j) {
-            C[i][j] *= coeff;
+        // -----------------------------------------------------------------------------
+        // implementare la fattorizzazione LU per L
+        // L matrice tridiagonale con 2 sulla diagonale, -1 su sopra e sotto-diagonale
+        // -----------------------------------------------------------------------------
+
+    int m = A.size();
+    L = Mat(m, Vec(m, 0.0));
+    U = A; // U inizia come A e viene modificata in-place
+
+    // inizializza L con 1 sulla diagonale, proviamo con il loop a parte.
+
+    for (int i = 0; i < m; ++i) {
+        L[i][i] = 1.0;
+    } 
+    // L[m-1][m-1] = 1.0; // o loop a parte o cosi' perche non ci arriva
+    for (int k = 0; k < m-1; ++k) {
+        L[k][k] = 1.0;
+        for (int i = k+1; i < m; ++i) {
+            if (U[k][k] == 0) {
+                throw std::runtime_error("Pivoting necessario, ma non implementato");
+            }
+            double multiplier = U[i][k] / U[k][k];
+            L[i][k] = multiplier;
+            for (int j = k; j < m; ++j) {
+                U[i][j] -= multiplier * U[k][j];
+            }
         }
     }
-    return C;
-};
+}
 
-double max_autoval_power_A(
+Mat linear_LU_inversa (
+    const Mat& T) {          
+    // Calcola l' inversa di A usando la fattorizzazione LUx = e_i
+
+    Mat  L, U , T_inv;
+    Vec T_inv_j;
+
+    T_inv=matrix_build_zero(T.size(), T[0].size()); // alloca l' inversa della stessa dim di T
+
+    linear_LU_dec(T, L, U); 
+    
+    // Se T fosse triangolare unitaria (caso dell' integrale se  h=1)
+    // L = T e U = I ma lasciamoglielo calcolare perche' h e' funzione dell' intervallo e del numero di nodi e quindi non sappiamo se e' unitaria o no.
+    // Quindi se Tx = e_i allora x è la i-esima colonna di T^-1
+    // cosa succede qui:
+    // Tx = e_i ==> LUx = e_i => Ly = e_i => Ux = y 
+
+    for (std::size_t j=0;j<T[0].size();j++) {
+        T_inv_j = linear_risolvi_colonna(L, U, vector_build_versore_canonico(j, T.size())); // risolvi per e_j e ottieni la colonna j di T^-1
+        for (std::size_t i=0;i<T_inv.size();i++) {
+            T_inv[i][j] = T_inv_j[i];
+        };
+    };
+    return T_inv;
+}
+
+Vec linear_LU_risolve_sistema(
+    const Mat& T,
+    const Vec& x)
+{
+    Mat L, U;
+    int N = T.size(); 
+    linear_LU_dec(T, L, U); 
+    Vec g = linear_risolvi_colonna(L, U, x);
+    return g;
+}
+
+double linear_max_autoval_pwr_any(
     const Mat& A, 
     int max_iter, 
     double tol) 
@@ -715,23 +389,23 @@ double max_autoval_power_A(
     Vec q(N);
     Vec z(N);
     for (double& v : q) v = gauss(rng); 
-    double nq = norma_vettore(2,q);
+    double nq = vector_norma(2,q);
     for (double& v : q) v /= nq;
 
     double mu = 0.0;
     double mu_old = 0.0;
     double nz;
-    Mat At = calcola_trasposta(A);
+    Mat At = matrix_trasposta(A);
     // TODO: iterazione del metodo delle potenze su A^T*A
     // Suggerimento: mat_trasposta = trasposta(A);
     //               vec1 = matvec(A, q);
     //               z    = matvec(mat_trasposta, vec1);
     for (int iter=0;iter<max_iter;iter++) {
-        z = prodotto_matrice_vettore(A, q);
-        z = prodotto_matrice_vettore(At,z);
-        nz = norma_vettore(2,z);
+        z = matrix_prodotto_vector(A, q);
+        z = matrix_prodotto_vector(At,z);
+        nz = vector_norma(2,z);
         for (int j=0;j<N;j++) q[j]=z[j]/nz; // q = z normalizzato
-        mu = prodotto_scalare(q, prodotto_matrice_vettore(At, prodotto_matrice_vettore(A, q)));  
+        mu = vector_prodotto_scalare(q, matrix_prodotto_vector(At, matrix_prodotto_vector(A, q)));  
         //
         // forse i due passaggi si potevano invertire nel quoziente di Rayleigh
         //
@@ -741,7 +415,7 @@ double max_autoval_power_A(
     return mu;
 }
 
-double max_autoval_power_A_res(
+double linear_max_autoval_pwr_any_res(
     const Mat& A, 
     int max_iter, 
     double tol) 
@@ -758,10 +432,10 @@ double max_autoval_power_A_res(
 
     for (double& v : q) v = gauss(rng); 
  
-    double nq = norma_vettore(2,q);
+    double nq = vector_norma(2,q);
     for (double& v : q) v /= nq;
  
-    Mat At = calcola_trasposta(A);
+    Mat At = matrix_trasposta(A);
 
     // double mu = 0.0;
     // double mu_old = 0.0;
@@ -769,11 +443,11 @@ double max_autoval_power_A_res(
     //iterazione su AtA senza calcolarla esplicitamente
     //
     for (int iter=0;iter<max_iter;iter++) {   // iter k.simo
-        Vec Aq = prodotto_matrice_vettore(A, q);  // A q(k)
-        Vec z = prodotto_matrice_vettore(At, Aq); // z = At A q(k)
+        Vec Aq = matrix_prodotto_vector(A, q);  // A q(k)
+        Vec z = matrix_prodotto_vector(At, Aq); // z = At A q(k)
 
         // nuovo vettore normalizzato per q(k+1)
-        double nz = norma_vettore(2,z);
+        double nz = vector_norma(2,z);
         if (nz == 0.0) return 0.0; // matrice AtA singolare?
         
         for (int j=0;j<N;j++) q[j]=z[j]/nz; // q = z normalizzato
@@ -787,15 +461,15 @@ double max_autoval_power_A_res(
         nz_old = nz;        
     }
     // valutazione finale sull'ultimo q
-    Vec Aq = prodotto_matrice_vettore(A, q);  // A q(n)
-    Vec z = prodotto_matrice_vettore(At, Aq); // z = At A q(n)
-    double mu = prodotto_scalare(Aq, Aq);  // (Aq)^t Aq = q^t A^t A q
+    Vec Aq = matrix_prodotto_vector(A, q);  // A q(n)
+    Vec z = matrix_prodotto_vector(At, Aq); // z = At A q(n)
+    double mu = vector_prodotto_scalare(Aq, Aq);  // (Aq)^t Aq = q^t A^t A q
 
     // residuo relativo, per chi non si fida....
 
     Vec r(q.size()); 
     for (int j = 0; j<N; j++) r[j] = z[j] - mu * q[j];
-    double res = norma_vettore(2, r) / std::max(1.0, std::abs(mu));
+    double res = vector_norma(2, r) / std::max(1.0, std::abs(mu));
     //
     // poi vediamo cosa possiamo fare con res, per ora lascialo li'
 
@@ -803,7 +477,7 @@ double max_autoval_power_A_res(
 }
 
 
-double max_autoval_power_AtA(
+double linear_max_autoval_pwr_AtA(
     const Mat& M, 
     int max_iter, 
     double tol) 
@@ -849,36 +523,187 @@ double max_autoval_power_AtA(
     return lambda;
 }
 
-double norma_vettore(
-    int norma, 
-    const Vec& V)
+
+//
+// funzioni per la manipolazione di matrici
+// 
+
+double matrix_build_gausskernel_item(  // forse non vale neanche la pena esportarla
+    const double t, 
+    const double s) 
 {
-    int N = V.size(); 
-    switch (norma) {
-        case 2: // norma euclidea
-        {
-          double somma = 0;
-            for (int i = 0; i<N;  i++) {
-                double el = V[i];
-                somma += el*el;     // possiamo fidarci che sia >= 0 ?
-            }
-            return std::sqrt(somma);
-        }
-        case 0: // norma infinito (max modulo degli el)
-        {
-            double max_el =0;
-            for (int i = 0; i<N;  i++) {
-                double el = std::abs(V[i]);
-                if (el > max_el) max_el = el;
-            }
-            return max_el;
-        }
-        default:
-            return 0;
+    if (s!= 0) {
+        return std::exp( - (t*t)/(2*s*s));
+    }else {
+        throw std::invalid_argument("Sigma nmullo in calcolo Kernel Gaussiano per t = " + std::to_string(t));
     }
 }
 
-double norma_matrice(
+Mat matrix_build_gausskernel(
+    const int N, 
+    const double sigma,
+    const double h, 
+    bool norm_flag, 
+    Vec& Indicatori) 
+    {
+        // indicatori deve restituire il numero di cond, la norma della matrice e della sua inversa
+        Mat K(N, Vec(N, 0.0));
+        for (int i = 0; i < N; ++i) {
+            double xi = i * h;
+            for (int j = 0; j < N; ++j) {
+                double xj = j * h;
+                K[i][j] = matrix_build_gausskernel_item((xi-xj), sigma);
+            }
+        }
+        if (norm_flag) K = matrix_normalize_byrow(K);
+        double n2K = matrix_norma(12, K);
+        // double n12K = matrix_norma(12, K);
+        // cout << "Confronto norme: nuova 2 " << n2K << " contro vecchia ora 12 " << n12K <<endl;
+        //
+        // test norma spettrale
+        //
+        double n2K_inv = matrix_norma(12, linear_LU_inversa(K));
+        // double n12K_inv = matrix_norma(12, linear_LU_inversa(K));
+        // cout << "Confronto norme: nuova 2 " << n2K_inv << " contro vecchia ora 12 " << n12K_inv <<endl<<endl;
+
+        Indicatori = {n2K*n2K_inv, n2K, n2K_inv};
+    return K;
+}       
+
+Mat matrix_build_Id(
+    int n) 
+{
+    //
+    // crea matrice identita' n x n
+    //
+
+    Mat I = matrix_build_zero(n, n);
+    for (int i = 0; i < n; ++i) I[i][i] = 1.0;
+    return I;
+}
+
+Mat matrix_build_triang(
+    int n) 
+{
+    Mat T(n, Vec(n, 0.0)); // vettore anonimo
+    for (int i = 0; i < n; ++i)
+        for (int j = 0; j <= i; ++j)
+            T[i][j] = 1.0;
+    return T;
+};
+
+Mat matrix_build_triang_inv(
+    int n)
+{
+    Mat T(n, Vec(n, 0.0)); // vettore anonimo
+    for (int i = 0; i < n; ++i)
+        for (int j = 0; j <= i; ++j)
+            if (i==j){
+                T[i][j] = 1.0; 
+            } else {
+                if (i==j+1) T[i][j] = -1.0;
+            } ;
+    return T;
+}
+
+
+Mat matrix_build_zero(
+    int righe, 
+    int colonne)
+{
+    // Crea una matrice N x N inizializzata a zero
+
+    return Mat(righe, Vec(colonne, 0.0));
+}
+
+Mat matrix_differenza(
+    const Mat& A, 
+    const Mat& B)
+{
+    int ra = A.size(); 
+    int ca = A[0].size();
+    int rb = B.size();
+    int cb = B[0].size();
+    if ((ra == rb) && (ca == cb)) {
+        Mat R = matrix_build_zero(ra, ca);
+        for (int i = 0; i < ra; i++) {
+            for (int j = 0; j < ca; j++) {
+                R[i][j] = A[i][j] - B[i][j];
+            }
+        };
+        return R;
+    } else {
+        cout << "Matrici di dimensioni incompatibili per sottrazione A: "
+            << ra << "x" << ca << " e B: "
+            << rb << "x" << cb << endl; 
+        exit(-1);
+    }
+       
+}
+
+void matrix_dump(
+    const Mat& G, 
+    const std::string &nome) 
+{
+    int NR = G.size();
+    std::cout << "\n── " << nome << " " << NR << "(" <<  G.size() << ")" <<" ──\n";
+    for (int i = 0; i < (int)NR; ++i) {
+        for (int j = 0; j < (int)G[i].size(); ++j)
+            std::cout << std::fixed
+		      << std::setprecision(8)
+              << color_dbl(G[i][j]) 
+              << std::setw(12) 
+              << std::setfill(' ')
+		      << G[i][j] << " ";
+		      // << G[i][j] << " ";
+        color_rst();
+        std::cout << "\n\n";
+    }
+}
+
+Mat matrix_estende_ridotta(
+    const Mat& A, 
+    int n, 
+    bool bycol)
+{
+    int cols = A[0].size();
+    int rows = A.size();
+    
+    cout << "Entriamo con n = " << n << ( bycol ? "Colonne" : "Righe") << endl ;
+
+    if (bycol) {
+        if (cols > n) {
+            Mat B = matrix_build_zero(rows, n);
+            for (int i = 0; i < rows; i++) { 
+                for (int j = 0; j < n; j++ ) {
+                    B[i][j] = A[i][j];
+                };
+            };
+            cout << "Rendo B\n";
+            return B;
+        } else {
+            cout << "Rendo A\n";
+            return A;
+        }
+    } else {
+        if (rows>n) {
+            Mat B = matrix_build_zero(n, cols);
+            for (int i = 0; i < n; i++) {
+                for (int j = 0; j <  cols; j++) {
+                    B[i][j] = A[i][j];
+                }
+            }
+            cout << "Rendo B\n";
+            return B;
+        } else {
+            cout << "Rendo A\n";
+            return A;
+        };
+    }
+
+}
+
+double matrix_norma(
     int norma,
     const Mat& A) 
 {
@@ -891,9 +716,9 @@ double norma_matrice(
                     // quindi la sua LU potrebbe essere instabile o non definita. 
                     // nel frattempo sono implementati altri 3 metodi delle potenze per calcolare la norma 2 in modo piu' robusto,
                     //  questo e' solo un test e la risposta e' dentro di te...ma e' sbagliata!
-                Mat At = calcola_trasposta(A);
-                Mat AtA = prodotto_matrici(At, A);
-                Vec AutoAtA = calcola_autovalori_LU(AtA); // ci riesce.... se non e' singolare ;)  
+                Mat At = matrix_trasposta(A);
+                Mat AtA = matrix_prodotto_matrix(At, A);
+                Vec AutoAtA = linear_LU_calcola_autovalori(AtA); // ci riesce.... se non e' singolare ;)  
                     // fosse SVD avremmo gia' il massimo valore singolare come primo autovalore di AtA, 
                     // ma con la LU non e' detto che sia ordinato o che sia stabile, 
                     // quindi cerchiamo il massimo tra tutti gli autovalori di AtA.
@@ -908,19 +733,19 @@ double norma_matrice(
             }
         case 2: // versione metodo delle potenze per A con uscita a res (non calcola AtA esplicita)
             {
-                return std::sqrt(max_autoval_power_A_res(A, 1000, 1e-12));
+                return std::sqrt(linear_max_autoval_pwr_any_res(A, 1000, 1e-12));
             }
            
         case 12: // versione metodo delle potenze per A con uscita abs senza economia (non calcola AtA esplicita)
             {
-                return std::sqrt(max_autoval_power_A(A, 1000, 1e-12));
+                return std::sqrt(linear_max_autoval_pwr_any(A, 1000, 1e-12));
             }
 
         case 22: // versione metodo delle potenze per AtA
             {
-                Mat At = calcola_trasposta(A);
-                Mat AtA = prodotto_matrici(At, A);
-                return std::sqrt(max_autoval_power_AtA(AtA, 1000, 1e-12));
+                Mat At = matrix_trasposta(A);
+                Mat AtA = matrix_prodotto_matrix(At, A);
+                return std::sqrt(linear_max_autoval_pwr_AtA(AtA, 1000, 1e-12));
             }
 
         case 1: // norma 1: massimo assoluto della somma delle colonne
@@ -967,80 +792,267 @@ double norma_matrice(
     }
 };
 
-Vec forward_substitution(
-    const Mat &L, 
-    const Vec &b) {
-        // -----------------------------------------------------------------------------
-        // TODO: implementare la sostituzione in avanti per L x = b
-        // L triangolare inferiore con L[i][i] != 0.
-        // -----------------------------------------------------------------------------
-    int n = static_cast<int>(L.size());
-    Vec x(n, 0.0);
-    x[0] = b[0] / L[0][0];
-    for (int i = 1; i < n; ++i) {
-        double s = b[i];
-        for (int j = 0; j < i; ++j) {
-            s -= L[i][j] * x[j];
+
+Mat matrix_normalize_byrow(
+    Mat& K)
+{   
+    // proviamo con un pass by ref e matrice locale
+
+    int M = K.size(); // numero di righe da processare
+    int N = K[0].size(); // prima riga buona per tutte
+    Mat Kn(M, Vec(N, 0.0));
+
+    for (int i=0; i<M; i++) {
+        N = K[i].size(); // numero di elementi per riga
+        double somma = 0;
+        for (int j=0; j<N; j++) {
+            somma+=K[i][j];
         }
-        x[i] = s / L[i][i];
-    };
-    return x;
-}
-
-// e rovesciata                                                                                                                                                                                                                                                                                                                                                     
-
-Vec backward_substitution(
-    const Mat &U, 
-    const Vec &y) {
-    int m = static_cast<int>(U.size());
-    Vec x(m, 0.0);
-
-    // TODO 3: implementare la sostituzione in avanti
-    x[0] = y[0] / U[0][0];
-    for (int i = m-1; i > 0; --i) {
-        double s = y[i];
-        for (int j = i+1; j < m - 1; ++j) {
-            s -= U[i][j] * x[j];
-        }
-        x[i] = s / U[i][i];
-    };
-    return x;
-}
-
-void LU(
-    const Mat &A, 
-    Mat &L, 
-    Mat &U) 
-{
-        // -----------------------------------------------------------------------------
-        // implementare la fattorizzazione LU per L
-        // L matrice tridiagonale con 2 sulla diagonale, -1 su sopra e sotto-diagonale
-        // -----------------------------------------------------------------------------
-
-    int m = A.size();
-    L = Mat(m, Vec(m, 0.0));
-    U = A; // U inizia come A e viene modificata in-place
-
-    // inizializza L con 1 sulla diagonale, proviamo con il loop a parte.
-
-    for (int i = 0; i < m; ++i) {
-        L[i][i] = 1.0;
-    } 
-    // L[m-1][m-1] = 1.0; // o loop a parte o cosi' perche non ci arriva
-    for (int k = 0; k < m-1; ++k) {
-        L[k][k] = 1.0;
-        for (int i = k+1; i < m; ++i) {
-            if (U[k][k] == 0) {
-                throw std::runtime_error("Pivoting necessario, ma non implementato");
-            }
-            double multiplier = U[i][k] / U[k][k];
-            L[i][k] = multiplier;
-            for (int j = k; j < m; ++j) {
-                U[i][j] -= multiplier * U[k][j];
+        if (somma != 0) {
+            for (int j=0; j<N; j++) {
+                Kn[i][j] = K[i][j] / somma;
             }
         }
     }
+    return Kn;
 }
+
+Mat matrix_prodotto_coeff(
+    const Mat& A, 
+    const double coeff) 
+{
+    Mat C = A; // copia di A
+    for (std::size_t i = 0; i < C.size(); ++i) {
+        for (std::size_t j = 0; j < C[i].size(); ++j) {
+            C[i][j] *= coeff;
+        }
+    }
+    return C;
+};
+
+
+Mat matrix_prodotto_matrix(
+    const Mat& A, 
+    const Mat& B) 
+{
+    int rowsA = A.size();
+    int colsA = A[0].size();
+    int rowsB = B.size();
+    int colsB = B[0].size();
+
+    //
+    // nella versione di foglio 3 usa assert  per il controllo di compatibilita'
+    //     assert(colsA == rowsB);
+    // questa era ancora tipo pedestre, poi proveremo con assert visto che la importiamo
+    // 
+
+    if (colsA != rowsB) {
+        throw std::runtime_error(
+            "Dimensioni incompatibili per il prodotto matrici: A è " \
+            + std::to_string(rowsA) + "x" + std::to_string(colsA) \
+            + " e B è " + std::to_string(rowsB) + "x" + std::to_string(colsB)
+        );
+    }
+
+    Mat C(rowsA, Vec(colsB, 0.0));
+
+    for (int i = 0; i < rowsA; ++i) {
+        for (int j = 0; j < colsB; ++j) {
+            for (int k = 0; k < colsA; ++k) {
+                C[i][j] += A[i][k] * B[k][j];
+            }
+        }
+    }
+
+    return C;
+};
+
+Vec matrix_prodotto_vector(
+    const Mat& A, 
+    const Vec& v) 
+{
+    // u = Av
+
+    int rowsA = A.size();
+    int colsA = A[0].size();
+    int sizeV = v.size();
+
+    if (colsA != sizeV) {
+        throw std::runtime_error(
+            "Dimensioni incompatibili per il prodotto matrice-vettore: A è " \
+            + std::to_string(rowsA) + "x" + std::to_string(colsA) \
+            + " e v è di dimensione " + std::to_string(sizeV)
+        );
+    }
+
+    Vec u(rowsA, 0.0);
+
+    for (int i = 0; i < rowsA; ++i) {
+        for (int j = 0; j < colsA; ++j) {
+            u[i] += A[i][j] * v[j];
+        }
+    }
+
+    return u;
+};  
+
+Mat matrix_trasposta(
+    const Mat& A) 
+{
+    int rows = A.size();
+    int cols = A[0].size();
+    Mat At(cols, Vec(rows, 0.0));
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            At[j][i] = A[i][j];
+        }
+    }
+    return At;
+};
+
+//
+// funzioni di manipolazione vettori
+//
+
+Vec vector_add_noise(
+    Vec& v, 
+    double e)
+{   
+    // v e' il vettore da perturbare, e l'aliquota in millesimi rispetto alla norma_inf del vettore 
+    int N = v.size();
+    Vec r(N,0.0);
+    double fscala = vector_norma(2, v);
+    double ampiezza = (e*fscala)/1000;
+    for (int i = 0; i<N; i++) { 
+        r[i]  = v[i] + ampiezza * ((double)rand() / RAND_MAX - 0.5);
+    }
+    return r;
+}
+
+Vec vector_build_versore_canonico(
+    int j, 
+    int N)
+{
+    Vec e(N, 0.0);
+    e[j] = 1.0;
+    return e;
+}
+
+void vector_dump (
+    Vec x, 
+    int colspan, 
+    int totnum, 
+    const std::string s) {
+    int icol = 0, ipos = 0;
+//    cout << "entro con " << totnum;
+	std::cout << "Inspect vector: " << s << endl;
+    do
+    {
+        while (icol<colspan && ipos<totnum)
+        {
+            cout << std::fixed
+                << std::setprecision(7)
+                << std::setw(10)       
+                << std::setfill('0')            
+                << x[ipos] << "  ";
+            icol++;
+            ipos++;
+        };
+        icol = 0;
+        cout <<endl;
+//        cout << "Fine riga ad " << ipos;
+//        exit(1);
+    } while (ipos<totnum);
+    cout  << endl;
+//    cout << "Uscito con "  << ipos;   
+}
+
+double vector_norma(
+    int norma, 
+    const Vec& V)
+{
+    int N = V.size(); 
+    switch (norma) {
+        case 2: // norma euclidea
+        {
+          double somma = 0;
+            for (int i = 0; i<N;  i++) {
+                double el = V[i];
+                somma += el*el;     // possiamo fidarci che sia >= 0 ?
+            }
+            return std::sqrt(somma);
+        }
+        case 0: // norma infinito (max modulo degli el)
+        {
+            double max_el =0;
+            for (int i = 0; i<N;  i++) {
+                double el = std::abs(V[i]);
+                if (el > max_el) max_el = el;
+            }
+            return max_el;
+        }
+        default:
+            return 0;
+    }
+}
+
+double vector_prodotto_scalare(
+    const Vec &u, 
+    const Vec &v) {
+    double s = 0.0;
+    int usize = (int) u.size();
+    int vsize = (int) v.size();
+    if (usize==vsize) 
+    { 
+        for (int i = 0; i < usize; i++)  s += u[i]*v[i];
+    }
+    else 
+    {
+        cout << "Prodotto scalare impossibile tra dim " << usize << " e " << vsize << endl;
+        exit(1);
+    };
+    return s;
+    // DONE: prodotto scalare
+}
+
+Vec vector_reverse(const Vec& v) {
+    Vec r = v;
+    std::reverse(r.begin(), r.end());
+    return r;
+}
+
+Vec vector_shift(
+    const Vec &v, 
+    const double shift) {
+        //
+        // aggiunge un valore shift a tutto il vettore, un rappezzo per testare problemi di steccato, valutare se tenere 
+        //
+    Vec v_shifted = v;
+    for (int i = 0; i < (int)v.size(); ++i) {
+        v_shifted[i] += shift;
+    }
+    return v_shifted;
+}
+
+
+Mat vector_to_matrix(
+    const Vec& v,
+    bool transp)
+{
+    int n = v.size();
+    if (transp) {   // vettore va in riga di M 1xn
+        Mat M = matrix_build_zero(1, n);
+        for (int i=0;i<n;i++) {
+            M[0][i] = v[i];
+        }
+        return M;
+    } else {        // vettore va in colonna di M nx1
+        Mat M = matrix_build_zero(n,1);
+        for (int i=0;i<n;i++) M[i][0] = v[i];
+        return M;
+    }
+}
+// e rovesciata                                                                                                                                                                                                                                                                                                                                                     
 
 Vec segnale_finestra(
     int N,
@@ -1134,7 +1146,7 @@ Vec householder_colonna(
 {
     int m = v.size();
     Vec w(m, 0.0);
-    double n2 = norma_vettore(2,v);
+    double n2 = vector_norma(2,v);
     if (n2 == 0) 
     {
         w[0]=1;
@@ -1144,7 +1156,7 @@ Vec householder_colonna(
         for (int i=0;i<m;i++) w[i]=v[i];
         if (w[0]<0) sgn_v0 = -1;
         w[0] += sgn_v0 * n2;
-        n2 = norma_vettore(2, w);   // ricicliamo, non ci serviva piu' norma di v
+        n2 = vector_norma(2, w);   // ricicliamo, non ci serviva piu' norma di v
         for (int i=0;i<m;i++) w[i] /= n2;
         return w;
     }
@@ -1204,12 +1216,12 @@ void bidiagonalizza_underdet_up(
     int n = A.size();
     int d = A[0].size();
     
-    if (dump_flag) stampa_matrice(A, "Originale"); 
+    if (dump_flag) matrix_dump(A, "Originale"); 
 
     int p = std::min(n, d);
 
-    U0 = identita(n);          // n x n
-    V0 = identita(d);          // d x d
+    U0 = matrix_build_Id(n);          // n x n
+    V0 = matrix_build_Id(d);          // d x d
 
     Vec v, w;
 
@@ -1242,50 +1254,50 @@ void bidiagonalizza_underdet_up(
              if (dump_flag) vector_dump(w, 10, w.size(), "W di householder colonna sinistra");
 
             // 3. Aggiorna A[k:, :] <- A[k:, :] - 2*w*(w^T * A[k:, :])
-            Mat A_k = crea_matrice(m, q);
+            Mat A_k = matrix_build_zero(m, q);
 
             for (int i = 0; i < m; i++){
                 for (int j = 0; j < q; j++) {
                     A_k[i][j] = A[k+i][k+j];
                 }
             }
-            if (dump_flag) stampa_matrice(A_k, "A_k a giro "+std::to_string(k));
-            Mat Wt = converti_vettore_a_matrice(w,true);
-            if (dump_flag)stampa_matrice(Wt, "Wt come matrice 1 x n");
-            Mat Wt_Ak = prodotto_matrici(Wt, A_k); // w va direttamente trasposto con true
-            if (dump_flag) stampa_matrice(Wt_Ak, "Wt A_k" + std::to_string(k));
-            Mat W_Wt_Ak = prodotto_matrici(converti_vettore_a_matrice(w, false), Wt_Ak);
-            if (dump_flag) stampa_matrice(W_Wt_Ak, "W Wt A_k" + std::to_string(k));
-            Mat Two_W_Wt_Ak = prodotto_matrice_coeff(W_Wt_Ak, 2.0);
-            if (dump_flag)stampa_matrice(Two_W_Wt_Ak, "2 W Wt A_k" + std::to_string(k));
+            if (dump_flag) matrix_dump(A_k, "A_k a giro "+std::to_string(k));
+            Mat Wt = vector_to_matrix(w,true);
+            if (dump_flag)matrix_dump(Wt, "Wt come matrice 1 x n");
+            Mat Wt_Ak = matrix_prodotto_matrix(Wt, A_k); // w va direttamente trasposto con true
+            if (dump_flag) matrix_dump(Wt_Ak, "Wt A_k" + std::to_string(k));
+            Mat W_Wt_Ak = matrix_prodotto_matrix(vector_to_matrix(w, false), Wt_Ak);
+            if (dump_flag) matrix_dump(W_Wt_Ak, "W Wt A_k" + std::to_string(k));
+            Mat Two_W_Wt_Ak = matrix_prodotto_coeff(W_Wt_Ak, 2.0);
+            if (dump_flag)matrix_dump(Two_W_Wt_Ak, "2 W Wt A_k" + std::to_string(k));
 
             for (int i=0; i<m; i++){
                 for (int j = 0; j < q; j++) {
                     A[k+i][k+j] -= Two_W_Wt_Ak[i][j];
                 }
             }
-            if (dump_flag) stampa_matrice(A, "A al passo sx " + std::to_string(k));
+            if (dump_flag) matrix_dump(A, "A al passo sx " + std::to_string(k));
 
             // 4. Aggiorna U0[:, k:] <- U0[:, k:] - 2*(U0[:,k:]*w)*w^T
 
-            Mat U0_k = crea_matrice(n,m); //tutte le righe e tante colonne quanto e' lungo w                                                                           
+            Mat U0_k = matrix_build_zero(n,m); //tutte le righe e tante colonne quanto e' lungo w                                                                           
 
             for (int i = 0; i < n; i++){
                 for (int j = 0; j < m; j++) {
                     U0_k[i][j] = U0[i][k+j];
                 }
             }
-            Mat U0_W =  converti_vettore_a_matrice(prodotto_matrice_vettore(U0_k, w), false);
-            Mat U0_W_Wt = prodotto_matrici(U0_W, converti_vettore_a_matrice(w, true));
-            if (dump_flag)stampa_matrice(U0_W_Wt, "U0_k W W_t " + std::to_string(k));
-            Mat Two_U0_W_Wt = prodotto_matrice_coeff(U0_W_Wt, 2.0);
+            Mat U0_W =  vector_to_matrix(matrix_prodotto_vector(U0_k, w), false);
+            Mat U0_W_Wt = matrix_prodotto_matrix(U0_W, vector_to_matrix(w, true));
+            if (dump_flag)matrix_dump(U0_W_Wt, "U0_k W W_t " + std::to_string(k));
+            Mat Two_U0_W_Wt = matrix_prodotto_coeff(U0_W_Wt, 2.0);
 
             for (int i = 0; i < n; i++){
                 for (int j = 0; j < m; j++) {
                     U0[i][k+j] -= Two_U0_W_Wt[i][j];
                 }
             }
-            if (dump_flag) stampa_matrice(U0, "U0 al passo " + std::to_string(k));
+            if (dump_flag) matrix_dump(U0, "U0 al passo " + std::to_string(k));
         }
 
         if (k < d - 2) {
@@ -1305,48 +1317,48 @@ void bidiagonalizza_underdet_up(
             w = householder_riga(v);
             if (dump_flag) vector_dump(w, 10, w.size(), "W di householder riga destra");
             // 3. Aggiorna A[k:, k+1:] <- A[k:, k+1:] - 2*(A[k:,k+1:]*w)*w^T
-            Mat A_k = crea_matrice(m, q);
+            Mat A_k = matrix_build_zero(m, q);
             for (int i = 0; i < m; i++){
                 for (int j = 0; j < q; j++) {
                     A_k[i][j] = A[k+i][k+j+1];
                 }
             }
-            Mat Ak_W =  converti_vettore_a_matrice(prodotto_matrice_vettore(A_k, w), false);
-            Mat Ak_W_Wt = prodotto_matrici(Ak_W, converti_vettore_a_matrice(w, true));
-            if (dump_flag) stampa_matrice(Ak_W_Wt, "A_k W W_t " + std::to_string(k));
-            Mat Two_Ak_W_Wt = prodotto_matrice_coeff(Ak_W_Wt, 2.0);
+            Mat Ak_W =  vector_to_matrix(matrix_prodotto_vector(A_k, w), false);
+            Mat Ak_W_Wt = matrix_prodotto_matrix(Ak_W, vector_to_matrix(w, true));
+            if (dump_flag) matrix_dump(Ak_W_Wt, "A_k W W_t " + std::to_string(k));
+            Mat Two_Ak_W_Wt = matrix_prodotto_coeff(Ak_W_Wt, 2.0);
             for (int i = 0; i < m; i++){
                 for (int j = 0; j < q; j++) {
                     A[k+i][k+j+1] -=  Two_Ak_W_Wt[i][j];
                 }
             }
-            if (dump_flag) stampa_matrice(A, "A al passo dx " + std::to_string(k));
+            if (dump_flag) matrix_dump(A, "A al passo dx " + std::to_string(k));
 
             // 4. Aggiorna V0[:, k+1:] <- V0[:, k+1:] - 2*(V0[:,k+1:]*w)*w^T
 
-            Mat V0_k = crea_matrice(d,q); //tutte le righe e tante colonne quanto e' lungo w                                                                           
+            Mat V0_k = matrix_build_zero(d,q); //tutte le righe e tante colonne quanto e' lungo w                                                                           
 
             for (int i = 0; i < d; i++){
                 for (int j = 0; j < q; j++) {
                     V0_k[i][j] = V0[i][k+j+1];
                 }
             }
-            Mat V0_W =  converti_vettore_a_matrice(prodotto_matrice_vettore(V0_k, w), false);
-            Mat V0_W_Wt = prodotto_matrici(V0_W, converti_vettore_a_matrice(w, true));
-            if (dump_flag)  stampa_matrice(V0_W_Wt, "V0_k W W_t " + std::to_string(k));
-            Mat Two_V0_W_Wt = prodotto_matrice_coeff(V0_W_Wt, 2.0);
+            Mat V0_W =  vector_to_matrix(matrix_prodotto_vector(V0_k, w), false);
+            Mat V0_W_Wt = matrix_prodotto_matrix(V0_W, vector_to_matrix(w, true));
+            if (dump_flag)  matrix_dump(V0_W_Wt, "V0_k W W_t " + std::to_string(k));
+            Mat Two_V0_W_Wt = matrix_prodotto_coeff(V0_W_Wt, 2.0);
 
             for (int i = 0; i < d; i++){
                 for (int j = 0; j < q; j++) V0[i][k+j+1] -= Two_V0_W_Wt[i][j];
             }
-            if (dump_flag)  stampa_matrice(V0, "V0 al passo " + std::to_string(k));
+            if (dump_flag)  matrix_dump(V0, "V0 al passo " + std::to_string(k));
             //
             //  Verifica di U0 e V0 ortogonali
             //
-            Mat V0t_V0 = prodotto_matrici(calcola_trasposta(V0), V0);
-            Mat U0t_U0 = prodotto_matrici(calcola_trasposta(U0), U0);
-            // stampa_matrice(U0t_U0, "U0_t U0");
-            // stampa_matrice(V0t_V0, "V0_t V0");
+            Mat V0t_V0 = matrix_prodotto_matrix(matrix_trasposta(V0), V0);
+            Mat U0t_U0 = matrix_prodotto_matrix(matrix_trasposta(U0), U0);
+            // matrix_dump(U0t_U0, "U0_t U0");
+            // matrix_dump(V0t_V0, "V0_t V0");
 
             
             
@@ -1369,8 +1381,8 @@ void bidiagonalizza_underdet_low(
     int d = A[0].size();
     int p = std::min(n, d);
 
-    U0 = identita(n);
-    V0 = identita(d);
+    U0 = matrix_build_Id(n);
+    V0 = matrix_build_Id(d);
 
     Vec v, w;
 
@@ -1394,29 +1406,29 @@ void bidiagonalizza_underdet_low(
 
             w = householder_reverse_colonna(v);
 
-            Mat A_k = crea_matrice(m, q);
+            Mat A_k = matrix_build_zero(m, q);
             for (int i = 0; i < m; ++i)
                 for (int j = 0; j < q; ++j)
                     A_k[i][j] = A[i][j];
 
-            Mat Wt = converti_vettore_a_matrice(w, true);
-            Mat W  = converti_vettore_a_matrice(w, false);
-            Mat Wt_Ak = prodotto_matrici(Wt, A_k);
-            Mat corr  = prodotto_matrice_coeff(prodotto_matrici(W, Wt_Ak), 2.0);
+            Mat Wt = vector_to_matrix(w, true);
+            Mat W  = vector_to_matrix(w, false);
+            Mat Wt_Ak = matrix_prodotto_matrix(Wt, A_k);
+            Mat corr  = matrix_prodotto_coeff(matrix_prodotto_matrix(W, Wt_Ak), 2.0);
 
             for (int i = 0; i < m; ++i)
                 for (int j = 0; j < q; ++j)
                     A[i][j] -= corr[i][j];
 
             // U0[:,0..k-1]
-            Mat U0_k = crea_matrice(n, m);
+            Mat U0_k = matrix_build_zero(n, m);
             for (int i = 0; i < n; ++i)
                 for (int j = 0; j < m; ++j)
                     U0_k[i][j] = U0[i][j];
 
-            Mat U0_W    = converti_vettore_a_matrice(prodotto_matrice_vettore(U0_k, w), false);
-            Mat U0_corr = prodotto_matrice_coeff(
-                              prodotto_matrici(U0_W, converti_vettore_a_matrice(w, true)),
+            Mat U0_W    = vector_to_matrix(matrix_prodotto_vector(U0_k, w), false);
+            Mat U0_corr = matrix_prodotto_coeff(
+                              matrix_prodotto_matrix(U0_W, vector_to_matrix(w, true)),
                               2.0);
 
             for (int i = 0; i < n; ++i)
@@ -1442,14 +1454,14 @@ void bidiagonalizza_underdet_low(
 
             w = householder_reverse_riga(v);
 
-            Mat A_k = crea_matrice(m, q);
+            Mat A_k = matrix_build_zero(m, q);
             for (int i = 0; i < m; ++i)
                 for (int j = 0; j < q; ++j)
                     A_k[i][j] = A[i][j];
 
-            Mat Ak_W    = converti_vettore_a_matrice(prodotto_matrice_vettore(A_k, w), false);
-            Mat Ak_corr = prodotto_matrice_coeff(
-                              prodotto_matrici(Ak_W, converti_vettore_a_matrice(w, true)),
+            Mat Ak_W    = vector_to_matrix(matrix_prodotto_vector(A_k, w), false);
+            Mat Ak_corr = matrix_prodotto_coeff(
+                              matrix_prodotto_matrix(Ak_W, vector_to_matrix(w, true)),
                               2.0);
 
             for (int i = 0; i < m; ++i)
@@ -1457,14 +1469,14 @@ void bidiagonalizza_underdet_low(
                     A[i][j] -= Ak_corr[i][j];
 
             // V0[:,0..k-2]
-            Mat V0_k = crea_matrice(d, q);
+            Mat V0_k = matrix_build_zero(d, q);
             for (int i = 0; i < d; ++i)
                 for (int j = 0; j < q; ++j)
                     V0_k[i][j] = V0[i][j];
 
-            Mat V0_W    = converti_vettore_a_matrice(prodotto_matrice_vettore(V0_k, w), false);
-            Mat V0_corr = prodotto_matrice_coeff(
-                              prodotto_matrici(V0_W, converti_vettore_a_matrice(w, true)),
+            Mat V0_W    = vector_to_matrix(matrix_prodotto_vector(V0_k, w), false);
+            Mat V0_corr = matrix_prodotto_coeff(
+                              matrix_prodotto_matrix(V0_W, vector_to_matrix(w, true)),
                               2.0);
 
             for (int i = 0; i < d; ++i)
@@ -1473,9 +1485,9 @@ void bidiagonalizza_underdet_low(
         }
 
         if (dump_flag) {
-            stampa_matrice(A, "A al passo reverse k=" + std::to_string(k));
-            stampa_matrice(prodotto_matrici(calcola_trasposta(U0), U0), "U0_t U0");
-            stampa_matrice(prodotto_matrici(calcola_trasposta(V0), V0), "V0_t V0");
+            matrix_dump(A, "A al passo reverse k=" + std::to_string(k));
+            matrix_dump(matrix_prodotto_matrix(matrix_trasposta(U0), U0), "U0_t U0");
+            matrix_dump(matrix_prodotto_matrix(matrix_trasposta(V0), V0), "V0_t V0");
         }
     }
 
@@ -1496,8 +1508,8 @@ void tridiagonalizza_underdet(
     int d = A[0].size();
     int p = std::min(n, d);
 
-    U0 = identita(n);
-    V0 = identita(d);
+    U0 = matrix_build_Id(n);
+    V0 = matrix_build_Id(d);
 
     Vec v, w;
 
@@ -1519,29 +1531,29 @@ void tridiagonalizza_underdet(
 
             w = householder_colonna(v);
 
-            Mat A_k = crea_matrice(m, q);
+            Mat A_k = matrix_build_zero(m, q);
             for (int i = 0; i < m; ++i)
                 for (int j = 0; j < q; ++j)
                     A_k[i][j] = A[k + 1 + i][k + j];
 
-            Mat Wt = converti_vettore_a_matrice(w, true);
-            Mat W  = converti_vettore_a_matrice(w, false);
-            Mat Wt_Ak = prodotto_matrici(Wt, A_k);
-            Mat corr  = prodotto_matrice_coeff(prodotto_matrici(W, Wt_Ak), 2.0);
+            Mat Wt = vector_to_matrix(w, true);
+            Mat W  = vector_to_matrix(w, false);
+            Mat Wt_Ak = matrix_prodotto_matrix(Wt, A_k);
+            Mat corr  = matrix_prodotto_coeff(matrix_prodotto_matrix(W, Wt_Ak), 2.0);
 
             for (int i = 0; i < m; ++i)
                 for (int j = 0; j < q; ++j)
                     A[k + 1 + i][k + j] -= corr[i][j];
 
             // U0[:, k+1:] = U0[:, k+1:] * (I - 2ww^T)
-            Mat U0_k = crea_matrice(n, m);
+            Mat U0_k = matrix_build_zero(n, m);
             for (int i = 0; i < n; ++i)
                 for (int j = 0; j < m; ++j)
                     U0_k[i][j] = U0[i][k + 1 + j];
 
-            Mat U0_W    = converti_vettore_a_matrice(prodotto_matrice_vettore(U0_k, w), false);
-            Mat U0_corr = prodotto_matrice_coeff(
-                              prodotto_matrici(U0_W, converti_vettore_a_matrice(w, true)),
+            Mat U0_W    = vector_to_matrix(matrix_prodotto_vector(U0_k, w), false);
+            Mat U0_corr = matrix_prodotto_coeff(
+                              matrix_prodotto_matrix(U0_W, vector_to_matrix(w, true)),
                               2.0);
 
             for (int i = 0; i < n; ++i)
@@ -1565,14 +1577,14 @@ void tridiagonalizza_underdet(
 
             w = householder_riga(v);
 
-            Mat A_k = crea_matrice(m, q);
+            Mat A_k = matrix_build_zero(m, q);
             for (int i = 0; i < m; ++i)
                 for (int j = 0; j < q; ++j)
                     A_k[i][j] = A[k + i][k + 1 + j];
 
-            Mat Ak_W    = converti_vettore_a_matrice(prodotto_matrice_vettore(A_k, w), false);
-            Mat Ak_corr = prodotto_matrice_coeff(
-                              prodotto_matrici(Ak_W, converti_vettore_a_matrice(w, true)),
+            Mat Ak_W    = vector_to_matrix(matrix_prodotto_vector(A_k, w), false);
+            Mat Ak_corr = matrix_prodotto_coeff(
+                              matrix_prodotto_matrix(Ak_W, vector_to_matrix(w, true)),
                               2.0);
 
             for (int i = 0; i < m; ++i)
@@ -1580,14 +1592,14 @@ void tridiagonalizza_underdet(
                     A[k + i][k + 1 + j] -= Ak_corr[i][j];
 
             // V0[:, k+1:] = V0[:, k+1:] * (I - 2ww^T)
-            Mat V0_k = crea_matrice(d, q);
+            Mat V0_k = matrix_build_zero(d, q);
             for (int i = 0; i < d; ++i)
                 for (int j = 0; j < q; ++j)
                     V0_k[i][j] = V0[i][k + 1 + j];
 
-            Mat V0_W    = converti_vettore_a_matrice(prodotto_matrice_vettore(V0_k, w), false);
-            Mat V0_corr = prodotto_matrice_coeff(
-                              prodotto_matrici(V0_W, converti_vettore_a_matrice(w, true)),
+            Mat V0_W    = vector_to_matrix(matrix_prodotto_vector(V0_k, w), false);
+            Mat V0_corr = matrix_prodotto_coeff(
+                              matrix_prodotto_matrix(V0_W, vector_to_matrix(w, true)),
                               2.0);
 
             for (int i = 0; i < d; ++i)
@@ -1596,9 +1608,9 @@ void tridiagonalizza_underdet(
         }
 
         if (dump_flag) {
-            stampa_matrice(A, "A al passo " + std::to_string(k));
-            stampa_matrice(prodotto_matrici(calcola_trasposta(U0), U0), "U0_t U0");
-            stampa_matrice(prodotto_matrici(calcola_trasposta(V0), V0), "V0_t V0");
+            matrix_dump(A, "A al passo " + std::to_string(k));
+            matrix_dump(matrix_prodotto_matrix(matrix_trasposta(U0), U0), "U0_t U0");
+            matrix_dump(matrix_prodotto_matrix(matrix_trasposta(V0), V0), "V0_t V0");
         }
     }
 
@@ -1618,12 +1630,12 @@ void bidiagonalizza_underdet_low(
     int n = A.size();
     int d = A[0].size();
     
-    if (dump_flag) stampa_matrice(A, "Originale"); 
+    if (dump_flag) matrix_dump(A, "Originale"); 
 
     int p = std::min(n, d);
 
-    U0 = identita(n);          // n x n
-    V0 = identita(d);          // d x d
+    U0 = matrix_build_Id(n);          // n x n
+    V0 = matrix_build_Id(d);          // d x d
 
     Vec v, w;
 
@@ -1658,53 +1670,53 @@ void bidiagonalizza_underdet_low(
             //vector_dump(w, 10, w.size(), "W di householder riga destra");
             // 3. Aggiorna A[k:, k+1:] <- A[k:, k+1:] - 2*(A[k:,k+1:]*w)*w^T
             // blocco A_k: righe k..n-1, colonne k..d-1
-            Mat A_k = crea_matrice(m, q);
+            Mat A_k = matrix_build_zero(m, q);
 
             for (int i = 0; i < m; i++){
                 for (int j = 0; j < q; j++) {
                     A_k[i][j] = A[k+i][k+j];
                 }
             }
-            Mat Ak_W =  converti_vettore_a_matrice(prodotto_matrice_vettore(A_k, w), false);
-            Mat Ak_W_Wt = prodotto_matrici(Ak_W, converti_vettore_a_matrice(w, true));
-            //stampa_matrice(Ak_W_Wt, "A_k W W_t " + std::to_string(k));           
-            Mat Two_Ak_W_Wt = prodotto_matrice_coeff(Ak_W_Wt, 2.0);
+            Mat Ak_W =  vector_to_matrix(matrix_prodotto_vector(A_k, w), false);
+            Mat Ak_W_Wt = matrix_prodotto_matrix(Ak_W, vector_to_matrix(w, true));
+            //matrix_dump(Ak_W_Wt, "A_k W W_t " + std::to_string(k));           
+            Mat Two_Ak_W_Wt = matrix_prodotto_coeff(Ak_W_Wt, 2.0);
 
             for (int i = 0; i < m; i++){
                 for (int j = 0; j < q; j++) {
                     A[k+i][k+j] -=  Two_Ak_W_Wt[i][j];
                 }
             }
-            if (dump_flag) stampa_matrice(A, "A al passo dx " + std::to_string(k));
+            if (dump_flag) matrix_dump(A, "A al passo dx " + std::to_string(k));
 
             // 4. Aggiorna V0[:, k+1:] <- V0[:, k+1:] - 2*(V0[:,k+1:]*w)*w^T
-            Mat V0_k = crea_matrice(d,q); //tutte le righe e tante colonne quanto e' lungo w                                                                           
+            Mat V0_k = matrix_build_zero(d,q); //tutte le righe e tante colonne quanto e' lungo w                                                                           
 
             for (int i = 0; i < d; i++){
                 for (int j = 0; j < q; j++) V0_k[i][j] = V0[i][k+j];
             }
-            Mat V0_W =  converti_vettore_a_matrice(prodotto_matrice_vettore(V0_k, w), false);
-            Mat V0_W_Wt = prodotto_matrici(V0_W, converti_vettore_a_matrice(w, true));
+            Mat V0_W =  vector_to_matrix(matrix_prodotto_vector(V0_k, w), false);
+            Mat V0_W_Wt = matrix_prodotto_matrix(V0_W, vector_to_matrix(w, true));
 
-            //stampa_matrice(V0_W_Wt, "V0_k W W_t " + std::to_string(k));
+            //matrix_dump(V0_W_Wt, "V0_k W W_t " + std::to_string(k));
             
-            Mat Two_V0_W_Wt = prodotto_matrice_coeff(V0_W_Wt, 2.0);
+            Mat Two_V0_W_Wt = matrix_prodotto_coeff(V0_W_Wt, 2.0);
             for (int i = 0; i < d; i++){
                 for (int j = 0; j < q; j++) 
                     V0[i][k+j] -= Two_V0_W_Wt[i][j];
             }
-            //stampa_matrice(V0, "V0 al passo " + std::to_string(k));
+            //matrix_dump(V0, "V0 al passo " + std::to_string(k));
             //
             //  Verifica di U0 e V0 ortogonali
             //
 
             //cout << "Trasposta V0" << endl;
-            Mat V0t_V0 = prodotto_matrici(calcola_trasposta(V0), V0);
+            Mat V0t_V0 = matrix_prodotto_matrix(matrix_trasposta(V0), V0);
             //cout << "Trasposta U0" << endl;
-            Mat U0t_U0 = prodotto_matrici(calcola_trasposta(U0), U0);
+            Mat U0t_U0 = matrix_prodotto_matrix(matrix_trasposta(U0), U0);
             cout << "Fatto" << endl;
-            //stampa_matrice(U0t_U0, "U0_t U0");
-            //stampa_matrice(V0t_V0, "V0_t V0");
+            //matrix_dump(U0t_U0, "U0_t U0");
+            //matrix_dump(V0t_V0, "V0_t V0");
 
             
             
@@ -1724,46 +1736,46 @@ void bidiagonalizza_underdet_low(
             w = householder_colonna(v);
             //vector_dump(w, 10, w.size(), "W di householder colonna sinsitra");
             // 3. Aggiorna A[k:, :] <- A[k:, :] - 2*w*(w^T * A[k:, :])
-            Mat A_k = crea_matrice(m, q);
+            Mat A_k = matrix_build_zero(m, q);
             for (int i = 0; i < m; i++){
                 for (int j = 0; j < q; j++) {
                     A_k[i][j] = A[k+i+1][k+j];
                 }
             }
-            // stampa_matrice(A_k, "A_k a giro "+std::to_string(k));
-            Mat Wt = converti_vettore_a_matrice(w,true);
-            // stampa_matrice(Wt, "Wt come matrice 1 x n");
-            Mat Wt_Ak = prodotto_matrici(Wt, A_k); // w va direttamente trasposto con true
-            stampa_matrice(Wt_Ak, "Wt A_k" + std::to_string(k));
-            Mat W_Wt_Ak = prodotto_matrici(converti_vettore_a_matrice(w, false), Wt_Ak);
-            // stampa_matrice(W_Wt_Ak, "W Wt A_k" + std::to_string(k));
-            Mat Two_W_Wt_Ak = prodotto_matrice_coeff(W_Wt_Ak, 2.0);
-            // stampa_matrice(Two_W_Wt_Ak, "2 W Wt A_k" + std::to_string(k));
+            // matrix_dump(A_k, "A_k a giro "+std::to_string(k));
+            Mat Wt = vector_to_matrix(w,true);
+            // matrix_dump(Wt, "Wt come matrice 1 x n");
+            Mat Wt_Ak = matrix_prodotto_matrix(Wt, A_k); // w va direttamente trasposto con true
+            matrix_dump(Wt_Ak, "Wt A_k" + std::to_string(k));
+            Mat W_Wt_Ak = matrix_prodotto_matrix(vector_to_matrix(w, false), Wt_Ak);
+            // matrix_dump(W_Wt_Ak, "W Wt A_k" + std::to_string(k));
+            Mat Two_W_Wt_Ak = matrix_prodotto_coeff(W_Wt_Ak, 2.0);
+            // matrix_dump(Two_W_Wt_Ak, "2 W Wt A_k" + std::to_string(k));
             for (int i=0; i<m; i++){
                 for (int j = 0; j < q; j++) {
                     A[k+i+1][k+j] -= Two_W_Wt_Ak[i][j];
                 }
             }
-            if (dump_flag) stampa_matrice(A, "A al passo sx " + std::to_string(k));
+            if (dump_flag) matrix_dump(A, "A al passo sx " + std::to_string(k));
 
             // 4. Aggiorna U0[:, k:] <- U0[:, k:] - 2*(U0[:,k:]*w)*w^T
 
-            Mat U0_k = crea_matrice(n,m); //tutte le righe e tante colonne quanto e' lungo w                                                                           
+            Mat U0_k = matrix_build_zero(n,m); //tutte le righe e tante colonne quanto e' lungo w                                                                           
             for (int i = 0; i < n; i++){
                 for (int j = 0; j < m; j++) {
                     U0_k[i][j] = U0[i][k+j+1];
                 }
             }
-            Mat U0_W =  converti_vettore_a_matrice(prodotto_matrice_vettore(U0_k, w), false);
-            Mat U0_W_Wt = prodotto_matrici(U0_W, converti_vettore_a_matrice(w, true));
-            // stampa_matrice(U0_W_Wt, "U0_k W W_t " + std::to_string(k));
-            Mat Two_U0_W_Wt = prodotto_matrice_coeff(U0_W_Wt, 2.0);
+            Mat U0_W =  vector_to_matrix(matrix_prodotto_vector(U0_k, w), false);
+            Mat U0_W_Wt = matrix_prodotto_matrix(U0_W, vector_to_matrix(w, true));
+            // matrix_dump(U0_W_Wt, "U0_k W W_t " + std::to_string(k));
+            Mat Two_U0_W_Wt = matrix_prodotto_coeff(U0_W_Wt, 2.0);
             for (int i = 0; i < n; i++){
                 for (int j = 0; j < m; j++) {
                     U0[i][k+j+1] -= Two_U0_W_Wt[i][j];
                 }
             }
-            // stampa_matrice(U0, "U0 al passo " + std::to_string(k));
+            // matrix_dump(U0, "U0 al passo " + std::to_string(k));
         }
 
     }
@@ -1771,7 +1783,7 @@ void bidiagonalizza_underdet_low(
 }
 // questa non funziona perche' quando k = p-1, se n > d, 
 // allora il passo colonna non viene eseguito e quindi A non viene modificata, 
-// ma U0 viene comunque modificata con una matrice di Householder che non e' identita'. 
+// ma U0 viene comunque modificata con una matrice di Householder che non e' matrix_build_Id'. 
 // Quindi alla fine U0 non e' ortogonale. Invece con la versione precedente, 
 // quando k = p-1, se n > d, allora il passo colonna viene eseguito e modifica A e U0 in modo coerente. 
 // Quindi alla fine U0 e V0 sono ortogonali.
@@ -1788,12 +1800,12 @@ void bidiagonalizza_overdet_low(
     int n = A.size();
     int d = A[0].size();
 
-    if (dump_flag) stampa_matrice(A, "Originale");
+    if (dump_flag) matrix_dump(A, "Originale");
 
     int p = std::min(n, d);
 
-    U0 = identita(n);
-    V0 = identita(d);
+    U0 = matrix_build_Id(n);
+    V0 = matrix_build_Id(d);
 
     Vec v, w;
 
@@ -1811,17 +1823,17 @@ void bidiagonalizza_overdet_low(
 
             w = householder_colonna(v);
 
-            Mat A_k = crea_matrice(m, q);
+            Mat A_k = matrix_build_zero(m, q);
             for (int i = 0; i < m; ++i) {
                 for (int j = 0; j < q; ++j) {
                     A_k[i][j] = A[k + 1 + i][k + j];
                 }
             }
 
-            Mat Wt = converti_vettore_a_matrice(w, true);
-            Mat Wt_Ak = prodotto_matrici(Wt, A_k);
-            Mat W_Wt_Ak = prodotto_matrici(converti_vettore_a_matrice(w, false), Wt_Ak);
-            Mat Two_W_Wt_Ak = prodotto_matrice_coeff(W_Wt_Ak, 2.0);
+            Mat Wt = vector_to_matrix(w, true);
+            Mat Wt_Ak = matrix_prodotto_matrix(Wt, A_k);
+            Mat W_Wt_Ak = matrix_prodotto_matrix(vector_to_matrix(w, false), Wt_Ak);
+            Mat Two_W_Wt_Ak = matrix_prodotto_coeff(W_Wt_Ak, 2.0);
 
             for (int i = 0; i < m; ++i) {
                 for (int j = 0; j < q; ++j) {
@@ -1829,16 +1841,16 @@ void bidiagonalizza_overdet_low(
                 }
             }
 
-            Mat U0_k = crea_matrice(n, m);
+            Mat U0_k = matrix_build_zero(n, m);
             for (int i = 0; i < n; ++i) {
                 for (int j = 0; j < m; ++j) {
                     U0_k[i][j] = U0[i][k + 1 + j];
                 }
             }
 
-            Mat U0_W = converti_vettore_a_matrice(prodotto_matrice_vettore(U0_k, w), false);
-            Mat U0_W_Wt = prodotto_matrici(U0_W, converti_vettore_a_matrice(w, true));
-            Mat Two_U0_W_Wt = prodotto_matrice_coeff(U0_W_Wt, 2.0);
+            Mat U0_W = vector_to_matrix(matrix_prodotto_vector(U0_k, w), false);
+            Mat U0_W_Wt = matrix_prodotto_matrix(U0_W, vector_to_matrix(w, true));
+            Mat Two_U0_W_Wt = matrix_prodotto_coeff(U0_W_Wt, 2.0);
 
             for (int i = 0; i < n; ++i) {
                 for (int j = 0; j < m; ++j) {
@@ -1861,16 +1873,16 @@ void bidiagonalizza_overdet_low(
             w = householder_riga(v);
             if (dump_flag) vector_dump(w, 10, w.size(), "W di householder riga destra");
 
-            Mat A_k = crea_matrice(m, q);
+            Mat A_k = matrix_build_zero(m, q);
             for (int i = 0; i < m; ++i) {
                 for (int j = 0; j < q; ++j) {
                     A_k[i][j] = A[k + 1 + i][k + 1 + j];
                 }
             }
 
-            Mat Ak_W = converti_vettore_a_matrice(prodotto_matrice_vettore(A_k, w), false);
-            Mat Ak_W_Wt = prodotto_matrici(Ak_W, converti_vettore_a_matrice(w, true));
-            Mat Two_Ak_W_Wt = prodotto_matrice_coeff(Ak_W_Wt, 2.0);
+            Mat Ak_W = vector_to_matrix(matrix_prodotto_vector(A_k, w), false);
+            Mat Ak_W_Wt = matrix_prodotto_matrix(Ak_W, vector_to_matrix(w, true));
+            Mat Two_Ak_W_Wt = matrix_prodotto_coeff(Ak_W_Wt, 2.0);
 
             for (int i = 0; i < m; ++i) {
                 for (int j = 0; j < q; ++j) {
@@ -1878,18 +1890,18 @@ void bidiagonalizza_overdet_low(
                 }
             }
 
-            if (dump_flag) stampa_matrice(A, "A al passo dx " + std::to_string(k));
+            if (dump_flag) matrix_dump(A, "A al passo dx " + std::to_string(k));
 
-            Mat V0_k = crea_matrice(d, q);
+            Mat V0_k = matrix_build_zero(d, q);
             for (int i = 0; i < d; ++i) {
                 for (int j = 0; j < q; ++j) {
                     V0_k[i][j] = V0[i][k + 1 + j];
                 }
             }
 
-            Mat V0_W = converti_vettore_a_matrice(prodotto_matrice_vettore(V0_k, w), false);
-            Mat V0_W_Wt = prodotto_matrici(V0_W, converti_vettore_a_matrice(w, true));
-            Mat Two_V0_W_Wt = prodotto_matrice_coeff(V0_W_Wt, 2.0);
+            Mat V0_W = vector_to_matrix(matrix_prodotto_vector(V0_k, w), false);
+            Mat V0_W_Wt = matrix_prodotto_matrix(V0_W, vector_to_matrix(w, true));
+            Mat Two_V0_W_Wt = matrix_prodotto_coeff(V0_W_Wt, 2.0);
 
             for (int i = 0; i < d; ++i) {
                 for (int j = 0; j < q; ++j) {
@@ -1897,7 +1909,7 @@ void bidiagonalizza_overdet_low(
                 }
             }
 
-            if (dump_flag) stampa_matrice(V0, "V0 al passo dx " + std::to_string(k));
+            if (dump_flag) matrix_dump(V0, "V0 al passo dx " + std::to_string(k));
         }
     }
 
@@ -1924,7 +1936,7 @@ void bidiagonalizza(
             bidiagonalizza_underdet_low(A, U0, B, V0,  dump_flag);
         cout << "Bidiagonalizzazione diretta" << endl;
     } else {
-        Mat At = calcola_trasposta(A);
+        Mat At = matrix_trasposta(A);
 
         Mat Ut, Bt, Vt;
         if (sup_diag)
@@ -1933,7 +1945,7 @@ void bidiagonalizza(
             bidiagonalizza_underdet_low(At, Ut, Bt, Vt, dump_flag);   // At = Ut * Bt * Vt^T
         cout << "Bidiagonalizzazione inversa" << endl;
         U0 = Vt;           // A = Vt * Bt^T * Ut^T
-        B  = calcola_trasposta(Bt);
+        B  = matrix_trasposta(Bt);
         V0 = Ut;
     }
 }
@@ -1944,11 +1956,11 @@ Mat matrice_At_A (
 {   Mat B;
     if (A_right) {
         int n = A[0].size(); // A = mXn => At A = nXm mXn = nXn
-        B = prodotto_matrici(calcola_trasposta(A), A);
+        B = matrix_prodotto_matrix(matrix_trasposta(A), A);
     } else {
         int n = A.size(); // A = mXn => A At = mXn nXm = mXm
         Mat B(n, Vec(n, 0.0));
-        B = prodotto_matrici(A, calcola_trasposta(A));
+        B = matrix_prodotto_matrix(A, matrix_trasposta(A));
     };
     return B;
 }
@@ -1958,7 +1970,7 @@ Mat matrice_diagonale(
     int m, 
     int n) 
 {
-    Mat S = crea_matrice(m, n);
+    Mat S = matrix_build_zero(m, n);
     int r = std::min<int>(s.size(), std::min(m, n));
     for (int i = 0; i < r; ++i)
         S[i][i] = s[i];
@@ -2006,7 +2018,7 @@ Mat centra_matrice(
 {
     int m = A.size();
     int n = A[0].size();
-    Mat Res = crea_matrice(m,n);
+    Mat Res = matrix_build_zero(m,n);
     for (int i = 0; i < m; i++)
         for (int j = 0; j < n; j++)
             if (by_col) {
@@ -2021,7 +2033,7 @@ void test_ortogonalita(
     const Mat& A,
     string s)
 {
-    stampa_matrice(prodotto_matrici(calcola_trasposta(A), A), "Test di ortogonalita' di "+s);
+    matrix_dump(matrix_prodotto_matrix(matrix_trasposta(A), A), "Test di ortogonalita' di "+s);
 }
 //
 //  SVD sostitutiva in attesa di istruzioni 
@@ -2034,7 +2046,7 @@ void jacobi_simmetrica(
 {
     Mat A = D; 
     int n = A.size();
-    V = identita(n);
+    V = matrix_build_Id(n);
 
     const int max_iter = 100 * n * n;
     const double tol = 1e-12;
@@ -2195,7 +2207,7 @@ Mat completa_base_ortonormale(
     //
     // debug ortonormalizzazione
     //
-    // stampa_matrice(A, "Verifica ridotta prima di completamento a dXd");
+    // matrix_dump(A, "Verifica ridotta prima di completamento a dXd");
     //
     // fine debug
     //
@@ -2288,8 +2300,8 @@ void svd_bidiagonale_ridotta(
     const int d = static_cast<int>(B[0].size());       // colonne
 
     // 1) Costruisci BtB = B^T B (d x d)
-    Mat Bt = calcola_trasposta(B);                             // d x p
-    Mat BtB = prodotto_matrici(Bt, B);                 // d x d
+    Mat Bt = matrix_trasposta(B);                             // d x p
+    Mat BtB = matrix_prodotto_matrix(Bt, B);                 // d x d
 
     // 2) Autovalori/autovettori di BtB (d x d)
     Vec lambda;
@@ -2326,7 +2338,7 @@ void svd_bidiagonale_ridotta(
             vk[j] = Vb_red[j][k];
 
         // w = B * v_k  (p)
-        Vec wk = prodotto_matrice_vettore(B, vk);              // p
+        Vec wk = matrix_prodotto_vector(B, vk);              // p
 
         if (sigma[k] > 0.0)
         {
@@ -2373,7 +2385,7 @@ void svd_bidiagonale_compat(
         svd_bidiagonale_ridotta(B, Ub, sigma, Vbred, ev_tol);
         Vb = completa_base_ortonormale(Vbred);
     } else {
-        Mat Bt = calcola_trasposta(B);
+        Mat Bt = matrix_trasposta(B);
         Mat U_bt, V_bt, V_btred;
 
         svd_bidiagonale_ridotta(Bt, U_bt, sigma, V_btred, ev_tol);

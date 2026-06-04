@@ -8,50 +8,73 @@
 #include <cmath>
 #include <matplot/matplot.h>
 
-using std::cout;
-using std::endl;
+using namespace std;
 using Vec = std::vector<double>;
 using VecN = std::vector<int>;
 using Mat = std::vector<Vec>;
-using namespace matplot;
-using namespace std;
 
+using namespace matplot;
 using KM = matplot::keyword_manual_type ;
 using KA = matplot::keyword_automatic_type ;
-
 
 const double PI = std::acos(-1.0);
 
 enum class SortOrder { Asc, Desc };
 
-
-struct MenuItem {
-    int key;
-    std::string label;
-    std::string action;
-    bool enabled;
-};
-
-struct MenuConfig {
-    std::string title;
-    std::vector<MenuItem> items;
-};
-
-MenuConfig load_menu_config(
-    const std::string& filename);
-
-const MenuItem* find_menu_item(
-    const MenuConfig& menu, 
-    int key);
-
-void wait_return_to_menu(bool bypass_waitakey);
+// 
+// funzioni di gestione interfaccia utente 
+// 
 
 void cin_clear();
+
+string color_bool(
+    const bool val);
+
+string color_dbl(
+    const double val);
+
+void color_rst();
+
+//
+// funzioni di conversione formato ed equivalenza unita' di misura
+//
+
+std::string itostr(
+    const int nn);
+
+double deg2rad(
+    const int alpha);
+
+string format_numstr(
+    double v);
+
+
+//
+// funzioni di base per intervalli 
+//
 
 double h_ticks(
     const double a_start, 
     const double a_stop, 
     const int a_points);
+
+Vec nodi_bubblesort (
+    const Vec x_uns,
+    const int totnum);  
+
+Vec nodi_equidistanti(
+    const double amin,
+    const double amax,
+    const int NPoints);
+
+Vec nodi_random(
+    const double amin, 
+    const double amax,
+    const int NPoints);
+
+//
+// funzioni matematiche ad uso callback 
+//
 
 double f_x(
     double t);
@@ -75,32 +98,107 @@ double fcallb(
     double t, 
     double (*f)(double));   
 
-Mat kernel_gaussiano_matrice(
+
+//
+// funzioni macro algebra lineare
+// 
+
+Vec linear_risolvi_colonna(
+    const Mat& L,
+    const Mat& U,
+    Vec x);
+
+Vec linear_LU_calcola_autovalori (
+    const Mat& A);
+
+void linear_LU_dec(
+    const Mat &A, 
+    Mat &L, 
+    Mat &U);
+
+Mat linear_LU_inversa (
+    const Mat& A);
+
+Vec linear_LU_risolve_sistema(
+    const Mat& T,
+    const Vec& x);
+
+double linear_max_autoval_pwr_any_res(
+    const Mat& M, 
+    int max_iter, 
+    double tol);
+
+double linear_max_autoval_pwr_any(
+    const Mat& M, 
+    int max_iter, 
+    double tol);
+
+double linear_max_autoval_pwr_AtA(
+    const Mat& M, 
+    int max_iter, 
+    double tol);
+
+//
+// funzioni per la gestione di vettori e matrici
+//
+
+Mat matrix_build_gausskernel(
     const int N, 
     const double sigma,
     const double h, 
     bool norm_flag,
     Vec& Indicatori) ;
-    
-Vec add_rumore(
-    Vec& v, 
-    double e);
 
-string color_bool(
-    const bool val);
+Mat matrix_build_Id(
+    int n);
 
-string color_dbl(
-    const double val);
+Mat matrix_build_triang(
+    int n);
+Mat matrix_build_triang_inv(
+    int n);
 
-void color_rst();
+Mat matrix_build_zero(
+    int righe, 
+    int colonne);
 
-void stampa_matrice(
+Mat matrix_differenza(
+    const Mat& A, 
+    const Mat& B);
+
+void matrix_dump(
     const Mat &A, 
     const std::string &nome);
 
-Vec vector_shift(
-    const Vec &v, 
-    const double shift);
+Mat matrix_estende_ridotta(
+    const Mat& A, 
+    int n, 
+    bool bycol);
+
+Mat matrix_normalize_byrow(
+    Mat& K);
+    
+Mat matrix_prodotto_coeff(
+    const Mat& A, 
+    const double coeff) ;
+
+Mat matrix_prodotto_matrix(
+    const Mat& A, 
+    const Mat& B);
+
+Vec matrix_prodotto_vector(
+    const Mat& A, 
+    const Vec& v);
+
+Mat matrix_trasposta(
+    const Mat& A);
+
+Vec vector_add_noise(
+    Vec& v, 
+    double e);
+
+Vec vector_build_versore_canonico(
+    int j, 
+    int N);
 
 void vector_dump (
     Vec x, 
@@ -108,133 +206,36 @@ void vector_dump (
     int totnum, 
     const std::string s);
 
-Vec vector_reverse(
-    const Vec& v);
-
-std::string itostr(
-    const int nn);
-
-double deg2rad(
-    const int alpha);
-
-string format_numstr(
-    double v);
-
-Vec nodi_equidistanti(
-    const double amin,
-    const double amax,
-    const int NPoints);
-
-Vec nodi_random(
-    const double amin, 
-    const double amax,
-    const int NPoints);
-
-Vec nodi_bubblesort (
-    const Vec x_uns,
-    const int totnum);
-    
-Mat crea_matrice(
-    int righe, 
-    int colonne);
-
-Mat identita(
-    int n);
-
-Mat costruisci_triangolare(
-    int n);
-Mat costruisci_inv_triangolare_sint(
-    int n);
-
-double prodotto_scalare(
+double vector_prodotto_scalare(
     const Vec &u,
     const Vec &v);
 
-Mat matrice_ridotta(
-    const Mat& A, 
-    int n, 
-    bool bycol);
-
-Mat differenza_matrici(
-    const Mat& A, 
-    const Mat& B);
-
-Mat prodotto_matrici(
-    const Mat& A, 
-    const Mat& B);
-
-Vec prodotto_matrice_vettore(
-    const Mat& A, 
+Vec vector_reverse(
     const Vec& v);
 
-Mat prodotto_matrice_coeff(
-    const Mat& A, 
-    const double coeff) ;
+Vec vector_shift(
+    const Vec &v, 
+    const double shift);
 
-double max_autoval_power_A_res(
-    const Mat& M, 
-    int max_iter, 
-    double tol);
-
-double max_autoval_power_A(
-    const Mat& M, 
-    int max_iter, 
-    double tol);
-
-double max_autoval_power_AtA(
-    const Mat& M, 
-    int max_iter, 
-    double tol);
-
-double norma_vettore(
-    int norma, 
-    const Vec& V);
-
-double norma_matrice(
-    int norma,
-    const Mat& A);
-
-Vec forward_substitution(
-    const Mat &L, 
-    const Vec &b);
-
-Vec backward_substitution(
-    const Mat &U, 
-    const Vec &y);
-
-void LU(
-    const Mat &A, 
-    Mat &L, 
-    Mat &U);
-
-Mat matrice_righe_normalizzate(
-    Mat& K);
-
-Mat converti_vettore_a_matrice(
+Mat vector_to_matrix(
     const Vec& v,
     bool transp);
 
-Mat calcola_trasposta(
+double vector_norma(
+    int norma, 
+    const Vec& V);
+
+double matrix_norma(
+    int norma,
     const Mat& A);
 
-Vec versore_canonico(
-    int j, 
-    int N);
+Vec linear_FW_subst(
+    const Mat &L, 
+    const Vec &b);
 
-Vec risolvi_colonna(
-    const Mat& L,
-    const Mat& U,
-    Vec x);
-
-Vec risolvi_sistema_LU(
-    const Mat& T,
-    const Vec& x);
-
-Mat calcola_inversa_LU (
-    const Mat& A);
-
-Vec calcola_autovalori_LU (
-    const Mat& A);
+Vec linear_BW_subst(
+    const Mat &U, 
+    const Vec &y);
 
 Vec segnale_finestra(
     int N,
@@ -331,5 +332,31 @@ void legend_align(
     int pos_enum, 
     float xscale,
     float yscale) ;
+
+//
+// gestione menu principale
+// 
+
+struct MenuItem {
+    int key;
+    std::string label;
+    std::string action;
+    bool enabled;
+};
+
+struct MenuConfig {
+    std::string title;
+    std::vector<MenuItem> items;
+};
+
+MenuConfig load_menu_config(
+    const std::string& filename);
+
+const MenuItem* find_menu_item(
+    const MenuConfig& menu, 
+    int key);
+
+void wait_return_to_menu(bool bypass_waitakey); 
+
 
 #endif

@@ -68,9 +68,9 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         const int K) 
     {
         // gram computes a $K \times K$ Gram matrix from a vector x by sampling K subvectors with campiona, 
-        // taking pairwise dot products via prodotto_scalare, and filling a symmetric matrix G.
+        // taking pairwise dot products via vector_prodotto_scalare, and filling a symmetric matrix G.
 
-        Mat G = crea_matrice(K, K);
+        Mat G = matrix_build_zero(K, K);
         Vec sample_u, sample_v;
         double Gij;     // usiamo uno scalare per accelerare senza lookup doppio
         for (int i=0;i<K;i++)
@@ -78,7 +78,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             {
                 sample_u = campiona(i,x);
                 sample_v= campiona(j,x);
-                Gij = prodotto_scalare(sample_u, sample_v);
+                Gij = vector_prodotto_scalare(sample_u, sample_v);
                 G[i][j] = Gij;
                 G[j][i] = Gij;
             }
@@ -594,7 +594,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         //
         // gia' una volta bastava ma proviamo con tre giri 
         //
-        for (int i=0; i<3; i++) max_autoval_power_A_res(A, 1000, 1e-12);
+        for (int i=0; i<3; i++) linear_max_autoval_pwr_any_res(A, 1000, 1e-12);
     }
 
     void f1_sample() {
@@ -630,7 +630,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             x_eq = nodi_equidistanti(0, NR, N);
             G_eq  = gram(x_eq, K);
             //vector_dump(x_eq, Cols, N);
-            //stampa_matrice(G_eq, "Gram nodi eq  da 0 a ");
+            //matrix_dump(G_eq, "Gram nodi eq  da 0 a ");
             
             // ── Parte B: nodi NON equidistanti ────────────────────────────────────────
             //    Creare N nodi a piacere (es. concentrati in [0, pi]) e ricalcolare G.
@@ -645,7 +645,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             x_asym2 = nodi_equidistanti(0, NR, N);
             G_asym2 = gram(x_asym2, K);
             //vector_dump(x_asym, Cols, N);
-            //stampa_matrice(G_asym, "Gram nodi eq da 0 a ");
+            //matrix_dump(G_asym, "Gram nodi eq da 0 a ");
 
             // veramente casuali
 
@@ -653,14 +653,14 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             x_rnd = nodi_random(0, NR, N);
             G_rnd  = gram(x_rnd, K);
             // vector_dump(x_rnd, Cols, N);
-            // stampa_matrice(G_rnd, "Gram nodi random da 0 a ");
+            // matrix_dump(G_rnd, "Gram nodi random da 0 a ");
             
             // riordinati con nodi crescenti
             // NR = 100;
             // Vec x_srt = nodi_bubblesort(x_rnd, N);
             // Mat G_srt  = gram(x_srt, K);
             // vector_dump(x_srt, Cols, N);
-            // stampa_matrice(G_srt, "Gram nodi random ord da 0 a "); // inutile 
+            // matrix_dump(G_srt, "Gram nodi random ord da 0 a "); // inutile 
 
 
             // ── Visualizzazione con matplot++ ─────────────────────────────────────────
@@ -1156,7 +1156,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_x, false);
             vector_dump(b, 10, 50, " b = t"); 
             // Risoluzione con sostituzione in avanti
-            Vec x = forward_substitution(L, b);
+            Vec x = linear_FW_subst(L, b);
             vector_dump(x, 10, 50, " x da Lx = h*t"); 
 
             auto fig = TableInit(true, "Cauchy", "Soluzione numerica del problema di Cauchy", 1, 1);
@@ -1182,7 +1182,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_sin, false);
             vector_dump(b, 10, 50, " b = sin(t) "); 
             // Risoluzione con sostituzione in avanti
-            x = forward_substitution(L, b);
+            x = linear_FW_subst(L, b);
             vector_dump(x, 10, 50, " x da Lx = h*sin(t) "); 
 
             fig->nexttile(2);
@@ -1195,7 +1195,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_cos, false); 
             vector_dump(b, 10, 50, " b = cos(t) "); 
             // Risoluzione con sostituzione in avanti
-            x = forward_substitution(L, b);
+            x = linear_FW_subst(L, b);
             vector_dump(x, 10, 50, " x da Lx = h*cos(t) "); 
 
 
@@ -1244,7 +1244,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             vector_dump(fvals, 10, fvals.size(), "fvals");
             vector_dump(b, 10, b.size(), "b");
 
-            // stampa_matrice(A, "tridiag");
+            // matrix_dump(A, "tridiag");
 
             auto ffig = TableInit(true, "Bordo", "Costruzione matrice A e fattorizzazione LU", 2, 2);
             
@@ -1258,10 +1258,10 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
             
             // Risoluzione con fattorizzazione LU
-            LU(A, L, U);
+            linear_LU_dec(A, L, U);
 
-            // stampa_matrice(L, "lower");
-            // stampa_matrice(U,  "upper");
+            // matrix_dump(L, "lower");
+            // matrix_dump(U,  "upper");
 
             ffig->nexttile(2);
             title("Matrix L");
@@ -1275,11 +1275,11 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             colorbar();
 
             // Sostituzione in avanti per L y = b
-            y = forward_substitution(L, b);
+            y = linear_FW_subst(L, b);
             vector_dump(y, 10, y.size(), "y");
 
             // Sostituzione indietro per U x = y
-            x = backward_substitution(U, y);
+            x = linear_BW_subst(U, y);
             vector_dump(x, 10, x.size(), "x");
 
             // costruzione vettore completo con condizioni al bordo
@@ -1351,36 +1351,36 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             }
             // vector_dump(fvals, 10, fvals.size(), "fvals = 1/(1+x^2) campionata in N punti");
 
-            Mat T = costruisci_triangolare(N); // costruisce matrice triangolare di dimensione N x N
-            T = prodotto_matrice_coeff(T, h); // moltiplica per h
-            // stampa_matrice(T, "Triangolare");
+            Mat T = matrix_build_triang(N); // costruisce matrice triangolare di dimensione N x N
+            T = matrix_prodotto_coeff(T, h); // moltiplica per h
+            // matrix_dump(T, "Triangolare");
 
-            Vec v_atan = prodotto_matrice_vettore(T, fvals); // prodotto matrice vettore per ottenere stima integrale
+            Vec v_atan = matrix_prodotto_vector(T, fvals); // prodotto matrice vettore per ottenere stima integrale
             vector_dump(v_atan, 10, v_atan.size(), "T * fvals = stima integrale per somma discreta");
             v_atan = vector_shift(v_atan, std::atan(a)); // shift di arcotg(a) per centratura
             vector_dump(v_atan, 10, v_atan.size(), "T * fvals = stima integrale riposizionata");
         
-            // Mat T_inv_sint = costruisci_inv_triangolare_sint(10);
-            // stampa_matrice(T_inv_sint, "Inversa sintetica");
+            // Mat T_inv_sint = matrix_build_triang_inv(10);
+            // matrix_dump(T_inv_sint, "Inversa sintetica");
 
-            Mat T_inv = calcola_inversa_LU (T);
-            //stampa_matrice(T_inv, "Inversa con LU");
-            double NFT = norma_matrice(-1, T);
-            double NFT_inv = norma_matrice(-1, T_inv);
-            double N1T = norma_matrice(1, T);
-            double N1T_inv = norma_matrice(1, T_inv);   
-            double NIT = norma_matrice(0, T);
-            double NIT_inv = norma_matrice(0, T_inv); 
-            double N2T = norma_matrice(2, T);
-            double N2T_inv = norma_matrice(2, T_inv);   
+            Mat T_inv = linear_LU_inversa (T);
+            //matrix_dump(T_inv, "Inversa con LU");
+            double NFT = matrix_norma(-1, T);
+            double NFT_inv = matrix_norma(-1, T_inv);
+            double N1T = matrix_norma(1, T);
+            double N1T_inv = matrix_norma(1, T_inv);   
+            double NIT = matrix_norma(0, T);
+            double NIT_inv = matrix_norma(0, T_inv); 
+            double N2T = matrix_norma(2, T);
+            double N2T_inv = matrix_norma(2, T_inv);   
             
-            Vec v_atan_d = prodotto_matrice_vettore(T_inv, vector_shift(v_atan, -std::atan(a))); // derivata corrispondente, con backshift di centratura
-            Vec v_atan_dcn = prodotto_matrice_vettore(T_inv, v_atan); // derivata analiticamente corretta ma sbagliata per cn 
+            Vec v_atan_d = matrix_prodotto_vector(T_inv, vector_shift(v_atan, -std::atan(a))); // derivata corrispondente, con backshift di centratura
+            Vec v_atan_dcn = matrix_prodotto_vector(T_inv, v_atan); // derivata analiticamente corretta ma sbagliata per cn 
             vector_dump(v_atan_d, 10, v_atan_d.size(), "T * v_atan = stima derivata simmetrica");
             vector_dump(v_atan_dcn, 10, v_atan_dcn.size(), "T * v_atan = stima derivata analitica");
             
-            // Mat I = prodotto_matrici(T, T_inv);
-            // stampa_matrice(I, "T * T_inv");  
+            // Mat I = matrix_prodotto_matrix(T, T_inv);
+            // matrix_dump(I, "T * T_inv");  
 
             cout << endl;
             cout << "Con N = " << N << " ||T|| = " << NFT << "\t e ||T_inv|| = " << NFT_inv << "\t con Norma di Frobenius" << endl;
@@ -1530,50 +1530,50 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 int N = N_values[n];
                 double h = h_ticks(a,b,N); // passo di campionamento
             
-                Mat A = costruisci_triangolare(N);
-                A = prodotto_matrice_coeff(A, h); // moltiplica per h
-                Mat A_inv = calcola_inversa_LU(A);
+                Mat A = matrix_build_triang(N);
+                A = matrix_prodotto_coeff(A, h); // moltiplica per h
+                Mat A_inv = linear_LU_inversa(A);
 
                 preriscaldamento_anti_overhead(A); // warm-up per taratura cronometrica a strutture fatte
                 
                 // Norma 2 spettrale power con economia
                 auto t_start = std::chrono::steady_clock::now();
-                double norm2_A = norma_matrice(2, A);
+                double norm2_A = matrix_norma(2, A);
                 auto t_end = std::chrono::steady_clock::now();
                 auto time2_A = std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
-                double norm2_Ainv = norma_matrice(2, A_inv);
+                double norm2_Ainv = matrix_norma(2, A_inv);
                 double kappa2 = norm2_A * norm2_Ainv;
                 
                 // Norma 2 spettrale power senza economia
                 t_start = std::chrono::steady_clock::now();
-                double norm12_A = norma_matrice(12, A);
+                double norm12_A = matrix_norma(12, A);
                 t_end = std::chrono::steady_clock::now();
                 auto time12_A = std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
-                double norm12_Ainv = norma_matrice(12, A_inv);
+                double norm12_Ainv = matrix_norma(12, A_inv);
                 double kappa12 = norm12_A * norm12_Ainv;
 
                 // Norma 2 spettrale power + Rayleigh
                 t_start = std::chrono::steady_clock::now();
-                double norm22_A = norma_matrice(22, A);
+                double norm22_A = matrix_norma(22, A);
                 t_end = std::chrono::steady_clock::now();
                 auto time22_A = std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
-                double norm22_Ainv = norma_matrice(22, A_inv);
+                double norm22_Ainv = matrix_norma(22, A_inv);
                 double kappa22 = norm22_A * norm22_Ainv;
 
               
                 // Norma Frobenius
-                double normF_A = norma_matrice(-1, A);
-                double normF_Ainv = norma_matrice(-1, A_inv);
+                double normF_A = matrix_norma(-1, A);
+                double normF_Ainv = matrix_norma(-1, A_inv);
                 double kappaF = normF_A * normF_Ainv;
                 
                 // Norma 1 = max somma colonne
-                double norm1_A = norma_matrice(1, A);
-                double norm1_Ainv = norma_matrice(1, A_inv);
+                double norm1_A = matrix_norma(1, A);
+                double norm1_Ainv = matrix_norma(1, A_inv);
                 double kappa1 = norm1_A * norm1_Ainv;
                 
                 // Norma inf1 = max somma righe
-                double normI_A = norma_matrice(0, A);
-                double normI_Ainv = norma_matrice(0, A_inv);
+                double normI_A = matrix_norma(0, A);
+                double normI_Ainv = matrix_norma(0, A_inv);
                 double kappaI = normI_A * normI_Ainv;
                 
                 std::cout << std::setw(6) << N
@@ -1697,24 +1697,24 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
         while (!leave) {
             double h  = h_ticks(a,b,N); 
-            Mat K = kernel_gaussiano_matrice(N, sigma*h, h, KG_Normal, kappa2[0]);
-            Mat K2 = kernel_gaussiano_matrice(N, sigma*2*h, h, KG_Normal, kappa2[1]);
-            Mat K4 = kernel_gaussiano_matrice(N, sigma*4*h, h, KG_Normal, kappa2[2]);
-            Mat K8 = kernel_gaussiano_matrice(N, sigma*8*h, h, KG_Normal, kappa2[3]);
+            Mat K = matrix_build_gausskernel(N, sigma*h, h, KG_Normal, kappa2[0]);
+            Mat K2 = matrix_build_gausskernel(N, sigma*2*h, h, KG_Normal, kappa2[1]);
+            Mat K4 = matrix_build_gausskernel(N, sigma*4*h, h, KG_Normal, kappa2[2]);
+            Mat K8 = matrix_build_gausskernel(N, sigma*8*h, h, KG_Normal, kappa2[3]);
 
-            // stampa_matrice(K, "Matrice Kernel di Gauss");
+            // matrix_dump(K, "Matrice Kernel di Gauss");
 
             Vec ws0 = segnale_finestra(N,(1./4.),(3./4.),1);
-            Vec ws1 = prodotto_matrice_vettore(K,ws0);
-            Vec ws2 = prodotto_matrice_vettore(K2,ws0);
-            Vec ws4 = prodotto_matrice_vettore(K4,ws0);
-            Vec ws8 = prodotto_matrice_vettore(K8,ws0);
+            Vec ws1 = matrix_prodotto_vector(K,ws0);
+            Vec ws2 = matrix_prodotto_vector(K2,ws0);
+            Vec ws4 = matrix_prodotto_vector(K4,ws0);
+            Vec ws8 = matrix_prodotto_vector(K8,ws0);
             cout << endl << endl;
-            Vec fs0 = risolvi_sistema_LU(K,ws0);
-            Vec fs1 = risolvi_sistema_LU(K,ws1);
-            Vec fs2 = risolvi_sistema_LU(K2,ws2);
-            Vec fs4 = risolvi_sistema_LU(K4,ws4);
-            Vec fs8 = risolvi_sistema_LU(K8,ws8);
+            Vec fs0 = linear_LU_risolve_sistema(K,ws0);
+            Vec fs1 = linear_LU_risolve_sistema(K,ws1);
+            Vec fs2 = linear_LU_risolve_sistema(K2,ws2);
+            Vec fs4 = linear_LU_risolve_sistema(K4,ws4);
+            Vec fs8 = linear_LU_risolve_sistema(K8,ws8);
             vector_dump(ws0, 10, ws0.size(), "Finestra base");
             vector_dump(fs0, 10, fs0.size(), "Trasf base");
             cout <<endl;
@@ -1878,18 +1878,18 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
                 /* 
                 // vector_dump(ws0, 10, ws0.size(), "Ingresso pulito");
-                // vector_dump(add_rumore(ws0, 1), 10, ws0.size(), "Perturbato 0.1%");
-                // vector_dump(add_rumore(ws0, 10), 10, ws0.size(), "Perturbato 1%");
+                // vector_dump(vector_add_noise(ws0, 1), 10, ws0.size(), "Perturbato 0.1%");
+                // vector_dump(vector_add_noise(ws0, 10), 10, ws0.size(), "Perturbato 1%");
                 */
             
-                Vec ws2_r001 = prodotto_matrice_vettore(K, add_rumore(ws0,0.01));
-                Vec ws2_r01 = prodotto_matrice_vettore(K, add_rumore(ws0,0.1));
-                Vec ws2_r05 = prodotto_matrice_vettore(K, add_rumore(ws0,1));
-                Vec ws2_r2 = prodotto_matrice_vettore(K, add_rumore(ws0,10));
-                Vec fs2_r001 = risolvi_sistema_LU(K,ws2_r001);
-                Vec fs2_r01 = risolvi_sistema_LU(K,ws2_r01);
-                Vec fs2_r05 = risolvi_sistema_LU(K,ws2_r05);
-                Vec fs2_r2 = risolvi_sistema_LU(K,ws2_r2);
+                Vec ws2_r001 = matrix_prodotto_vector(K, vector_add_noise(ws0,0.01));
+                Vec ws2_r01 = matrix_prodotto_vector(K, vector_add_noise(ws0,0.1));
+                Vec ws2_r05 = matrix_prodotto_vector(K, vector_add_noise(ws0,1));
+                Vec ws2_r2 = matrix_prodotto_vector(K, vector_add_noise(ws0,10));
+                Vec fs2_r001 = linear_LU_risolve_sistema(K,ws2_r001);
+                Vec fs2_r01 = linear_LU_risolve_sistema(K,ws2_r01);
+                Vec fs2_r05 = linear_LU_risolve_sistema(K,ws2_r05);
+                Vec fs2_r2 = linear_LU_risolve_sistema(K,ws2_r2);
                 
                 Vec x_vals = nodi_equidistanti(a,b,N);
                 std::string title = "Perturbazioni ("+KGN_title+") a 1x StD base ";
@@ -2083,45 +2083,45 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 // Matrice 4x5 casuale
                 std::mt19937 rng(42);
                 std::normal_distribution<double> g(0.0, 1.0);
-                Mat X = crea_matrice(n, d);
+                Mat X = matrix_build_zero(n, d);
                 for (auto& r : X) for (double& v : r) v = g(rng);
 
                 Mat U0, B, V0;
                 bidiagonalizza(X, U0, B, V0, bidiag_mode, false);
-                Mat V0_t = calcola_trasposta(V0);
-                Mat In = identita(n);
-                Mat Id = identita(d);
-                Mat U0_U0t = prodotto_matrici(U0, calcola_trasposta(U0));
-                Mat V0_V0t = prodotto_matrici(V0, V0_t);
-                stampa_matrice(U0, "U0 - Ortogonale?");
+                Mat V0_t = matrix_trasposta(V0);
+                Mat In = matrix_build_Id(n);
+                Mat Id = matrix_build_Id(d);
+                Mat U0_U0t = matrix_prodotto_matrix(U0, matrix_trasposta(U0));
+                Mat V0_V0t = matrix_prodotto_matrix(V0, V0_t);
+                matrix_dump(U0, "U0 - Ortogonale?");
                 test_ortogonalita(U0_U0t, "U0 * U0_t - test ortogonalita'");
-                stampa_matrice(B, "B - Bidiagonale");
-                stampa_matrice(V0, "V0 - Ortogonale?");
-                stampa_matrice(V0_t, "V0_t - Ortogonale trasposta");
+                matrix_dump(B, "B - Bidiagonale");
+                matrix_dump(V0, "V0 - Ortogonale?");
+                matrix_dump(V0_t, "V0_t - Ortogonale trasposta");
                 test_ortogonalita(V0_V0t, "V0 * V0_t - test ortogonalita'");
                 //
                 // Verifiche
                 //
 
                 // TODO 4: verifica ||X - U0*B*V0^T||_F
-                Mat X0 = prodotto_matrici(U0, prodotto_matrici(B, V0_t));
-                stampa_matrice(X, "X - Originale");
-                stampa_matrice(X0, "X - Ricostruita U0 * (B * V0^T)");
-                Mat R = differenza_matrici(X,X0);
-                stampa_matrice(R, "R - Differenza X - U0 * B * V0^T");
+                Mat X0 = matrix_prodotto_matrix(U0, matrix_prodotto_matrix(B, V0_t));
+                matrix_dump(X, "X - Originale");
+                matrix_dump(X0, "X - Ricostruita U0 * (B * V0^T)");
+                Mat R = matrix_differenza(X,X0);
+                matrix_dump(R, "R - Differenza X - U0 * B * V0^T");
 
                 printf(" Error_F_lab ||X - U0*B*V0^T||_F = %.2e\n", errore_F(X, X0));
-                printf(" Error_F_mia ||X - U0*B*V0^T||_F = %.2e\n\n", norma_matrice(-1, R));
+                printf(" Error_F_mia ||X - U0*B*V0^T||_F = %.2e\n\n", matrix_norma(-1, R));
                 printf(" Error_F_lab ||In - U0*U0^T ||_F = %.2e\n", errore_F(In, U0_U0t));
                 printf(" Error_F_lab ||Id - V0*V0^T ||_F = %.2e\n\n", errore_F(Id, V0_V0t));
            
             // ── TODO 5: norma spettrale dell'errore di bidiagonalizzazione ───────────
             
                 // Dopo aver implementato norma_spettrale e matmat:
-                printf(" Norma spettrale PM econ ||R||_2 = %.2e\n",  norma_matrice(2,R));
-                printf(" Norma spettrale PM lab. ||R||_2 = %.2e\n",  norma_matrice(12,R));
-                printf(" Norma spettrale PM rayl ||R||_2 = %.2e\n\n",  norma_matrice(22,R));
-                //  test condizione di errore: Mat E = differenza_matrici(U0, V0);
+                printf(" Norma spettrale PM econ ||R||_2 = %.2e\n",  matrix_norma(2,R));
+                printf(" Norma spettrale PM lab. ||R||_2 = %.2e\n",  matrix_norma(12,R));
+                printf(" Norma spettrale PM rayl ||R||_2 = %.2e\n\n",  matrix_norma(22,R));
+                //  test condizione di errore: Mat E = matrix_differenza(U0, V0);
            }
  
             bool redo = false;
@@ -2149,14 +2149,14 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             {
                 std::mt19937 rng(7);
                 std::normal_distribution<double> g(0.0, 1.0);
-                Mat X = crea_matrice(n, d);
+                Mat X = matrix_build_zero(n, d);
                 for (auto& r : X) for (double& v : r) v = g(rng);
 
                 Vec testv; 
                 Mat VJ;
                 jacobi_simmetrica(matrice_At_A(X, true), testv, VJ);
                 vector_dump(testv, 10, testv.size(), "Autovalori di Xt_X");
-                stampa_matrice(VJ, "Matrice V di autovettori (dx)");
+                matrix_dump(VJ, "Matrice V di autovettori (dx)");
 
                 cout << "\n" << std::string(80, '-')<< endl;
                 cout << "*** Fine collaudo jacobi: teniamo gli autovalori di XtX per verificare i SV di X  ***\n\n";
@@ -2168,16 +2168,16 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
                 // TODO 4: verifica ||X - U0*B*V0^T||_F
 
-                Mat V0_t = calcola_trasposta(V0);
-                Mat X0 = prodotto_matrici(prodotto_matrici(U0, B), V0_t);
-                // stampa_matrice(X, "X Originale");
-                // stampa_matrice(X0, "X = U0 * B * V0_t Ricostruita");
-                Mat R = differenza_matrici(X,X0);
+                Mat V0_t = matrix_trasposta(V0);
+                Mat X0 = matrix_prodotto_matrix(matrix_prodotto_matrix(U0, B), V0_t);
+                // matrix_dump(X, "X Originale");
+                // matrix_dump(X0, "X = U0 * B * V0_t Ricostruita");
+                Mat R = matrix_differenza(X,X0);
 
 
                 printf(" Error_F_lab         ||X - U0*B*V0^T||_F = %.2e\n", errore_F(X, X0));
-                printf(" Error_F_mia         ||X - U0*B*V0^T||_F = %.2e\n", norma_matrice(-1, R));
-                printf(" Norma spettrale err ||X - U0*B*V0^T||_2 = %.2e\n\n", norma_matrice(2, R));
+                printf(" Error_F_mia         ||X - U0*B*V0^T||_F = %.2e\n", matrix_norma(-1, R));
+                printf(" Norma spettrale err ||X - U0*B*V0^T||_2 = %.2e\n\n", matrix_norma(2, R));
 
                 cout << "\n" << std::string(80, '-')<< endl;
                 cout << "*** Fine collaudo bidiagonalizza: teniamo U0 e V0 per dopo e diamo B a SVD per avere Ub e Vb ***\n\n";
@@ -2186,7 +2186,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 Mat Ub, Vb_t;
                 Vec sigma; // s minuscolo vettore, poi S maiuscolo matrice diagonale
 
-                stampa_matrice(B, "B All'entrata di SVD");
+                matrix_dump(B, "B All'entrata di SVD");
 /*
 
                 //
@@ -2195,34 +2195,34 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
                 Mat Vbred;
                 svd_bidiagonale_ridotta(B, Ub, sigma, Vbred);
-                stampa_matrice(B, "B All'entrata di SVD");
+                matrix_dump(B, "B All'entrata di SVD");
 
-                stampa_matrice(Ub, "Ub");
+                matrix_dump(Ub, "Ub");
                 gram_schmidt_modificato(Ub);
-                stampa_matrice(Ub, "Ub_ortonormalizzata GS");
-                stampa_matrice(Vbred, "Vbred");
-                Mat Vbred_t = calcola_trasposta(Vbred);
-                Mat Ubt_Ub = prodotto_matrici(calcola_trasposta(Ub), Ub);
-                stampa_matrice(Ubt_Ub, "Ubt_Ub");
+                matrix_dump(Ub, "Ub_ortonormalizzata GS");
+                matrix_dump(Vbred, "Vbred");
+                Mat Vbred_t = matrix_trasposta(Vbred);
+                Mat Ubt_Ub = matrix_prodotto_matrix(matrix_trasposta(Ub), Ub);
+                matrix_dump(Ubt_Ub, "Ubt_Ub");
                 Mat Sigma_red = matrice_diagonale(sigma, sigma.size(),sigma.size());
-                stampa_matrice(Sigma_red, "Sigma_red");
-                Mat Vbredt_Vbred = prodotto_matrici(Vbred_t, Vbred);
-                stampa_matrice(Vbredt_Vbred, "Vbredt_Vbred");
-                Mat B_rebuilt = prodotto_matrici(Ub, prodotto_matrici(Sigma_red, Vbred_t));
-                stampa_matrice(B_rebuilt, ,"B_rebuilt");
-                Mat Rred = differenza_matrici(B, B_rebuilt);
-                stampa_matrice(Rred, "Rred differenze su B");
+                matrix_dump(Sigma_red, "Sigma_red");
+                Mat Vbredt_Vbred = matrix_prodotto_matrix(Vbred_t, Vbred);
+                matrix_dump(Vbredt_Vbred, "Vbredt_Vbred");
+                Mat B_rebuilt = matrix_prodotto_matrix(Ub, matrix_prodotto_matrix(Sigma_red, Vbred_t));
+                matrix_dump(B_rebuilt, ,"B_rebuilt");
+                Mat Rred = matrix_differenza(B, B_rebuilt);
+                matrix_dump(Rred, "Rred differenze su B");
                 printf(" Error_F_lab         ||B - Ub*B*Vbred^T||_F = %.2e\n", errore_F(B, B_rebuilt));
-                printf(" Error_F_mia         ||X - Ub*B*Vbred^T||_F = %.2e\n", norma_matrice(-1, Rred));
-                printf(" Norma spettrale err ||X - Ub*B*Vbred^T||_2 = %.2e\n\n", norma_matrice(2, Rred));
+                printf(" Error_F_mia         ||X - Ub*B*Vbred^T||_F = %.2e\n", matrix_norma(-1, Rred));
+                printf(" Norma spettrale err ||X - Ub*B*Vbred^T||_2 = %.2e\n\n", matrix_norma(2, Rred));
 
-                Mat X_rebuilt = prodotto_matrici(U0, prodotto_matrici(B_rebuilt, V0_t));
-                stampa_matrice(X_rebuilt, "X_rebuilt");
-                Rred = differenza_matrici(X, X_rebuilt);
-                stampa_matrice(Rred, "Rred differenze su X");
+                Mat X_rebuilt = matrix_prodotto_matrix(U0, matrix_prodotto_matrix(B_rebuilt, V0_t));
+                matrix_dump(X_rebuilt, "X_rebuilt");
+                Rred = matrix_differenza(X, X_rebuilt);
+                matrix_dump(Rred, "Rred differenze su X");
                 printf(" Error_F_lab         ||X - U0*B_rebuilt*V0^T||_F = %.2e\n", errore_F(B, B_rebuilt));
-                printf(" Error_F_mia         ||X - U0*B_rebuilt*V0^T||_F = %.2e\n", norma_matrice(-1, Rred));
-                printf(" Norma spettrale err ||X - U0*B_rebuilt*V0^T||_2 = %.2e\n\n", norma_matrice(2, Rred));
+                printf(" Error_F_mia         ||X - U0*B_rebuilt*V0^T||_F = %.2e\n", matrix_norma(-1, Rred));
+                printf(" Norma spettrale err ||X - U0*B_rebuilt*V0^T||_2 = %.2e\n\n", matrix_norma(2, Rred));
 
                 cout << "\n" << std::string(80, '-')<< endl;
                 cout << "*** Fine collaudo svd_bidiag ridotta nostrana  ***\n\n";
@@ -2236,64 +2236,64 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 svd_bidiagonale(B, Ub, Vb_t, sigma);  // questa e' la versione alglib
 
                 // svd_bidiagonale_compat(B, Ub, Vb, sigma);  
-                Mat Vb = calcola_trasposta(Vb_t);
+                Mat Vb = matrix_trasposta(Vb_t);
 
-                stampa_matrice(Ub, "Ub");
+                matrix_dump(Ub, "Ub");
                 Mat Sigma = matrice_diagonale(sigma, Ub[0].size(), Vb[0].size()); 
-                stampa_matrice(Sigma, "Sigma");
-                stampa_matrice(Vb, "Vb");
-                stampa_matrice(Vb_t, "Vb_t");
+                matrix_dump(Sigma, "Sigma");
+                matrix_dump(Vb, "Vb");
+                matrix_dump(Vb_t, "Vb_t");
 
                 cout << "\n" << std::string(80, '-')<< endl;
                 cout << ">>                 Prodotti della SVD\n";
                 cout << std::string(80, '-')<< endl << endl;
 
-                Mat Ub_S = prodotto_matrici(Ub, Sigma);
-                Mat Ub_S_Vbt = prodotto_matrici(Ub_S, Vb_t);
-                stampa_matrice(Ub_S_Vbt, "B = Ub_S_Vbt");
-                stampa_matrice(B, "B Originale");
+                Mat Ub_S = matrix_prodotto_matrix(Ub, Sigma);
+                Mat Ub_S_Vbt = matrix_prodotto_matrix(Ub_S, Vb_t);
+                matrix_dump(Ub_S_Vbt, "B = Ub_S_Vbt");
+                matrix_dump(B, "B Originale");
 
-                Mat RB = differenza_matrici(B , Ub_S_Vbt);
-                printf(" Error_F_mia || B - Ub * (Sigma * Vb_t)||_F = %.2e\n\n", norma_matrice(-1, RB));
-                stampa_matrice(RB, "Matrice differenza B = B - Ub * (Sigma * Vb_t)");
+                Mat RB = matrix_differenza(B , Ub_S_Vbt);
+                printf(" Error_F_mia || B - Ub * (Sigma * Vb_t)||_F = %.2e\n\n", matrix_norma(-1, RB));
+                matrix_dump(RB, "Matrice differenza B = B - Ub * (Sigma * Vb_t)");
 
                 // TODO: U = U0 * Ub,  V = V0 * Vb
-                Mat U = prodotto_matrici(U0, Ub);
-                stampa_matrice(U, "U = U0 * Ub");
+                Mat U = matrix_prodotto_matrix(U0, Ub);
+                matrix_dump(U, "U = U0 * Ub");
 
-                //Mat Vb_red = matrice_ridotta(Vb, sigma.size(), true); // true limita le colonne
-                // stampa_matrice(Vb_red, "Vb Ridotta alle col di Sigma");
-                Mat V = prodotto_matrici(V0, Vb);
-                Mat V_t = prodotto_matrici(Vb_t, V0_t);
-                stampa_matrice(V_t, "V_T = Vb_t * V0_t");
+                //Mat Vb_red = matrix_estende_ridotta(Vb, sigma.size(), true); // true limita le colonne
+                // matrix_dump(Vb_red, "Vb Ridotta alle col di Sigma");
+                Mat V = matrix_prodotto_matrix(V0, Vb);
+                Mat V_t = matrix_prodotto_matrix(Vb_t, V0_t);
+                matrix_dump(V_t, "V_T = Vb_t * V0_t");
 
-                Mat IU = prodotto_matrici(U, calcola_trasposta(U));
-                Mat IV = prodotto_matrici(V, calcola_trasposta(V));
-                stampa_matrice(IU, "U * U_t = I"+std::to_string(n));
-                stampa_matrice(IV, "V * V_t = I"+std::to_string(d));
+                Mat IU = matrix_prodotto_matrix(U, matrix_trasposta(U));
+                Mat IV = matrix_prodotto_matrix(V, matrix_trasposta(V));
+                matrix_dump(IU, "U * U_t = I"+std::to_string(n));
+                matrix_dump(IV, "V * V_t = I"+std::to_string(d));
                 cout << "\n" << std::string(80, '-')<< endl;
                 cout << ">>                 Test di ortogonalita'\n";
                 cout << std::string(80, '-')<< endl << endl;
 
 
-                Mat U_S = prodotto_matrici(U, Sigma);
-                Mat U_S_Vt = prodotto_matrici(U_S, V_t);
-                stampa_matrice(X, "X");
-                stampa_matrice(U_S_Vt, "U * Sigma * Vt");
+                Mat U_S = matrix_prodotto_matrix(U, Sigma);
+                Mat U_S_Vt = matrix_prodotto_matrix(U_S, V_t);
+                matrix_dump(X, "X");
+                matrix_dump(U_S_Vt, "U * Sigma * Vt");
 
 
                 // TODO: verifica ||X - U*Sigma*V^T||_F, ||U^T*U - I||_F, ||V^T*V - I||_F
 
-                Mat RX = differenza_matrici(X, U_S_Vt);
-                stampa_matrice(RX, "Differenze X - U Sigma V^t");
+                Mat RX = matrix_differenza(X, U_S_Vt);
+                matrix_dump(RX, "Differenze X - U Sigma V^t");
 
-                Mat RU = differenza_matrici(identita(U.size()), prodotto_matrici(U, calcola_trasposta(U)));
-                Mat RV = differenza_matrici(identita(V.size()), prodotto_matrici(V, V_t));
-                printf(" Error_F_mia ||X - U*Sigma*V^T||_F = %.2e\n", norma_matrice(-1, RX));
-                printf(" Error_F_mia ||U^T*U - I||_F = %.2e\n", norma_matrice(-1, RU));
-                printf(" Error_F_mia ||V^T*V - I||_F = %.2e\n\n", norma_matrice(-1, RV));
+                Mat RU = matrix_differenza(matrix_build_Id(U.size()), matrix_prodotto_matrix(U, matrix_trasposta(U)));
+                Mat RV = matrix_differenza(matrix_build_Id(V.size()), matrix_prodotto_matrix(V, V_t));
+                printf(" Error_F_mia ||X - U*Sigma*V^T||_F = %.2e\n", matrix_norma(-1, RX));
+                printf(" Error_F_mia ||U^T*U - I||_F = %.2e\n", matrix_norma(-1, RU));
+                printf(" Error_F_mia ||V^T*V - I||_F = %.2e\n\n", matrix_norma(-1, RV));
 
-                // stampa_matrice(RX, "Matrice differenza RX = X - U * Sigma * V_t");
+                // matrix_dump(RX, "Matrice differenza RX = X - U * Sigma * V_t");
 
                 // TODO: stampa valori singolari
 
@@ -2360,8 +2360,8 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                     // vector_dump(avg_col, 10, avg_col.size(), "Medie in colonna");
                     // vector_dump(avg_row, 10, avg_row.size(), "Medie in riga");
                     Mat Xtilde = centra_matrice(X, avg_col);
-                    // stampa_matrice(X, "Matrice originale");
-                    // stampa_matrice(Xtilde, "Matrice centrasta");
+                    // matrix_dump(X, "Matrice originale");
+                    // matrix_dump(Xtilde, "Matrice centrasta");
 
                     // b) SVD di Xtilde
 
@@ -2370,8 +2370,8 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                     Mat Ub, Vb; Vec sigma;
                     // svd_bidiagonale(B, Ub, Vb, sigma);
                     svd_bidiagonale_compat(B, Ub, Vb, sigma);
-                    Mat U = prodotto_matrici(U0, Ub);
-                    Mat V = prodotto_matrici(V0, Vb);
+                    Mat U = matrix_prodotto_matrix(U0, Ub);
+                    Mat V = matrix_prodotto_matrix(V0, Vb);
                     // test_ortogonalita(V, "V");
                     vector_dump(sigma, 10, sigma.size(), "sigmas al giro "+ std::to_string(ik+1));
 
@@ -2469,8 +2469,8 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 				// vector_dump(avg_col, 10, avg_col.size(), "Medie in colonna");
 				// vector_dump(avg_row, 10, avg_row.size(), "Medie in riga");
 				Mat Xtilde = centra_matrice(X, avg_col);
-				// stampa_matrice(X, "Matrice originale");
-				// stampa_matrice(Xtilde, "Matrice centrasta");
+				// matrix_dump(X, "Matrice originale");
+				// matrix_dump(Xtilde, "Matrice centrasta");
 
 				// b) SVD di Xtilde
 
@@ -2479,8 +2479,8 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 				Mat Ub, Vb; Vec sigma;
 				// svd_bidiagonale(B, Ub, Vb, sigma);
 				svd_bidiagonale_compat(B, Ub, Vb, sigma);
-				Mat U = prodotto_matrici(U0, Ub);
-				Mat V = prodotto_matrici(V0, Vb);
+				Mat U = matrix_prodotto_matrix(U0, Ub);
+				Mat V = matrix_prodotto_matrix(V0, Vb);
 				// test_ortogonalita(V, "V");
 				vector_dump(sigma, 10, sigma.size(), "sigmas al giro "+ std::to_string(ik+1));
 
@@ -2570,7 +2570,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_sin2plus1, true);
             vector_dump(b, 10, 50, " b = 1/(1+sin^2) "); 
             // Risoluzione con sostituzione indietro
-            Vec x = backward_substitution(L, b);
+            Vec x = linear_BW_subst(L, b);
             vector_dump(x, 10, 50, " x da Lx = b"); 
 
             auto fig = TableInit(true, "Cauchy", "Soluzione numerica del problema di Cauchy", 1, 1);
