@@ -237,11 +237,13 @@ Vec linear_subst_BW(
     int m = static_cast<int>(U.size());
     Vec x(m, 0.0);
 
-    // TODO 3: implementare la sostituzione in avanti
-    x[0] = y[0] / U[0][0];
-    for (int i = m-1; i > 0; --i) {
+    // x[0] = y[0] / U[0][0]; // vecchia riga 
+    x[m - 1] = y[m - 1] / U[m - 1][m - 1];  // nuova riga
+
+    // for (int i = m-1; i > 0; --i) {   //vecchia riga
+    for (int i = m - 2; i >= 0; --i) {  // nuova riga
         double s = y[i];
-        for (int j = i+1; j < m ; ++j) {  // corretto, era m-1
+        for (int j = i + 1; j < m; ++j) { // corretto, era j-1
             s -= U[i][j] * x[j];
         }
         x[i] = s / U[i][i];
