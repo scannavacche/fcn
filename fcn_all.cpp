@@ -411,30 +411,34 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
         // TODO 2: costruire L e b
         if (backw) {
+        // backward: upper triangolare, condizione finale
+
         	// qui abbiamo -(1+h) sulla diagonale e 1 a destra
         	b[n-1] = x0;  // condizione finale
-			for (int i = 0; i < n-1; i++) {
-				L[i][i+1] = 1;
-				L[i][i] = -(1+h);
-				b[i] = h*fvals[i-1];
-			}
-        	L[n-1][n-1] = -(1+h);
+            for (int i = 0; i < n - 1; ++i) {
+                L[i][i] = -(1.0 + h);
+                L[i][i + 1] = 1.0;
+                b[i] = h * fvals[i];
+            }
+            L[n - 1][n - 1] = 1.0;
+            b[n - 1] = x0;
         }
         else {
+            // forward: lower triangolare, con condizione iniziale
+
 			// Riga 0: x_0 = x0  => L[0][0] = 1, b[0] = x0
 			// Righe i>=1: - (1+h) x_{i-1} + x_i = h f(t_{i-1})
 			// X[0][0] sta sulla diagonale, potrei assegnargli 1 come agli altri Xii
 			// ma i termini sotto diagonale sono uno in meno: condiziono o li conto in riga)
-        	L[0][0] = 1;
-        	b[0] = x0;
-			for (int i = 1; i < n; i++) {
-				L[i][i] = 1;
-				L[i][i-1] = -(1+h);
-				b[i] = h*fvals[i-1];
-			}
+            L[0][0] = 1.0;
+            b[0] = x0;
+            for (int i = 1; i < n; ++i) {
+                L[i][i - 1] = -(1.0 + h);
+                L[i][i] = 1.0;
+                b[i] = h * fvals[i - 1];
+            }
         }
     }
-
 
     // FCN – Laboratorio 2, Esercizio 1B
     // Problema differenziale con condizioni al bordo: x''(t) = f(t), x(0) = 0, x(1) = 0
