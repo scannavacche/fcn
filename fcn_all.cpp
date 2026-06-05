@@ -30,7 +30,7 @@ using Vecd = std::vector<double>;
 using Vecf = std::vector<float>;
 using Vecn = std::vector<int>;
 
-const bool bidiag_mode = false; // true superior, false inferior bidiag
+const bool bidiag_mode = false; // true upper, false lower 
 
 namespace {     
     //
@@ -39,56 +39,6 @@ namespace {
 
 using Action = std::function<void()>;
 using ActionRegistry = std::unordered_map<std::string, Action>;
-
-    //  FCN – Lezione 1, Esercizio 1
-    //  Base di funzioni coseno e matrice di Gram
-
-    Vec campiona(
-        int k, 
-        const Vec &x)
-        {
-            // =============================================================================
-            //  Campionamento di una funzione base
-            //  Restituisce il vettore dei valori di phi_k nei nodi x:
-            //      phi_k[n] = cos(k * x[n])
-            // =============================================================================
-
-        Vec phi(x.size());
-        int totnum = (int) x.size();
-        for (int i=0; i<totnum; i++)
-        {
-            phi[i]=cos(k*x[i]);
-        }
-        // DONE: riempire phi
-        return phi;
-    }
-
-    Mat gram(
-        const Vec& x, 
-        const int K) 
-    {
-        // gram computes a $K \times K$ Gram matrix from a vector x by sampling K subvectors with campiona, 
-        // taking pairwise dot products via vector_prodotto_scalare, and filling a symmetric matrix G.
-
-        Mat G = matrix_build_zero(K, K);
-        Vec sample_u, sample_v;
-        double Gij;     // usiamo uno scalare per accelerare senza lookup doppio
-        for (int i=0;i<K;i++)
-            for (int j=i;j<K;j++)
-            {
-                sample_u = campiona(i,x);
-                sample_v= campiona(j,x);
-                Gij = vector_prodotto_scalare(sample_u, sample_v);
-                G[i][j] = Gij;
-                G[j][i] = Gij;
-            }
-
-        // DONE: doppio ciclo su i e j
-        return G;
-    }
-
-    //  FCN – Foglio 1, Esercizio 2
-    //  Polinomi di Taylor per eˣ e cos(x)
 
     template <typename T>
     T taylor0_exp(
@@ -401,74 +351,14 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
     // FCN – Laboratorio 2, Esercizio 1
     // Derivata numerica con differenze finite in avanti
 
-    Mat derivata_prima(
-        int n, 
-        double a, 
-        double b) {
-        int m = n - 1;               // numero di righe
-        Mat D(m, Vec(n, 0.0));
-        // ----------------------------------------------------------------------------
-        // TODO 1 --- Matrice D (differenze finite in avanti)
-        // Matrice D ∈ R^{(n-1)×n} che approssima la derivata prima su [0,1]:
-        // (Du)_i = (u_{i+1} - u_i) / h, con h = 1/(n-1), i = 0,...,n-2.
-        // ----------------------------------------------------------------------------
-
-
-        double h = h_ticks(a, b, n - 1);
-        for (int i = 0; i < m; ++i) {
-            D[i][i]     = -1.0 / h;
-            D[i][i + 1] =  1.0 / h;
-        };
-        return D;
-    }
-
-    Vec campiona_arctan(
-        int n, 
-        double a, 
-        double b) {
-            // ----------------------------------------------------------------------------
-            // TODO 3 --- Campionare arctan(t)
-            // Campiona u(t) = arctan(t) su n nodi equidistanti in [a,b]:
-            // t_i = a + i*h, h = (b-a)/(n-1), i = 0,...,n-1.
-            // ----------------------------------------------------------------------------
-
-        Vec u(n);
-            // TODO: calcolare h, poi per ogni i, t = a + i*h, u[i] = std::atan(t).
-        double t;
-        double h = h_ticks(a, b, n - 1); // uso n-1 per avere gli stessi punti 
-        for (int i = 0; i<n; ++i) {      // ma il loop sul vettore ha una comp in piu' 
-            t = a + h*i;
-            u[i] = std::atan(t);
-        } ;
-
-        return u;
-    }
-
-    Vec derivata_discreta(
+    Vec derivata_discreta_come_matrice(
         const Mat &D, 
         const Vec &u) {
-        // ----------------------------------------------------------------------------
-        // TODO 3 --- Applicazione di D al vettore u
-        // Du = D * u, dove D ∈ R^{(n-1)×n} e u ∈ R^n.
-        // ----------------------------------------------------------------------------
 
-        int m = static_cast<int>(D.size());
-        int n = static_cast<int>(u.size());
-        Vec Du(m, 0.0);
-
-        // TODO: prodotto matrice-vettore Du[i] = sum_j D[i][j] * u[j].
-
-        for (int i = 0; i<m; ++i) {
-            double sum_j = 0;
-            for (int j =0; j<n; ++j) {
-                sum_j += D[i][j]*u[j];
-            }
-            Du[i] = sum_j;
-        }
-        return Du;
+        return matrix_prodotto_vector(D, u);
     }
 
-    Vec derivata_discreta_senza_matrice(
+    Vec derivata_discreta_come_RI(
         const Vec &u , 
         const double a, 
         const double b) {
@@ -628,7 +518,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         // ── Parte A: nodi equidistanti ────────────────────────────────────────────
             NR = 2*PI;
             x_eq = nodi_equidistanti(0, NR, N);
-            G_eq  = gram(x_eq, K);
+            G_eq  = matrix_build_gram(x_eq, K);
             //vector_dump(x_eq, Cols, N);
             //matrix_dump(G_eq, "Gram nodi eq  da 0 a ");
             
@@ -639,11 +529,11 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
             NR = PI;
             x_asym1 = nodi_equidistanti(0, NR, N);
-            G_asym1 = gram(x_asym1, K);
+            G_asym1 = matrix_build_gram(x_asym1, K);
 
             NR = PI/2;
             x_asym2 = nodi_equidistanti(0, NR, N);
-            G_asym2 = gram(x_asym2, K);
+            G_asym2 = matrix_build_gram(x_asym2, K);
             //vector_dump(x_asym, Cols, N);
             //matrix_dump(G_asym, "Gram nodi eq da 0 a ");
 
@@ -651,14 +541,14 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
             NR = 100;
             x_rnd = nodi_random(0, NR, N);
-            G_rnd  = gram(x_rnd, K);
+            G_rnd  = matrix_build_gram(x_rnd, K);
             // vector_dump(x_rnd, Cols, N);
             // matrix_dump(G_rnd, "Gram nodi random da 0 a ");
             
             // riordinati con nodi crescenti
             // NR = 100;
             // Vec x_srt = nodi_bubblesort(x_rnd, N);
-            // Mat G_srt  = gram(x_srt, K);
+            // Mat G_srt  = matrix_build_gram(x_srt, K);
             // vector_dump(x_srt, Cols, N);
             // matrix_dump(G_srt, "Gram nodi random ord da 0 a "); // inutile 
 
@@ -670,7 +560,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             {
                 auto fig = figure(true);
                 matplot::title("Una delle funzioni base: phi_2(x) = cos(2*x)");
-                Vec phi = campiona(2, x_eq);
+                Vec phi = vector_campiona_f_k(2, x_eq, f_cos);
                 matplot::bar(x_eq, phi);
                 matplot::xlabel("x");
                 matplot::ylabel("phi_2(x)");
@@ -684,7 +574,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 title("Funzioni base: phi_k(x) = cos(k*x)");
                 hold(on);
                 for (int k = 0; k < K; ++k) {
-                    Vec phi = campiona(k, x_eq);
+                    Vec phi = vector_campiona_f_k(k, x_eq,f_cos);
                     plot(x_eq, phi)->display_name("k=" + itostr(k));
                 }
                 matplot::legend();
@@ -694,51 +584,51 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             }
         */
             string atitle = "Gram matrix con " + itostr(N) + " campioni su "+itostr(K) + " funzioni";
-            figure_handle fig = TableInit(true, "Test su basi di coseni", atitle, 2, 2);
+            figure_handle fig = matplot_table_init(true, "Test su basi di coseni", atitle, 2, 2);
         
             
             // TODO 5: convertire G_eq in formato adatto a imagesc
             // imagesc accetta un vector<vector<double>>
             // G_eq è già in quel formato — visualizzarla e commentare il risultato
         
+            curr_tile = 0 ;
             fig->nexttile(curr_tile); // punta al panel corrente, va bene con option base 0
             mtpr[curr_tile] = matplot::imagesc(G_eq);
-            legend_align(matplot::legend(), 0, K, 0.4);
+            matplot_legend_align(matplot::legend(), 0, K, 0.4);
             mtpr[curr_tile]->display_name("100 nodi equidistanti in 0..2PI");
             matplot::colorbar();
-            curr_tile++;
 
             // 3) TODO 6: visualizzare anche G_nonEq come immagine e confrontare
             //    con G_eq. Cosa vedi? Riesci a spiegare la differenza?
             
+            curr_tile=1;
             fig->nexttile(curr_tile); // punta al panel corrente, va bene con option base 0
             mtpr[curr_tile] = matplot::imagesc(G_rnd);
-            legend_align(matplot::legend(), 0, K, 0.4);
+            matplot_legend_align(matplot::legend(), 0, K, 0.4);
             mtpr[curr_tile]->display_name("100 nodi random");
             matplot::colorbar();
-            curr_tile++;
             
             // 3) TODO 5bis: visualizzare anche G_Eq asimmetrico come immagine 
             //    e confrontare
             //    con G_eq. Cosa vedi? Riesci a spiegare la differenza?
 
+            curr_tile=2;
             fig->nexttile(curr_tile); // punta al panel corrente, va bene con option base 0
             mtpr[curr_tile] = matplot::imagesc(G_asym1);
-            legend_align(matplot::legend(), 0, K, 0.4);
+            matplot_legend_align(matplot::legend(), 0, K, 0.4);
             mtpr[curr_tile]->display_name("100 nodi equidistanti in 0..PI");
             matplot::colorbar();
-            curr_tile++;
         
 
         
+            curr_tile=3;
             fig->nexttile(curr_tile); // punta al panel corrente, va bene con option base 0
             mtpr[curr_tile] = matplot::imagesc(G_asym2);
-            legend_align(matplot::legend(), 0, K, 0.4);
+            matplot_legend_align(matplot::legend(), 0, K, 0.4);
             mtpr[curr_tile]->display_name("100 nodi equidistanti in 0..PI/2");
             matplot::colorbar();
             
             fig->draw();
-            curr_tile = 0 ;
 
             redo = false;
             while (!redo && !leave) {
@@ -776,7 +666,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         
         while (!leave) {
             int dummy = system("clear");
-            auto fig = TableInit (false, "Taylor exp", "Convergenza di Taylor per exp(x)", 2, 2);
+            auto fig = matplot_table_init (false, "Taylor exp", "Convergenza di Taylor per exp(x)", 2, 2);
             int TCenter = 0;
             // ── Parte A2: tabella errori per eˣ con x = 1 ────────────────────────   
             double e_esatto = std::exp(1);
@@ -848,7 +738,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         
         while (!leave) {
             int dummy = system("clear"); 
-            auto fig = TableInit (true, "Taylor cos", "Stima di cos(x) con Taylor centrato in 0", 2,2 );
+            auto fig = matplot_table_init (true, "Taylor cos", "Stima di cos(x) con Taylor centrato in 0", 2,2 );
             // ── Parte A2: tabella errori per cos(x) con x = 1 ────────────────────────   
             e_esatto = std::cos(deg2rad(target_arg)); // valore dal quale si calcola l'errore
             TablePrint_cos (n_vald, n_valf, n_val, target_arg, e_esatto, n_terms, Cheat_e0, LastD, LastF);
@@ -1039,10 +929,10 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             b =  domain_span;
 
         
-            figure_handle f = TableInit(true, "Derivate", "Calcolo della derivata discreta", 1,2);
+            figure_handle f = matplot_table_init(true, "Derivate", "Calcolo della derivata discreta", 1,2);
             
             // 1) Costruzione della matrice D
-            Mat D = derivata_prima(n, a, b);
+            Mat D = matrix_build_derivata1(n, a, b);
 
             // 2) Visualizzazione di D con imagesc
             f->nexttile(curr_tile);
@@ -1054,13 +944,14 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             curr_tile++;
 
             // 3) Campionamento di u(t) = arctan(t)
-            Vec u = campiona_arctan(n, a, b);
+            Vec x_eq = nodi_equidistanti(a, b, n);
+            Vec u = vector_campiona_f(x_eq, f_atan); 
 
             // 4) Applicazione di D: Du ≈ u'(t)
-            Vec Du = derivata_discreta(D, u);
+            Vec Du = derivata_discreta_come_matrice(D, u);
 
             // 4a) Applicazione di D: Du ≈ u'(t)
-            Vec Du_sm = derivata_discreta_senza_matrice(u, a, b);  // ok sono sovrapposte
+            Vec Du_sm = derivata_discreta_come_RI(u, a, b);  // ok sono sovrapposte
 
             // 5) Costruzione vettore dei nodi t_i
             Vec t(n);
@@ -1082,7 +973,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             ax = f->current_axes();
             ax->title("u(t) = arctan(t) e derivata numerica");
             ax->legend();
-            legend_align(matplot::legend(), 1, 0.0, 0.0);
+            matplot_legend_align(matplot::legend(), 1, 0.0, 0.0);
 
             // u(t)
             hold(on);
@@ -1156,10 +1047,10 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_x, false);
             vector_dump(b, 10, 50, " b = t"); 
             // Risoluzione con sostituzione in avanti
-            Vec x = linear_FW_subst(L, b);
+            Vec x = linear_subst_FW(L, b);
             vector_dump(x, 10, 50, " x da Lx = h*t"); 
 
-            auto fig = TableInit(true, "Cauchy", "Soluzione numerica del problema di Cauchy", 1, 1);
+            auto fig = matplot_table_init(true, "Cauchy", "Soluzione numerica del problema di Cauchy", 1, 1);
             
             // migliorie: aggiornare titolo con parametri 
             
@@ -1182,7 +1073,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_sin, false);
             vector_dump(b, 10, 50, " b = sin(t) "); 
             // Risoluzione con sostituzione in avanti
-            x = linear_FW_subst(L, b);
+            x = linear_subst_FW(L, b);
             vector_dump(x, 10, 50, " x da Lx = h*sin(t) "); 
 
             fig->nexttile(2);
@@ -1195,7 +1086,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_cos, false); 
             vector_dump(b, 10, 50, " b = cos(t) "); 
             // Risoluzione con sostituzione in avanti
-            x = linear_FW_subst(L, b);
+            x = linear_subst_FW(L, b);
             vector_dump(x, 10, 50, " x da Lx = h*cos(t) "); 
 
 
@@ -1246,7 +1137,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
             // matrix_dump(A, "tridiag");
 
-            auto ffig = TableInit(true, "Bordo", "Costruzione matrice A e fattorizzazione LU", 2, 2);
+            auto ffig = matplot_table_init(true, "Bordo", "Costruzione matrice A e fattorizzazione LU", 2, 2);
             
             // Verifica della matrice A tridiag
 
@@ -1275,11 +1166,11 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             colorbar();
 
             // Sostituzione in avanti per L y = b
-            y = linear_FW_subst(L, b);
+            y = linear_subst_FW(L, b);
             vector_dump(y, 10, y.size(), "y");
 
             // Sostituzione indietro per U x = y
-            x = linear_BW_subst(U, y);
+            x = linear_subst_BW(U, y);
             vector_dump(x, 10, x.size(), "x");
 
             // costruzione vettore completo con condizioni al bordo
@@ -1365,14 +1256,14 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
             Mat T_inv = linear_LU_inversa (T);
             //matrix_dump(T_inv, "Inversa con LU");
-            double NFT = matrix_norma(-1, T);
-            double NFT_inv = matrix_norma(-1, T_inv);
-            double N1T = matrix_norma(1, T);
-            double N1T_inv = matrix_norma(1, T_inv);   
-            double NIT = matrix_norma(0, T);
-            double NIT_inv = matrix_norma(0, T_inv); 
-            double N2T = matrix_norma(2, T);
-            double N2T_inv = matrix_norma(2, T_inv);   
+            double NFT = matrix_calcola_norma(-1, T);
+            double NFT_inv = matrix_calcola_norma(-1, T_inv);
+            double N1T = matrix_calcola_norma(1, T);
+            double N1T_inv = matrix_calcola_norma(1, T_inv);   
+            double NIT = matrix_calcola_norma(0, T);
+            double NIT_inv = matrix_calcola_norma(0, T_inv); 
+            double N2T = matrix_calcola_norma(2, T);
+            double N2T_inv = matrix_calcola_norma(2, T_inv);   
             
             Vec v_atan_d = matrix_prodotto_vector(T_inv, vector_shift(v_atan, -std::atan(a))); // derivata corrispondente, con backshift di centratura
             Vec v_atan_dcn = matrix_prodotto_vector(T_inv, v_atan); // derivata analiticamente corretta ma sbagliata per cn 
@@ -1399,7 +1290,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 Err_Plus_1[i] = std::abs(v_atan_d[i] - fvals[i+1]);
             }
 
-            figure_handle f = TableInit(true, "Integrazione e derivazione", "da 1/(1+x^2) ad atan e viceversa", 2,2);
+            figure_handle f = matplot_table_init(true, "Integrazione e derivazione", "da 1/(1+x^2) ad atan e viceversa", 2,2);
             auto ax = f->current_axes();
 
             f->nexttile(0);
@@ -1441,7 +1332,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             r->display_name("u'(t) = T^-1 U(t)");
  
 
-            legend_align(matplot::legend(), 2, 0,0);
+            matplot_legend_align(matplot::legend(), 2, 0,0);
             matplot::legend();
             xlabel("t [rad]");
             ylabel("valore");
@@ -1470,7 +1361,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             r1->display_name("Err i su i+1");
  
 
-            legend_align(matplot::legend(), 1, 0,0);
+            matplot_legend_align(matplot::legend(), 1, 0,0);
             matplot::legend();
             xlabel("t [rad]");
             ylabel("valore");
@@ -1538,42 +1429,42 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 
                 // Norma 2 spettrale power con economia
                 auto t_start = std::chrono::steady_clock::now();
-                double norm2_A = matrix_norma(2, A);
+                double norm2_A = matrix_calcola_norma(2, A);
                 auto t_end = std::chrono::steady_clock::now();
                 auto time2_A = std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
-                double norm2_Ainv = matrix_norma(2, A_inv);
+                double norm2_Ainv = matrix_calcola_norma(2, A_inv);
                 double kappa2 = norm2_A * norm2_Ainv;
                 
                 // Norma 2 spettrale power senza economia
                 t_start = std::chrono::steady_clock::now();
-                double norm12_A = matrix_norma(12, A);
+                double norm12_A = matrix_calcola_norma(12, A);
                 t_end = std::chrono::steady_clock::now();
                 auto time12_A = std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
-                double norm12_Ainv = matrix_norma(12, A_inv);
+                double norm12_Ainv = matrix_calcola_norma(12, A_inv);
                 double kappa12 = norm12_A * norm12_Ainv;
 
                 // Norma 2 spettrale power + Rayleigh
                 t_start = std::chrono::steady_clock::now();
-                double norm22_A = matrix_norma(22, A);
+                double norm22_A = matrix_calcola_norma(22, A);
                 t_end = std::chrono::steady_clock::now();
                 auto time22_A = std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
-                double norm22_Ainv = matrix_norma(22, A_inv);
+                double norm22_Ainv = matrix_calcola_norma(22, A_inv);
                 double kappa22 = norm22_A * norm22_Ainv;
 
               
                 // Norma Frobenius
-                double normF_A = matrix_norma(-1, A);
-                double normF_Ainv = matrix_norma(-1, A_inv);
+                double normF_A = matrix_calcola_norma(-1, A);
+                double normF_Ainv = matrix_calcola_norma(-1, A_inv);
                 double kappaF = normF_A * normF_Ainv;
                 
                 // Norma 1 = max somma colonne
-                double norm1_A = matrix_norma(1, A);
-                double norm1_Ainv = matrix_norma(1, A_inv);
+                double norm1_A = matrix_calcola_norma(1, A);
+                double norm1_Ainv = matrix_calcola_norma(1, A_inv);
                 double kappa1 = norm1_A * norm1_Ainv;
                 
                 // Norma inf1 = max somma righe
-                double normI_A = matrix_norma(0, A);
-                double normI_Ainv = matrix_norma(0, A_inv);
+                double normI_A = matrix_calcola_norma(0, A);
+                double normI_Ainv = matrix_calcola_norma(0, A_inv);
                 double kappaI = normI_A * normI_Ainv;
                 
                 std::cout << std::setw(6) << N
@@ -1601,7 +1492,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             }
 
             std::string title = "Numeri di condizionamento vs N";
-            figure_handle f = TableInit(true, "Confronto Norme", title, 1,1);
+            figure_handle f = matplot_table_init(true, "Confronto Norme", title, 1,1);
             f->nexttile(0);
             auto ax = f->current_axes();
             ax->title(title);
@@ -1618,7 +1509,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             }
             hold(on);
 
-            legend_align(matplot::legend(), 3, 0,0);
+            matplot_legend_align(matplot::legend(), 3, 0,0);
 
             auto p2 = plot(x_vals, cond_2_vals);
             p2->display_name("kappa_2 (spettrale)");
@@ -1704,7 +1595,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
             // matrix_dump(K, "Matrice Kernel di Gauss");
 
-            Vec ws0 = segnale_finestra(N,(1./4.),(3./4.),1);
+            Vec ws0 = vector_segnale_finestra(N,(1./4.),(3./4.),1);
             Vec ws1 = matrix_prodotto_vector(K,ws0);
             Vec ws2 = matrix_prodotto_vector(K2,ws0);
             Vec ws4 = matrix_prodotto_vector(K4,ws0);
@@ -1735,7 +1626,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             {   
                 // namespace anonimo per heatmap 
 
-                figure_handle f = TableInit(true, "Deconvoluzione", "Kernel di Gauss " + KGN_title+ "a diverse StD base "+std::to_string(sigma), 2,2);
+                figure_handle f = matplot_table_init(true, "Deconvoluzione", "Kernel di Gauss " + KGN_title+ "a diverse StD base "+std::to_string(sigma), 2,2);
                 auto ax = f->current_axes();
 
                 f->nexttile(0);
@@ -1772,13 +1663,13 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 Vec x_vals = nodi_equidistanti(a,b,N);
                 std::string title = "Trasformazioni ("+KGN_title+") a 1x, 2x, 4x StD base ";
 
-                figure_handle f = TableInit(true, "Deconvoluzione", title + std::to_string(sigma*h), 2, 2);
+                figure_handle f = matplot_table_init(true, "Deconvoluzione", title + std::to_string(sigma*h), 2, 2);
 
-                legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), 3, 0,0);
 
                 f->nexttile(0);
                 auto ax = f->current_axes();
-                legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), 3, 0,0);
                 title = "Su segnale base con I2="+ format_numstr(kappa2[0][0]) + " |K|=" + format_numstr(kappa2[0][1]) + " |K^-1|="+format_numstr(kappa2[0][2]);
                 ax->title(title);
                 hold(on);
@@ -1802,7 +1693,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
                 f->nexttile(1);
                 ax = f->current_axes();
-                legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), 3, 0,0);
                 title = "smoothed q=" + std::to_string((int)sigma)+" con I2="+ format_numstr(kappa2[1][0]) + " |K|=" + format_numstr(kappa2[1][1]) + " |K^-1|="+format_numstr(kappa2[1][2]);
                 ax->title(title);
                 hold(on);
@@ -1825,7 +1716,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             
                 f->nexttile(2);
                 ax = f->current_axes();
-                legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), 3, 0,0);
                 title = "smoothed q=" + std::to_string((int)sigma*2)+" con I2="+ format_numstr(kappa2[2][0]) + " |K|=" + format_numstr(kappa2[2][1]) + " |K^-1|="+format_numstr(kappa2[2][2]);
                 ax->title(title);
                 hold(on);
@@ -1848,7 +1739,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
                 f->nexttile(3);
                 ax = f->current_axes();
-                legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), 3, 0,0);
                 title = "smoothed q=" + std::to_string((int)sigma*4)+" con I2="+ format_numstr(kappa2[3][0]) + " |K|=" + format_numstr(kappa2[3][1]) + " |K^-1|="+format_numstr(kappa2[3][2]);
                 ax->title(title);
                 hold(on);
@@ -1895,13 +1786,13 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 std::string title = "Perturbazioni ("+KGN_title+") a 1x StD base ";
 
 
-                figure_handle f = TableInit(true, "Deconvoluzione perturbata", title + format_numstr(sigma), 1, 1);
+                figure_handle f = matplot_table_init(true, "Deconvoluzione perturbata", title + format_numstr(sigma), 1, 1);
 
-                legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), 3, 0,0);
 
                 f->nexttile(0);
                 auto ax = f->current_axes();
-                legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), 3, 0,0);
                 title = "smoothed q=" + std::to_string((int)sigma)+" I2="+ format_numstr(kappa2[0][0]) + " |K|=" + format_numstr(kappa2[0][1]) + " |K^-1|="+format_numstr(kappa2[0][2]);
                 ax->title(title);
                 hold(on);
@@ -1934,7 +1825,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
                 f->nexttile(1);
                 ax = f->current_axes();
-                legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), 3, 0,0);
                 title = "smoothed q=" + std::to_string((int)sigma)+" I2="+ format_numstr(kappa2[0][0]) + " |K|=" + format_numstr(kappa2[0][1]) + " |K^-1|="+format_numstr(kappa2[0][2]);
                 ax->title(title);
                 hold(on);
@@ -1965,7 +1856,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             
                 f->nexttile(2);
                 ax = f->current_axes();
-                legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), 3, 0,0);
                 title = "smoothed q=" + std::to_string((int)sigma)+" con I2="+ format_numstr(kappa2[0][0]) + " |K|=" + format_numstr(kappa2[0][1]) + " |K^-1|="+format_numstr(kappa2[0][2]);
                 ax->title(title);
                 hold(on);
@@ -1996,7 +1887,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
                 f->nexttile(3);
                 ax = f->current_axes();
-                legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), 3, 0,0);
                 title = "smoothed q=" + std::to_string((int)sigma)+" I2="+ format_numstr(kappa2[0][0]) + " |K|=" + format_numstr(kappa2[0][1]) + " |K^-1|="+format_numstr(kappa2[0][2]);
                 ax->title(title);
                 hold(on);
@@ -2063,7 +1954,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             int dummy = system("clear");
             {
                 Vec v = {3.0, 1.0, -2.0};
-                Vec w = householder_colonna(v);
+                Vec w = vector_householder_bycol(v);
 
                 // Calcola H*v esplicitamente per verifica
                 // H*v = v - 2*w*(w^T*v)
@@ -2087,18 +1978,18 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 for (auto& r : X) for (double& v : r) v = g(rng);
 
                 Mat U0, B, V0;
-                bidiagonalizza(X, U0, B, V0, bidiag_mode, false);
+                trmatrix_bidiagonalizza(X, U0, B, V0, bidiag_mode, false);
                 Mat V0_t = matrix_trasposta(V0);
                 Mat In = matrix_build_Id(n);
                 Mat Id = matrix_build_Id(d);
                 Mat U0_U0t = matrix_prodotto_matrix(U0, matrix_trasposta(U0));
                 Mat V0_V0t = matrix_prodotto_matrix(V0, V0_t);
                 matrix_dump(U0, "U0 - Ortogonale?");
-                test_ortogonalita(U0_U0t, "U0 * U0_t - test ortogonalita'");
+                matrix_test_ortogonale(U0_U0t, "U0 * U0_t - test ortogonalita'");
                 matrix_dump(B, "B - Bidiagonale");
                 matrix_dump(V0, "V0 - Ortogonale?");
                 matrix_dump(V0_t, "V0_t - Ortogonale trasposta");
-                test_ortogonalita(V0_V0t, "V0 * V0_t - test ortogonalita'");
+                matrix_test_ortogonale(V0_V0t, "V0 * V0_t - test ortogonalita'");
                 //
                 // Verifiche
                 //
@@ -2107,21 +1998,21 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 Mat X0 = matrix_prodotto_matrix(U0, matrix_prodotto_matrix(B, V0_t));
                 matrix_dump(X, "X - Originale");
                 matrix_dump(X0, "X - Ricostruita U0 * (B * V0^T)");
-                Mat R = matrix_differenza(X,X0);
+                Mat R = matrix_differenza_dump(X,X0);
                 matrix_dump(R, "R - Differenza X - U0 * B * V0^T");
 
-                printf(" Error_F_lab ||X - U0*B*V0^T||_F = %.2e\n", errore_F(X, X0));
-                printf(" Error_F_mia ||X - U0*B*V0^T||_F = %.2e\n\n", matrix_norma(-1, R));
-                printf(" Error_F_lab ||In - U0*U0^T ||_F = %.2e\n", errore_F(In, U0_U0t));
-                printf(" Error_F_lab ||Id - V0*V0^T ||_F = %.2e\n\n", errore_F(Id, V0_V0t));
+                printf(" Error_F_lab ||X - U0*B*V0^T||_F = %.2e\n", matrix_calcola_errore_Fr(X, X0));
+                printf(" Error_F_mia ||X - U0*B*V0^T||_F = %.2e\n\n", matrix_calcola_norma(-1, R));
+                printf(" Error_F_lab ||In - U0*U0^T ||_F = %.2e\n", matrix_calcola_errore_Fr(In, U0_U0t));
+                printf(" Error_F_lab ||Id - V0*V0^T ||_F = %.2e\n\n", matrix_calcola_errore_Fr(Id, V0_V0t));
            
             // ── TODO 5: norma spettrale dell'errore di bidiagonalizzazione ───────────
             
                 // Dopo aver implementato norma_spettrale e matmat:
-                printf(" Norma spettrale PM econ ||R||_2 = %.2e\n",  matrix_norma(2,R));
-                printf(" Norma spettrale PM lab. ||R||_2 = %.2e\n",  matrix_norma(12,R));
-                printf(" Norma spettrale PM rayl ||R||_2 = %.2e\n\n",  matrix_norma(22,R));
-                //  test condizione di errore: Mat E = matrix_differenza(U0, V0);
+                printf(" Norma spettrale PM econ ||R||_2 = %.2e\n",  matrix_calcola_norma(2,R));
+                printf(" Norma spettrale PM lab. ||R||_2 = %.2e\n",  matrix_calcola_norma(12,R));
+                printf(" Norma spettrale PM rayl ||R||_2 = %.2e\n\n",  matrix_calcola_norma(22,R));
+                //  test condizione di errore: Mat E = matrix_differenza_dump(U0, V0);
            }
  
             bool redo = false;
@@ -2154,7 +2045,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
                 Vec testv; 
                 Mat VJ;
-                jacobi_simmetrica(matrice_At_A(X, true), testv, VJ);
+                linear_jacobi_autoval_simmetrica(matrix_prodotto_AtA(X, true), testv, VJ);
                 vector_dump(testv, 10, testv.size(), "Autovalori di Xt_X");
                 matrix_dump(VJ, "Matrice V di autovettori (dx)");
 
@@ -2164,7 +2055,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
 
                 Mat U0, B, V0;
-                bidiagonalizza(X, U0, B, V0, bidiag_mode); // ora l'arg optional e' il sesto (debug)
+                trmatrix_bidiagonalizza(X, U0, B, V0, bidiag_mode, false); // ora l'arg optional e' il sesto (debug)
 
                 // TODO 4: verifica ||X - U0*B*V0^T||_F
 
@@ -2172,12 +2063,12 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 Mat X0 = matrix_prodotto_matrix(matrix_prodotto_matrix(U0, B), V0_t);
                 // matrix_dump(X, "X Originale");
                 // matrix_dump(X0, "X = U0 * B * V0_t Ricostruita");
-                Mat R = matrix_differenza(X,X0);
+                Mat R = matrix_differenza_dump(X,X0);
 
 
-                printf(" Error_F_lab         ||X - U0*B*V0^T||_F = %.2e\n", errore_F(X, X0));
-                printf(" Error_F_mia         ||X - U0*B*V0^T||_F = %.2e\n", matrix_norma(-1, R));
-                printf(" Norma spettrale err ||X - U0*B*V0^T||_2 = %.2e\n\n", matrix_norma(2, R));
+                printf(" Error_F_lab         ||X - U0*B*V0^T||_F = %.2e\n", matrix_calcola_errore_Fr(X, X0));
+                printf(" Error_F_mia         ||X - U0*B*V0^T||_F = %.2e\n", matrix_calcola_norma(-1, R));
+                printf(" Norma spettrale err ||X - U0*B*V0^T||_2 = %.2e\n\n", matrix_calcola_norma(2, R));
 
                 cout << "\n" << std::string(80, '-')<< endl;
                 cout << "*** Fine collaudo bidiagonalizza: teniamo U0 e V0 per dopo e diamo B a SVD per avere Ub e Vb ***\n\n";
@@ -2190,39 +2081,39 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 /*
 
                 //
-                // collaudo svd_bidiagonale_ridotta
+                // collaudo trmatrix_SVDQR_ridotta
                 //
 
                 Mat Vbred;
-                svd_bidiagonale_ridotta(B, Ub, sigma, Vbred);
+                trmatrix_SVDQR_ridotta(B, Ub, sigma, Vbred);
                 matrix_dump(B, "B All'entrata di SVD");
 
                 matrix_dump(Ub, "Ub");
-                gram_schmidt_modificato(Ub);
+                matrix_ortogonalizza_GSmod(Ub);
                 matrix_dump(Ub, "Ub_ortonormalizzata GS");
                 matrix_dump(Vbred, "Vbred");
                 Mat Vbred_t = matrix_trasposta(Vbred);
                 Mat Ubt_Ub = matrix_prodotto_matrix(matrix_trasposta(Ub), Ub);
                 matrix_dump(Ubt_Ub, "Ubt_Ub");
-                Mat Sigma_red = matrice_diagonale(sigma, sigma.size(),sigma.size());
+                Mat Sigma_red = vector_to_matrix_diag(sigma, sigma.size(),sigma.size());
                 matrix_dump(Sigma_red, "Sigma_red");
                 Mat Vbredt_Vbred = matrix_prodotto_matrix(Vbred_t, Vbred);
                 matrix_dump(Vbredt_Vbred, "Vbredt_Vbred");
                 Mat B_rebuilt = matrix_prodotto_matrix(Ub, matrix_prodotto_matrix(Sigma_red, Vbred_t));
                 matrix_dump(B_rebuilt, ,"B_rebuilt");
-                Mat Rred = matrix_differenza(B, B_rebuilt);
+                Mat Rred = matrix_differenza_dump(B, B_rebuilt);
                 matrix_dump(Rred, "Rred differenze su B");
-                printf(" Error_F_lab         ||B - Ub*B*Vbred^T||_F = %.2e\n", errore_F(B, B_rebuilt));
-                printf(" Error_F_mia         ||X - Ub*B*Vbred^T||_F = %.2e\n", matrix_norma(-1, Rred));
-                printf(" Norma spettrale err ||X - Ub*B*Vbred^T||_2 = %.2e\n\n", matrix_norma(2, Rred));
+                printf(" Error_F_lab         ||B - Ub*B*Vbred^T||_F = %.2e\n", matrix_calcola_errore_Fr(B, B_rebuilt));
+                printf(" Error_F_mia         ||X - Ub*B*Vbred^T||_F = %.2e\n", matrix_calcola_norma(-1, Rred));
+                printf(" Norma spettrale err ||X - Ub*B*Vbred^T||_2 = %.2e\n\n", matrix_calcola_norma(2, Rred));
 
                 Mat X_rebuilt = matrix_prodotto_matrix(U0, matrix_prodotto_matrix(B_rebuilt, V0_t));
                 matrix_dump(X_rebuilt, "X_rebuilt");
-                Rred = matrix_differenza(X, X_rebuilt);
+                Rred = matrix_differenza_dump(X, X_rebuilt);
                 matrix_dump(Rred, "Rred differenze su X");
-                printf(" Error_F_lab         ||X - U0*B_rebuilt*V0^T||_F = %.2e\n", errore_F(B, B_rebuilt));
-                printf(" Error_F_mia         ||X - U0*B_rebuilt*V0^T||_F = %.2e\n", matrix_norma(-1, Rred));
-                printf(" Norma spettrale err ||X - U0*B_rebuilt*V0^T||_2 = %.2e\n\n", matrix_norma(2, Rred));
+                printf(" Error_F_lab         ||X - U0*B_rebuilt*V0^T||_F = %.2e\n", matrix_calcola_errore_Fr(B, B_rebuilt));
+                printf(" Error_F_mia         ||X - U0*B_rebuilt*V0^T||_F = %.2e\n", matrix_calcola_norma(-1, Rred));
+                printf(" Norma spettrale err ||X - U0*B_rebuilt*V0^T||_2 = %.2e\n\n", matrix_calcola_norma(2, Rred));
 
                 cout << "\n" << std::string(80, '-')<< endl;
                 cout << "*** Fine collaudo svd_bidiag ridotta nostrana  ***\n\n";
@@ -2233,13 +2124,13 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 //
 */
                 
-                svd_bidiagonale(B, Ub, Vb_t, sigma);  // questa e' la versione alglib
-
-                // svd_bidiagonale_compat(B, Ub, Vb, sigma);  
+                svd_bidiagonale(B, Ub, Vb_t, sigma);  // questa e' la versione alglib e rende Vb_t
                 Mat Vb = matrix_trasposta(Vb_t);
 
+                // trmatrix_SVDQR(B, Ub, Vb, sigma);   // questa era la versione provvisoria e rende Vb
+
                 matrix_dump(Ub, "Ub");
-                Mat Sigma = matrice_diagonale(sigma, Ub[0].size(), Vb[0].size()); 
+                Mat Sigma = vector_to_matrix_diag(sigma, Ub[0].size(), Vb[0].size()); 
                 matrix_dump(Sigma, "Sigma");
                 matrix_dump(Vb, "Vb");
                 matrix_dump(Vb_t, "Vb_t");
@@ -2253,8 +2144,8 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 matrix_dump(Ub_S_Vbt, "B = Ub_S_Vbt");
                 matrix_dump(B, "B Originale");
 
-                Mat RB = matrix_differenza(B , Ub_S_Vbt);
-                printf(" Error_F_mia || B - Ub * (Sigma * Vb_t)||_F = %.2e\n\n", matrix_norma(-1, RB));
+                Mat RB = matrix_differenza_dump(B , Ub_S_Vbt);
+                printf(" Error_F_mia || B - Ub * (Sigma * Vb_t)||_F = %.2e\n\n", matrix_calcola_norma(-1, RB));
                 matrix_dump(RB, "Matrice differenza B = B - Ub * (Sigma * Vb_t)");
 
                 // TODO: U = U0 * Ub,  V = V0 * Vb
@@ -2284,14 +2175,14 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
                 // TODO: verifica ||X - U*Sigma*V^T||_F, ||U^T*U - I||_F, ||V^T*V - I||_F
 
-                Mat RX = matrix_differenza(X, U_S_Vt);
+                Mat RX = matrix_differenza_dump(X, U_S_Vt);
                 matrix_dump(RX, "Differenze X - U Sigma V^t");
 
-                Mat RU = matrix_differenza(matrix_build_Id(U.size()), matrix_prodotto_matrix(U, matrix_trasposta(U)));
-                Mat RV = matrix_differenza(matrix_build_Id(V.size()), matrix_prodotto_matrix(V, V_t));
-                printf(" Error_F_mia ||X - U*Sigma*V^T||_F = %.2e\n", matrix_norma(-1, RX));
-                printf(" Error_F_mia ||U^T*U - I||_F = %.2e\n", matrix_norma(-1, RU));
-                printf(" Error_F_mia ||V^T*V - I||_F = %.2e\n\n", matrix_norma(-1, RV));
+                Mat RU = matrix_differenza_dump(matrix_build_Id(U.size()), matrix_prodotto_matrix(U, matrix_trasposta(U)));
+                Mat RV = matrix_differenza_dump(matrix_build_Id(V.size()), matrix_prodotto_matrix(V, V_t));
+                printf(" Error_F_mia ||X - U*Sigma*V^T||_F = %.2e\n", matrix_calcola_norma(-1, RX));
+                printf(" Error_F_mia ||U^T*U - I||_F = %.2e\n", matrix_calcola_norma(-1, RU));
+                printf(" Error_F_mia ||V^T*V - I||_F = %.2e\n\n", matrix_calcola_norma(-1, RV));
 
                 // matrix_dump(RX, "Matrice differenza RX = X - U * Sigma * V_t");
 
@@ -2300,7 +2191,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 std::cout << "Valori singolari sigma (attesi in ordine decrescente):\n";
                 for (double s : sigma) printf("  %.6f\n", s);
 
-                check_sv_vs_lambda(testv, sigma);
+                trmatrix_test_sv_autoval(testv, sigma);
             }
 
 
@@ -2333,7 +2224,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             bool first_run = true;
             for (int itab = 0; itab < 2; itab++) 
             {
-                auto fig = TableInit(true, "PCA", "PCA — prime due componenti principali", 2, 2 );
+                auto fig = matplot_table_init(true, "PCA", "PCA — prime due componenti principali", 2, 2 );
 
                 for (int ik = 0; ik < 4; ik++) 
                 {
@@ -2356,24 +2247,25 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                     //       Xtilde[i][j] = X[i][j] - mean_j
                     Vec avg_col(X[0].size(), 0.0);
                     Vec avg_row(X.size(), 0.0);
-                    calcola_medie_matrice(X, avg_col, avg_row);
+                    matrix_calcola_media(X, avg_col, avg_row);
                     // vector_dump(avg_col, 10, avg_col.size(), "Medie in colonna");
                     // vector_dump(avg_row, 10, avg_row.size(), "Medie in riga");
-                    Mat Xtilde = centra_matrice(X, avg_col);
+                    Mat Xtilde = matrix_centra_su_media(X, avg_col);
                     // matrix_dump(X, "Matrice originale");
                     // matrix_dump(Xtilde, "Matrice centrasta");
 
                     // b) SVD di Xtilde
 
                     Mat U0, B, V0;
-                    bidiagonalizza(Xtilde, U0, B, V0, bidiag_mode);
-                    Mat Ub, Vb; Vec sigma;
-                    // svd_bidiagonale(B, Ub, Vb, sigma);
-                    svd_bidiagonale_compat(B, Ub, Vb, sigma);
+                    trmatrix_bidiagonalizza(Xtilde, U0, B, V0, bidiag_mode, false);
+                    Mat Ub, Vb_t; Vec sigma;
+                    svd_bidiagonale(B, Ub, Vb_t, sigma);
+                    Mat Vb = matrix_trasposta(Vb_t);
+
                     Mat U = matrix_prodotto_matrix(U0, Ub);
                     Mat V = matrix_prodotto_matrix(V0, Vb);
-                    // test_ortogonalita(V, "V");
-                    vector_dump(sigma, 10, sigma.size(), "sigmas al giro "+ std::to_string(ik+1));
+                    // matrix_test_ortogonale(V, "V");
+                    // vector_dump(sigma, 10, sigma.size(), "sigmas al giro "+ std::to_string(ik+1));
 
                     // c) Coordinate PCA: pc_k(i) = sum_j Xtilde[i][j] * V[j][k]
                     // Mat pc1(4, Vec(npoints, 0.0));
@@ -2440,13 +2332,13 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         while (!leave) 
         {
 			int n = 200;
-			vector<int> d = {2, 5, 20, 50};
+			vector<int> d = {4, 8, 40, 80};
 			
             // ── TODO 7: PCA e scatter plot ────────────────────────────────────────────
             
             int dummy = system("clear");
             bool first_run = true;
-			auto fig = TableInit(true, "PCA", "PCA — prime due componenti principali", 2, 2 );
+			auto fig = matplot_table_init(true, "PCA", "PCA — prime due componenti principali", 2, 2 );
 
 			for (int ik = 0; ik < 4; ik++) 
 			{
@@ -2465,23 +2357,23 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 				//       Xtilde[i][j] = X[i][j] - mean_j
 				Vec avg_col(X[0].size(), 0.0);
 				Vec avg_row(X.size(), 0.0);
-				calcola_medie_matrice(X, avg_col, avg_row);
+				matrix_calcola_media(X, avg_col, avg_row);
 				// vector_dump(avg_col, 10, avg_col.size(), "Medie in colonna");
 				// vector_dump(avg_row, 10, avg_row.size(), "Medie in riga");
-				Mat Xtilde = centra_matrice(X, avg_col);
+				Mat Xtilde = matrix_centra_su_media(X, avg_col);
 				// matrix_dump(X, "Matrice originale");
 				// matrix_dump(Xtilde, "Matrice centrasta");
 
 				// b) SVD di Xtilde
 
 				Mat U0, B, V0;
-				bidiagonalizza(Xtilde, U0, B, V0, bidiag_mode);
-				Mat Ub, Vb; Vec sigma;
-				// svd_bidiagonale(B, Ub, Vb, sigma);
-				svd_bidiagonale_compat(B, Ub, Vb, sigma);
+				trmatrix_bidiagonalizza(Xtilde, U0, B, V0, bidiag_mode, false);
+				Mat Ub, Vb_t; Vec sigma;
+				svd_bidiagonale(B, Ub, Vb_t, sigma);
+                Mat Vb = matrix_trasposta(Vb); // raddrizzo perche' alglib rende Vb_t   
 				Mat U = matrix_prodotto_matrix(U0, Ub);
 				Mat V = matrix_prodotto_matrix(V0, Vb);
-				// test_ortogonalita(V, "V");
+				// matrix_test_ortogonale(V, "V");
 				vector_dump(sigma, 10, sigma.size(), "sigmas al giro "+ std::to_string(ik+1));
 
 				// c) Coordinate PCA: pc_k(i) = sum_j Xtilde[i][j] * V[j][k]
@@ -2570,10 +2462,10 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             costruisci_sistema_cauchy(n, t0, T, x0, t, fvals, L, b, f_sin2plus1, true);
             vector_dump(b, 10, 50, " b = 1/(1+sin^2) "); 
             // Risoluzione con sostituzione indietro
-            Vec x = linear_BW_subst(L, b);
+            Vec x = linear_subst_BW(L, b);
             vector_dump(x, 10, 50, " x da Lx = b"); 
 
-            auto fig = TableInit(true, "Cauchy", "Soluzione numerica del problema di Cauchy", 1, 1);
+            auto fig = matplot_table_init(true, "Cauchy", "Soluzione numerica del problema di Cauchy", 1, 1);
             
             // migliorie: aggiornare titolo con parametri 
             
@@ -2646,7 +2538,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
 int main() {
     {
-        figure_handle fig = TableInit(true, "Figure vuota per inizializzare matplot++", "Figure vuota per inizializzare matplot++", 2, 2);
+        figure_handle fig = matplot_table_init(true, "Figure vuota per inizializzare matplot++", "Figure vuota per inizializzare matplot++", 2, 2);
         // fig->draw();
     }
     MenuConfig menu;

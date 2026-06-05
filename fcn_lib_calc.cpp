@@ -196,7 +196,6 @@ Vec nodi_bubblesort (
     return x;
 }
 
-
 //
 // funzioni matematiche ad uso callback 
 //
@@ -232,7 +231,7 @@ double f_sin2plus1(double t){
 // funzioni macro di algebra lineare
 //
 
-Vec linear_BW_subst(
+Vec linear_subst_BW(
     const Mat &U, 
     const Vec &y) {
     int m = static_cast<int>(U.size());
@@ -250,7 +249,7 @@ Vec linear_BW_subst(
     return x;
 }
 
-Vec linear_FW_subst(
+Vec linear_subst_FW(
     const Mat &L, 
     const Vec &b) {
         // -----------------------------------------------------------------------------
@@ -270,22 +269,82 @@ Vec linear_FW_subst(
     return x;
 }
 
+void linear_jacobi_autoval_simmetrica(
+    const Mat& D, 
+    Vec& lambda, 
+    Mat& V)
+{
+    Mat A = D; 
+    int n = A.size();
+    V = matrix_build_Id(n);
 
-Vec linear_risolvi_colonna(
-    const Mat& L,
-    const Mat& U,
-    Vec e){
-        // Risolveva  T x = e usando LU
-        // Risolve L U x = e_j usando sostituzione in avanti e indietro
-        // ora risolve un vettore generico e 
+    const int max_iter = 100 * n * n;
+    const double tol = 1e-12;
 
-    int n = L.size();
-    Vec y = linear_FW_subst(L, e);
-    // vector_dump(y, 10, y.size(), "y");
-    Vec x = linear_BW_subst(U, y);
-    // vector_dump(x, 10, x.size(), "x");
-    return x;
-    };
+    for (int iter = 0; iter < max_iter; ++iter)
+    {
+        int p = 0, q = 1;
+        double max_off = 0.0;
+
+        for (int i = 0; i < n; ++i)
+            for (int j = i + 1; j < n; ++j)
+                if (std::abs(A[i][j]) > max_off)
+                {
+                    max_off = std::abs(A[i][j]);
+                    p = i;
+                    q = j;
+                }
+
+        if (max_off < tol)
+            break;
+
+        double app = A[p][p];
+        double aqq = A[q][q];
+        double apq = A[p][q];
+
+        double tau = (aqq - app) / (2.0 * apq);
+        double t = (tau >= 0.0)
+                 ? 1.0 / (tau + std::sqrt(1.0 + tau * tau))
+                 : -1.0 / (-tau + std::sqrt(1.0 + tau * tau));
+
+        double c = 1.0 / std::sqrt(1.0 + t * t);
+        double s = t * c;
+
+        for (int k = 0; k < n; ++k)
+        {
+            if (k != p && k != q)
+            {
+                double aik = A[k][p];
+                double akq = A[k][q];
+
+                A[k][p] = c * aik - s * akq;
+                A[p][k] = A[k][p];
+
+                A[k][q] = s * aik + c * akq;
+                A[q][k] = A[k][q];
+            }
+        }
+
+        A[p][p] = c*c*app - 2.0*s*c*apq + s*s*aqq;
+        A[q][q] = s*s*app + 2.0*s*c*apq + c*c*aqq;
+        A[p][q] = 0.0;
+        A[q][p] = 0.0;
+
+        for (int k = 0; k < n; ++k)
+        {
+            double vip = V[k][p];
+            double viq = V[k][q];
+
+            V[k][p] = c * vip - s * viq;
+            V[k][q] = s * vip + c * viq;
+        }
+    }
+
+    lambda.resize(n);
+    for (int i = 0; i < n; ++i)
+        lambda[i] = A[i][i];
+}
+
 
 Vec linear_LU_calcola_autovalori (
     const Mat& A) 
@@ -356,7 +415,7 @@ Mat linear_LU_inversa (
     // Tx = e_i ==> LUx = e_i => Ly = e_i => Ux = y 
 
     for (std::size_t j=0;j<T[0].size();j++) {
-        T_inv_j = linear_risolvi_colonna(L, U, vector_build_versore_canonico(j, T.size())); // risolvi per e_j e ottieni la colonna j di T^-1
+        T_inv_j = linear_LU_risolve_colonna(L, U, vector_build_versore_canonico(j, T.size())); // risolvi per e_j e ottieni la colonna j di T^-1
         for (std::size_t i=0;i<T_inv.size();i++) {
             T_inv[i][j] = T_inv_j[i];
         };
@@ -364,14 +423,30 @@ Mat linear_LU_inversa (
     return T_inv;
 }
 
-Vec linear_LU_risolve_sistema(
+Vec linear_LU_risolve_colonna(
+    const Mat& L,
+    const Mat& U,
+    Vec e){
+        // Risolveva  T x = e usando LU
+        // Risolve L U x = e_j usando sostituzione in avanti e indietro
+        // ora risolve un vettore generico e 
+
+    int n = L.size();
+    Vec y = linear_subst_FW(L, e);
+    // vector_dump(y, 10, y.size(), "y");
+    Vec x = linear_subst_BW(U, y);
+    // vector_dump(x, 10, x.size(), "x");
+    return x;
+    };
+
+    Vec linear_LU_risolve_sistema(
     const Mat& T,
     const Vec& x)
 {
     Mat L, U;
     int N = T.size(); 
     linear_LU_dec(T, L, U); 
-    Vec g = linear_risolvi_colonna(L, U, x);
+    Vec g = linear_LU_risolve_colonna(L, U, x);
     return g;
 }
 
@@ -389,7 +464,7 @@ double linear_max_autoval_pwr_any(
     Vec q(N);
     Vec z(N);
     for (double& v : q) v = gauss(rng); 
-    double nq = vector_norma(2,q);
+    double nq = vector_calcola_norma(2,q);
     for (double& v : q) v /= nq;
 
     double mu = 0.0;
@@ -403,7 +478,7 @@ double linear_max_autoval_pwr_any(
     for (int iter=0;iter<max_iter;iter++) {
         z = matrix_prodotto_vector(A, q);
         z = matrix_prodotto_vector(At,z);
-        nz = vector_norma(2,z);
+        nz = vector_calcola_norma(2,z);
         for (int j=0;j<N;j++) q[j]=z[j]/nz; // q = z normalizzato
         mu = vector_prodotto_scalare(q, matrix_prodotto_vector(At, matrix_prodotto_vector(A, q)));  
         //
@@ -432,7 +507,7 @@ double linear_max_autoval_pwr_any_res(
 
     for (double& v : q) v = gauss(rng); 
  
-    double nq = vector_norma(2,q);
+    double nq = vector_calcola_norma(2,q);
     for (double& v : q) v /= nq;
  
     Mat At = matrix_trasposta(A);
@@ -447,7 +522,7 @@ double linear_max_autoval_pwr_any_res(
         Vec z = matrix_prodotto_vector(At, Aq); // z = At A q(k)
 
         // nuovo vettore normalizzato per q(k+1)
-        double nz = vector_norma(2,z);
+        double nz = vector_calcola_norma(2,z);
         if (nz == 0.0) return 0.0; // matrice AtA singolare?
         
         for (int j=0;j<N;j++) q[j]=z[j]/nz; // q = z normalizzato
@@ -469,7 +544,7 @@ double linear_max_autoval_pwr_any_res(
 
     Vec r(q.size()); 
     for (int j = 0; j<N; j++) r[j] = z[j] - mu * q[j];
-    double res = vector_norma(2, r) / std::max(1.0, std::abs(mu));
+    double res = vector_calcola_norma(2, r) / std::max(1.0, std::abs(mu));
     //
     // poi vediamo cosa possiamo fare con res, per ora lascialo li'
 
@@ -527,6 +602,27 @@ double linear_max_autoval_pwr_AtA(
 //
 // funzioni per la manipolazione di matrici
 // 
+    Mat matrix_build_derivata1(
+        int n, 
+        double a, 
+        double b) {
+        int m = n - 1;               // numero di righe
+        Mat D(m, Vec(n, 0.0));
+        // ----------------------------------------------------------------------------
+        // TODO 1 --- Matrice D (differenze finite in avanti)
+        // Matrice D ∈ R^{(n-1)×n} che approssima la derivata prima su [0,1]:
+        // (Du)_i = (u_{i+1} - u_i) / h, con h = 1/(n-1), i = 0,...,n-2.
+        // ----------------------------------------------------------------------------
+
+
+        double h = h_ticks(a, b, n - 1);
+        for (int i = 0; i < m; ++i) {
+            D[i][i]     = -1.0 / h;
+            D[i][i + 1] =  1.0 / h;
+        };
+        return D;
+    }
+
 
 double matrix_build_gausskernel_item(  // forse non vale neanche la pena esportarla
     const double t, 
@@ -556,19 +652,43 @@ Mat matrix_build_gausskernel(
             }
         }
         if (norm_flag) K = matrix_normalize_byrow(K);
-        double n2K = matrix_norma(12, K);
-        // double n12K = matrix_norma(12, K);
+        double n2K = matrix_calcola_norma(12, K);
+        // double n12K = matrix_calcola_norma(12, K);
         // cout << "Confronto norme: nuova 2 " << n2K << " contro vecchia ora 12 " << n12K <<endl;
         //
         // test norma spettrale
         //
-        double n2K_inv = matrix_norma(12, linear_LU_inversa(K));
-        // double n12K_inv = matrix_norma(12, linear_LU_inversa(K));
+        double n2K_inv = matrix_calcola_norma(12, linear_LU_inversa(K));
+        // double n12K_inv = matrix_calcola_norma(12, linear_LU_inversa(K));
         // cout << "Confronto norme: nuova 2 " << n2K_inv << " contro vecchia ora 12 " << n12K_inv <<endl<<endl;
 
         Indicatori = {n2K*n2K_inv, n2K, n2K_inv};
     return K;
 }       
+
+Mat matrix_build_gram(
+        const Vec& x, 
+        const int K) 
+    {
+        // gram computes a $K \times K$ Gram matrix from a vector x by sampling K subvectors with campiona, 
+        // taking pairwise dot products via vector_prodotto_scalare, and filling a symmetric matrix G.
+
+        Mat G = matrix_build_zero(K, K);
+        Vec sample_u, sample_v;
+        double Gij;     // usiamo uno scalare per accelerare senza lookup doppio
+        for (int i=0;i<K;i++)
+            for (int j=i;j<K;j++)
+            {
+                sample_u = vector_campiona_f_k(i, x, f_cos);
+                sample_v= vector_campiona_f_k(j, x, f_cos);
+                Gij = vector_prodotto_scalare(sample_u, sample_v);
+                G[i][j] = Gij;
+                G[j][i] = Gij;
+            }
+
+        // DONE: doppio ciclo su i e j
+        return G;
+    }
 
 Mat matrix_build_Id(
     int n) 
@@ -616,94 +736,41 @@ Mat matrix_build_zero(
     return Mat(righe, Vec(colonne, 0.0));
 }
 
-Mat matrix_differenza(
+double matrix_calcola_errore_Fr(
     const Mat& A, 
-    const Mat& B)
+    const Mat& B) 
 {
-    int ra = A.size(); 
-    int ca = A[0].size();
-    int rb = B.size();
-    int cb = B[0].size();
-    if ((ra == rb) && (ca == cb)) {
-        Mat R = matrix_build_zero(ra, ca);
-        for (int i = 0; i < ra; i++) {
-            for (int j = 0; j < ca; j++) {
-                R[i][j] = A[i][j] - B[i][j];
-            }
-        };
-        return R;
-    } else {
-        cout << "Matrici di dimensioni incompatibili per sottrazione A: "
-            << ra << "x" << ca << " e B: "
-            << rb << "x" << cb << endl; 
-        exit(-1);
-    }
-       
-}
-
-void matrix_dump(
-    const Mat& G, 
-    const std::string &nome) 
-{
-    int NR = G.size();
-    std::cout << "\n── " << nome << " " << NR << "(" <<  G.size() << ")" <<" ──\n";
-    for (int i = 0; i < (int)NR; ++i) {
-        for (int j = 0; j < (int)G[i].size(); ++j)
-            std::cout << std::fixed
-		      << std::setprecision(8)
-              << color_dbl(G[i][j]) 
-              << std::setw(12) 
-              << std::setfill(' ')
-		      << G[i][j] << " ";
-		      // << G[i][j] << " ";
-        color_rst();
-        std::cout << "\n\n";
-    }
-}
-
-Mat matrix_estende_ridotta(
-    const Mat& A, 
-    int n, 
-    bool bycol)
-{
-    int cols = A[0].size();
-    int rows = A.size();
-    
-    cout << "Entriamo con n = " << n << ( bycol ? "Colonne" : "Righe") << endl ;
-
-    if (bycol) {
-        if (cols > n) {
-            Mat B = matrix_build_zero(rows, n);
-            for (int i = 0; i < rows; i++) { 
-                for (int j = 0; j < n; j++ ) {
-                    B[i][j] = A[i][j];
-                };
-            };
-            cout << "Rendo B\n";
-            return B;
-        } else {
-            cout << "Rendo A\n";
-            return A;
+// Norma di Frobenius di A - B
+    double s = 0;
+    for (int i = 0; i < (int)A.size(); ++i)
+        for (int j = 0; j < (int)A[0].size(); ++j) {
+            double d = A[i][j] - B[i][j];
+            s += d*d;
         }
-    } else {
-        if (rows>n) {
-            Mat B = matrix_build_zero(n, cols);
-            for (int i = 0; i < n; i++) {
-                for (int j = 0; j <  cols; j++) {
-                    B[i][j] = A[i][j];
-                }
-            }
-            cout << "Rendo B\n";
-            return B;
-        } else {
-            cout << "Rendo A\n";
-            return A;
-        };
-    }
-
+    return std::sqrt(s);
 }
 
-double matrix_norma(
+void matrix_calcola_media(
+    const Mat& A, 
+    Vec& somma_col, 
+    Vec& somma_row) 
+{   
+    int m = A.size();
+    int n = A[0].size();
+    for (int i = 0; i < m; i++) {
+
+        for (int j = 0; j < n; j++) {
+            double Aij = A[i][j];
+            somma_row[i] += Aij;
+            somma_col[j] += Aij;
+        }
+        somma_row[i] /= (double) m;
+        for (int j = 0; j < n; j++) 
+            somma_col[j] /= (double) n;
+    }
+}
+
+double matrix_calcola_norma(
     int norma,
     const Mat& A) 
 {
@@ -793,6 +860,135 @@ double matrix_norma(
 };
 
 
+Mat matrix_centra_su_media(
+    const Mat& A, 
+    const Vec& avg_vec,
+    bool by_col)
+{
+    int m = A.size();
+    int n = A[0].size();
+    Mat Res = matrix_build_zero(m,n);
+    for (int i = 0; i < m; i++)
+        for (int j = 0; j < n; j++)
+            if (by_col) {
+                Res[i][j]=A[i][j] - avg_vec[j];
+            }else{
+                Res[i][j]=A[i][j] - avg_vec[i];
+            }
+    return Res;
+}
+
+Mat trmatrix_completa_ridotta(
+    const Mat& A)
+// completa una matrice V ridotta da dXn a dXd aggiungendo (n-d) versori di Rd e poi la ri ortonorma
+{
+    int d = A.size();
+    int n = A[0].size();
+    //
+    // debug ortonormalizzazione
+    //
+    // matrix_dump(A, "Verifica ridotta prima di completamento a dXd");
+    //
+    // fine debug
+    //
+    Mat Vb(d, Vec(d, 0.0));
+    if (n>=d) return A;
+
+    for (int j = 0; j < n; j++)
+        for (int i = 0; i< d; i++) Vb[i][j] = A[i][j];
+    for (int k = n; k < d; k++)
+        Vb[k][k]=1.0; // andiamo in ordine con gli ultimi d-n versori della base canonica
+    matrix_ortogonalizza_GSmod(Vb, n);
+    return Vb;
+}
+
+Mat matrix_differenza_dump(
+    const Mat& A, 
+    const Mat& B)
+{
+    int ra = A.size(); 
+    int ca = A[0].size();
+    int rb = B.size();
+    int cb = B[0].size();
+    if ((ra == rb) && (ca == cb)) {
+        Mat R = matrix_build_zero(ra, ca);
+        for (int i = 0; i < ra; i++) {
+            for (int j = 0; j < ca; j++) {
+                R[i][j] = A[i][j] - B[i][j];
+            }
+        };
+        return R;
+    } else {
+        cout << "Matrici di dimensioni incompatibili per sottrazione A: "
+            << ra << "x" << ca << " e B: "
+            << rb << "x" << cb << endl; 
+        exit(-1);
+    }
+       
+}
+
+void matrix_dump(
+    const Mat& G, 
+    const std::string &nome) 
+{
+    int NR = G.size();
+    std::cout << "\n── " << nome << " " << NR << "(" <<  G.size() << ")" <<" ──\n";
+    for (int i = 0; i < (int)NR; ++i) {
+        for (int j = 0; j < (int)G[i].size(); ++j)
+            std::cout << std::fixed
+		      << std::setprecision(8)
+              << color_dbl(G[i][j]) 
+              << std::setw(12) 
+              << std::setfill(' ')
+		      << G[i][j] << " ";
+		      // << G[i][j] << " ";
+        color_rst();
+        std::cout << "\n\n";
+    }
+}
+
+Mat matrix_estende_ridotta(
+    const Mat& A, 
+    int n, 
+    bool bycol)
+{
+    int cols = A[0].size();
+    int rows = A.size();
+    
+    cout << "Entriamo con n = " << n << ( bycol ? "Colonne" : "Righe") << endl ;
+
+    if (bycol) {
+        if (cols > n) {
+            Mat B = matrix_build_zero(rows, n);
+            for (int i = 0; i < rows; i++) { 
+                for (int j = 0; j < n; j++ ) {
+                    B[i][j] = A[i][j];
+                };
+            };
+            cout << "Rendo B\n";
+            return B;
+        } else {
+            cout << "Rendo A\n";
+            return A;
+        }
+    } else {
+        if (rows>n) {
+            Mat B = matrix_build_zero(n, cols);
+            for (int i = 0; i < n; i++) {
+                for (int j = 0; j <  cols; j++) {
+                    B[i][j] = A[i][j];
+                }
+            }
+            cout << "Rendo B\n";
+            return B;
+        } else {
+            cout << "Rendo A\n";
+            return A;
+        };
+    }
+
+}
+
 Mat matrix_normalize_byrow(
     Mat& K)
 {   
@@ -817,6 +1013,93 @@ Mat matrix_normalize_byrow(
     return Kn;
 }
 
+void matrix_ordina_diagonale(
+    Vec& lambda,
+    Mat& V,
+    double zero_tol,
+    SortOrder order)   // default: discendente
+{
+    //
+    // sort dei valori singolari (o autovalori) con trascinamento colonne di V
+    //
+
+    const int n = static_cast<int>(lambda.size());
+    // vettore indici 0..n-1
+    std::vector<int> idx(n);
+    for (int i = 0; i < n; ++i) idx[i] = i;
+
+    auto key = [&](int i) {
+        double a = lambda[i];
+        if (std::abs(a) < zero_tol) a = 0.0;  // filtro nullità
+        return a;
+    };
+
+    std::sort(idx.begin(), idx.end(),
+              [&](int i, int j) {
+                  double ai = key(i);
+                  double aj = key(j);
+                  return (order == SortOrder::Asc) ? (ai < aj) : (ai > aj);
+              });
+
+    // applica permutazione
+    Vec lambda_sorted(n);
+    Mat V_sorted = V;   // stessa dimensione
+
+    for (int k = 0; k < n; ++k)
+    {
+        int old = idx[k];
+        lambda_sorted[k] = lambda[old];
+        for (int r = 0; r < static_cast<int>(V.size()); ++r)
+            V_sorted[r][k] = V[r][old];
+    }
+
+    lambda.swap(lambda_sorted);
+    V.swap(V_sorted);
+}
+
+void matrix_ortogonalizza_GSmod(
+    Mat& Q, 
+    int j0)
+{
+    if (Q.empty() || Q[0].empty()) return;
+    const int m = static_cast<int>(Q[0].size()); // colonne
+    const int n = static_cast<int>(Q.size());    // righe
+    if (j0 < 0) j0 = 0;
+    if (j0 >= m) return;
+
+    for (int j = j0; j < m; ++j)
+    {
+        // v_j = colonna j
+        // ortogonalizza rispetto a q_0, ..., q_{j-1}
+        for (int k = 0; k < j; ++k) // ortogonalizza rispetto a TUTTE le precedenti
+        {
+            // prodotto scalare q_k^T v_j
+            double dot = 0.0;
+            for (int i = 0; i < n; ++i)
+                dot += Q[i][k] * Q[i][j];
+
+            // v_j -= dot * q_k
+            for (int i = 0; i < n; ++i)
+                Q[i][j] -= dot * Q[i][k];
+        }
+
+        // normalizza v_j -> q_j
+        double norm2 = 0.0;
+        for (int i = 0; i < n; ++i)
+            norm2 += Q[i][j] * Q[i][j];
+
+        double norm = std::sqrt(norm2);
+        if (norm > 0.0)
+        {
+            double inv = 1.0 / norm;
+            for (int i = 0; i < n; ++i)
+                Q[i][j] *= inv;
+        } else {
+            // colonna quasi nulla: lasciala zero, se capita
+        }
+    }
+}
+
 Mat matrix_prodotto_coeff(
     const Mat& A, 
     const double coeff) 
@@ -830,6 +1113,20 @@ Mat matrix_prodotto_coeff(
     return C;
 };
 
+Mat matrix_prodotto_AtA (
+    const Mat& A, 
+    bool A_right)  // default true. Come da nome fa At A (con A destra) se no fa A At
+{   Mat B;
+    if (A_right) {
+        int n = A[0].size(); // A = mXn => At A = nXm mXn = nXn
+        B = matrix_prodotto_matrix(matrix_trasposta(A), A);
+    } else {
+        int n = A.size(); // A = mXn => A At = mXn nXm = mXm
+        Mat B(n, Vec(n, 0.0));
+        B = matrix_prodotto_matrix(A, matrix_trasposta(A));
+    };
+    return B;
+}
 
 Mat matrix_prodotto_matrix(
     const Mat& A, 
@@ -896,6 +1193,13 @@ Vec matrix_prodotto_vector(
     return u;
 };  
 
+void matrix_test_ortogonale(
+    const Mat& A,
+    string s)
+{
+    matrix_dump(matrix_prodotto_matrix(matrix_trasposta(A), A), "Test di ortogonalita' di "+s);
+}
+
 Mat matrix_trasposta(
     const Mat& A) 
 {
@@ -921,7 +1225,7 @@ Vec vector_add_noise(
     // v e' il vettore da perturbare, e l'aliquota in millesimi rispetto alla norma_inf del vettore 
     int N = v.size();
     Vec r(N,0.0);
-    double fscala = vector_norma(2, v);
+    double fscala = vector_calcola_norma(2, v);
     double ampiezza = (e*fscala)/1000;
     for (int i = 0; i<N; i++) { 
         r[i]  = v[i] + ampiezza * ((double)rand() / RAND_MAX - 0.5);
@@ -938,6 +1242,34 @@ Vec vector_build_versore_canonico(
     return e;
 }
 
+Vec vector_campiona_f(
+    const Vec &x, // vettore dei nodi di campionamento
+    double (*ft)(double))   // funzione da  campionare
+{
+        Vec phi(x.size());
+        int totnum = (int) x.size();
+        for (int i=0; i<totnum; i++) phi[i] = fcallb(x[i], ft);
+        return phi;
+}
+Vec vector_campiona_f_k(
+    int k, 
+    const Vec &x,           // vettore dei nodi di campionamento
+    double (*ft)(double))   // funzione da  campionare 
+{
+        // =============================================================================
+        //  Campionamento di una funzione base generica
+        //  Restituisce il vettore dei valori di phi_k nei nodi x:
+        //      phi_k[n] = function (k * x[n])
+        //  La funzione e' passata come puntatore a funzione ft, che accetta un double 
+        //  e restituisce un double.
+
+        Vec phi(x.size());
+        int totnum = (int) x.size();
+        for (int i=0; i<totnum; i++) phi[i] = fcallb(k*x[i], ft);
+        
+        return phi;
+    }
+    
 void vector_dump (
     Vec x, 
     int colspan, 
@@ -967,7 +1299,71 @@ void vector_dump (
 //    cout << "Uscito con "  << ipos;   
 }
 
-double vector_norma(
+Vec vector_householder_bycol(
+    const Vec& v) 
+{
+    // =============================================================================
+//  TODO 1 – Riflessione di Householder su una colonna
+//
+//  Dato v ∈ R^m, restituisce w normalizzato tale che
+//     (I - 2ww^T) v = -sgn(v[0]) * ||v||_2 * e_1
+//
+//  Costruzione:
+//     u = v;
+//     u[0] += sgn(v[0]) * ||v||_2;    // sgn(0) = +1 per convenzione
+//     w = u / ||u||_2;
+//
+//  ATTENZIONE: se ||v||_2 == 0, restituisci w = e_1 (nessuna trasformazione).
+//
+//  Verifica nella funzione main: per v = {3, 1, -2},
+//  w risultante deve dare H*v = [-sqrt(14), 0, 0].
+// =============================================================================
+
+    int m = v.size();
+    Vec w(m, 0.0);
+    double n2 = vector_calcola_norma(2,v);
+    if (n2 == 0) 
+    {
+        w[0]=1;
+        return w; // restituisce e1
+    } else {
+        int sgn_v0 = 1;
+        for (int i=0;i<m;i++) w[i]=v[i];
+        if (w[0]<0) sgn_v0 = -1;
+        w[0] += sgn_v0 * n2;
+        n2 = vector_calcola_norma(2, w);   // ricicliamo, non ci serviva piu' norma di v
+        for (int i=0;i<m;i++) w[i] /= n2;
+        return w;
+    }
+}
+
+Vec vector_householder_byrow(
+    const Vec& v) 
+{
+// =============================================================================
+//  TODO 2 – Riflessione di Householder su una riga
+//
+//  Matematicamente identico a vector_householder_bycol.
+//  La distinzione è solo nell'uso: verrà applicato a destra (su righe).
+//  Puoi semplicemente delegare a vector_householder_bycol.
+// =============================================================================
+
+    return vector_householder_bycol(v);
+}
+Vec vector_householder_rev_bycol(const Vec& v) {
+    Vec vr = vector_reverse(v);
+    Vec wr = vector_householder_bycol(vr);
+    return vector_reverse(wr);
+}
+
+Vec vector_householder_rev_byrow(const Vec& v) {
+    Vec vr = vector_reverse(v);
+    Vec wr = vector_householder_byrow(vr);
+    return vector_reverse(wr);
+}
+
+
+double vector_calcola_norma(
     int norma, 
     const Vec& V)
 {
@@ -1021,6 +1417,22 @@ Vec vector_reverse(const Vec& v) {
     return r;
 }
 
+Vec vector_segnale_finestra(
+    int N,
+    double a, 
+    double b, 
+    double t)
+    {
+        // a e b in % su N, sono frazioni in [0,1]
+        Vec ws = Vec(N,0.0);
+        double temp;
+        for (int i=0; i<N; i++) {
+            temp = (double) i / (double) N;
+            if ((temp >=a) && (temp <= b)) ws[i]=t;
+        }
+        return ws;
+    }
+
 Vec vector_shift(
     const Vec &v, 
     const double shift) {
@@ -1052,139 +1464,28 @@ Mat vector_to_matrix(
         return M;
     }
 }
-// e rovesciata                                                                                                                                                                                                                                                                                                                                                     
 
-Vec segnale_finestra(
-    int N,
-    double a, 
-    double b, 
-    double t)
-    {
-        // a e b in % su N, sono frazioni in [0,1]
-        Vec ws = Vec(N,0.0);
-        double temp;
-        for (int i=0; i<N; i++) {
-            temp = (double) i / (double) N;
-            if ((temp >=a) && (temp <= b)) ws[i]=t;
-        }
-        return ws;
-    }
-// 
-// Funzioni per matplot++
-
-figure_handle TableInit (
-    const bool ahold, 
-    const std::string &nome, 
-    const std::string &titolo, 
-    const int xlab, 
-    const int ylab) 
+Mat vector_to_matrix_diag(
+    const Vec& s, 
+    int m, 
+    int n) 
 {
-    figure_handle fig = matplot::figure(ahold);
-    fig->size(1800,900);
-    fig->position(10,10);
-    fig->name(nome);
-    fig->number_title(false);
-    fig->title_color({0., 1., 0., 1.});   //alpha, red, green, blue 0. ~ 1.
-    fig->tiledlayout(xlab, ylab); // stabilisce panel xlab righe x xlab colonne
-    fig->title(titolo);
-    fig->title_font_size_multiplier(3);
-    return fig;
+    //
+    // crea matrice diagonale con i primi r = min(m,n,s.size()) elementi del veettore s 
+    //
+
+    Mat S = matrix_build_zero(m, n);
+    int r = std::min<int>(s.size(), std::min(m, n));
+    for (int i = 0; i < r; ++i)
+        S[i][i] = s[i];
+    return S;
 }
 
 
-void legend_align(
-    legend_handle lg, 
-    int pos_enum, 
-    float xscale,
-    float yscale) {
-
-    // alla fine si e' scoperto che la posizione del centro della legenda dipende dai punti sulla scala X
-    // e quindi da K / 2 con un offset di 1 perche' il primo punto e' a 0 e non a 1 (bravo Copilot con gli option base 0)
-
-    using GA = matplot::legend::general_alignment;
-    using HA = matplot::legend::horizontal_alignment;
-    using VA = matplot::legend::vertical_alignment;
-    lg->box(false);
-
-    if (pos_enum == 0) { // up and out, centered
-        float xcenter = (xscale + 1.0) / 2.0;
-        lg->position({ xcenter , yscale}); 
-        lg->horizontal_location(HA::center);
-        lg->vertical_location(VA::bottom);
-        lg->box(true);
-    } else if (pos_enum == 1) { // bottom right    
-        lg->horizontal_location(HA::right);
-        lg->vertical_location(VA::bottom);
-    } else if (pos_enum == 2) { // center left
-        lg->horizontal_location(HA::left);
-        lg->vertical_location(VA::center);
-    } else if (pos_enum == 3) { // top left
-        lg->horizontal_location(HA::left);
-        lg->vertical_location(VA::top);
-    };
-};
-
-
-// =============================================================================
-//  TODO 1 – Riflessione di Householder su una colonna
 //
-//  Dato v ∈ R^m, restituisce w normalizzato tale che
-//     (I - 2ww^T) v = -sgn(v[0]) * ||v||_2 * e_1
+// funzioni specifiche di trasformazione matrici 
 //
-//  Costruzione:
-//     u = v;
-//     u[0] += sgn(v[0]) * ||v||_2;    // sgn(0) = +1 per convenzione
-//     w = u / ||u||_2;
-//
-//  ATTENZIONE: se ||v||_2 == 0, restituisci w = e_1 (nessuna trasformazione).
-//
-//  Verifica nella funzione main: per v = {3, 1, -2},
-//  w risultante deve dare H*v = [-sqrt(14), 0, 0].
-// =============================================================================
-Vec householder_colonna(
-    const Vec& v) 
-{
-    int m = v.size();
-    Vec w(m, 0.0);
-    double n2 = vector_norma(2,v);
-    if (n2 == 0) 
-    {
-        w[0]=1;
-        return w; // restituisce e1
-    } else {
-        int sgn_v0 = 1;
-        for (int i=0;i<m;i++) w[i]=v[i];
-        if (w[0]<0) sgn_v0 = -1;
-        w[0] += sgn_v0 * n2;
-        n2 = vector_norma(2, w);   // ricicliamo, non ci serviva piu' norma di v
-        for (int i=0;i<m;i++) w[i] /= n2;
-        return w;
-    }
-}
-// =============================================================================
-//  TODO 2 – Riflessione di Householder su una riga
-//
-//  Matematicamente identico a householder_colonna.
-//  La distinzione è solo nell'uso: verrà applicato a destra (su righe).
-//  Puoi semplicemente delegare a householder_colonna.
-// =============================================================================
-Vec householder_riga(
-    const Vec& v) 
-{
-    // TODO: return householder_colonna(v);
-    return householder_colonna(v);
-}
-Vec householder_reverse_colonna(const Vec& v) {
-    Vec vr = vector_reverse(v);
-    Vec wr = householder_colonna(vr);
-    return vector_reverse(wr);
-}
 
-Vec householder_reverse_riga(const Vec& v) {
-    Vec vr = vector_reverse(v);
-    Vec wr = householder_riga(vr);
-    return vector_reverse(wr);
-}
 // =============================================================================
 //  TODO 3 – Bidiagonalizzazione di Golub–Kahan
 //
@@ -1203,7 +1504,50 @@ Vec householder_reverse_riga(const Vec& v) {
 //  Aggiornamento di V0: V0 <- V0 * G_k  (G_k si applica a destra)
 //    V0[:, k+1:] <- V0[:, k+1:] - 2 * (V0[:, k+1:] * w) * w^T
 // =============================================================================
-void bidiagonalizza_underdet_up(
+
+// 
+// wrapper generale
+//
+
+void trmatrix_bidiagonalizza(
+    const Mat& A, 
+    Mat& U0, 
+    Mat& B, 
+    Mat& V0, 
+    bool sup_diag,
+    bool dump_flag) 
+{
+    // A = U0 * B * V0^T
+
+    int m = A.size();
+    int n = A[0].size();
+
+    if (m < n) {
+        if (sup_diag) 
+            trmatrix_bidiag_wide_to_upper(A, U0, B, V0,  dump_flag);
+        else
+            trmatrix_bidiag_wide_to_lower(A, U0, B, V0,  dump_flag);
+        cout << "Bidiagonalizzazione diretta" << endl;
+    } else {
+        Mat At = matrix_trasposta(A);
+
+        Mat Ut, Bt, Vt;
+        if (sup_diag)
+            trmatrix_bidiag_wide_to_upper(At, Ut, Bt, Vt,  dump_flag);   // At = Ut * Bt * Vt^T
+        else
+            trmatrix_bidiag_wide_to_lower(At, Ut, Bt, Vt, dump_flag);   // At = Ut * Bt * Vt^T
+        cout << "Bidiagonalizzazione inversa" << endl;
+        U0 = Vt;           // A = Vt * Bt^T * Ut^T
+        B  = matrix_trasposta(Bt);
+        V0 = Ut;
+    }
+}
+
+//
+// versione per matrice wide (n <= d) con bidiagonale superiore
+//
+
+void trmatrix_bidiag_wide_to_upper(
     const Mat& X, 
     Mat& U0, 
     Mat& B, 
@@ -1249,8 +1593,8 @@ void bidiagonalizza_underdet_up(
             }
             if (dump_flag) vector_dump(v, 10, v.size(), "Colonna di A sotto diag con k="+std::to_string(k));
 
-            // 2. Calcola w = householder_colonna(vv)
-            w = householder_colonna(v);
+            // 2. Calcola w = vector_householder_bycol(vv)
+            w = vector_householder_bycol(v);
              if (dump_flag) vector_dump(w, 10, w.size(), "W di householder colonna sinistra");
 
             // 3. Aggiorna A[k:, :] <- A[k:, :] - 2*w*(w^T * A[k:, :])
@@ -1313,8 +1657,8 @@ void bidiagonalizza_underdet_up(
                 v[j] = A[k][k+j+1];
             }
             if (dump_flag) vector_dump(v, 10, v.size(), "Riga di A a destra con k="+std::to_string(k));
-            // 2. Calcola w = householder_riga(v)
-            w = householder_riga(v);
+            // 2. Calcola w = vector_householder_byrow(v)
+            w = vector_householder_byrow(v);
             if (dump_flag) vector_dump(w, 10, w.size(), "W di householder riga destra");
             // 3. Aggiorna A[k:, k+1:] <- A[k:, k+1:] - 2*(A[k:,k+1:]*w)*w^T
             Mat A_k = matrix_build_zero(m, q);
@@ -1367,257 +1711,11 @@ void bidiagonalizza_underdet_up(
     B = A;
 }
 
-/*
-void bidiagonalizza_underdet_low(
-    const Mat& X,
-    Mat& U0,
-    Mat& B,
-    Mat& V0,
-    bool dump_flag)
-{
-    Mat A = X;
+//
+// versione per matrice wide (n <= d) con bidiagonale inferiore
+//
 
-    int n = A.size();
-    int d = A[0].size();
-    int p = std::min(n, d);
-
-    U0 = matrix_build_Id(n);
-    V0 = matrix_build_Id(d);
-
-    Vec v, w;
-
-    for (int k = p - 1; k >= 0; --k) {
-
-        // =========================================================
-        // STEP COLONNA REVERSE:
-        // colonna k, azzera sopra la subdiag
-        // preserva A[k][k] e, se esiste, A[k+1][k]
-        // vettore preso da A[0..k-1][k]
-        // =========================================================
-        if (k >= 2) {
-            int m = k;      // righe 0..k-1
-            int q = d;      // per il primo tentativo: tutte le colonne
-
-            v.assign(m, 0.0);
-
-            // v = A[0..k-1][k]
-            for (int i = 0; i < m; ++i)
-                v[i] = A[i][k];
-
-            w = householder_reverse_colonna(v);
-
-            Mat A_k = matrix_build_zero(m, q);
-            for (int i = 0; i < m; ++i)
-                for (int j = 0; j < q; ++j)
-                    A_k[i][j] = A[i][j];
-
-            Mat Wt = vector_to_matrix(w, true);
-            Mat W  = vector_to_matrix(w, false);
-            Mat Wt_Ak = matrix_prodotto_matrix(Wt, A_k);
-            Mat corr  = matrix_prodotto_coeff(matrix_prodotto_matrix(W, Wt_Ak), 2.0);
-
-            for (int i = 0; i < m; ++i)
-                for (int j = 0; j < q; ++j)
-                    A[i][j] -= corr[i][j];
-
-            // U0[:,0..k-1]
-            Mat U0_k = matrix_build_zero(n, m);
-            for (int i = 0; i < n; ++i)
-                for (int j = 0; j < m; ++j)
-                    U0_k[i][j] = U0[i][j];
-
-            Mat U0_W    = vector_to_matrix(matrix_prodotto_vector(U0_k, w), false);
-            Mat U0_corr = matrix_prodotto_coeff(
-                              matrix_prodotto_matrix(U0_W, vector_to_matrix(w, true)),
-                              2.0);
-
-            for (int i = 0; i < n; ++i)
-                for (int j = 0; j < m; ++j)
-                    U0[i][j] -= U0_corr[i][j];
-        }
-
-        // =========================================================
-        // STEP RIGA REVERSE:
-        // riga k, azzera a sinistra della subdiag
-        // preserva A[k][k-1] e A[k][k]
-        // vettore preso da A[k][0..k-2]
-        // =========================================================
-        if (k >= 2) {
-            int m = n;          // per il primo tentativo: tutte le righe
-            int q = k - 1;      // colonne 0..k-2
-
-            v.assign(q, 0.0);
-
-            // v = A[k][0..k-2]
-            for (int j = 0; j < q; ++j)
-                v[j] = A[k][j];
-
-            w = householder_reverse_riga(v);
-
-            Mat A_k = matrix_build_zero(m, q);
-            for (int i = 0; i < m; ++i)
-                for (int j = 0; j < q; ++j)
-                    A_k[i][j] = A[i][j];
-
-            Mat Ak_W    = vector_to_matrix(matrix_prodotto_vector(A_k, w), false);
-            Mat Ak_corr = matrix_prodotto_coeff(
-                              matrix_prodotto_matrix(Ak_W, vector_to_matrix(w, true)),
-                              2.0);
-
-            for (int i = 0; i < m; ++i)
-                for (int j = 0; j < q; ++j)
-                    A[i][j] -= Ak_corr[i][j];
-
-            // V0[:,0..k-2]
-            Mat V0_k = matrix_build_zero(d, q);
-            for (int i = 0; i < d; ++i)
-                for (int j = 0; j < q; ++j)
-                    V0_k[i][j] = V0[i][j];
-
-            Mat V0_W    = vector_to_matrix(matrix_prodotto_vector(V0_k, w), false);
-            Mat V0_corr = matrix_prodotto_coeff(
-                              matrix_prodotto_matrix(V0_W, vector_to_matrix(w, true)),
-                              2.0);
-
-            for (int i = 0; i < d; ++i)
-                for (int j = 0; j < q; ++j)
-                    V0[i][j] -= V0_corr[i][j];
-        }
-
-        if (dump_flag) {
-            matrix_dump(A, "A al passo reverse k=" + std::to_string(k));
-            matrix_dump(matrix_prodotto_matrix(matrix_trasposta(U0), U0), "U0_t U0");
-            matrix_dump(matrix_prodotto_matrix(matrix_trasposta(V0), V0), "V0_t V0");
-        }
-    }
-
-    B = A;
-}
-*/
-
-void tridiagonalizza_underdet(
-    const Mat& X,
-    Mat& U0,
-    Mat& B,
-    Mat& V0,
-    bool dump_flag)
-{
-    Mat A = X;
-
-    int n = A.size();
-    int d = A[0].size();
-    int p = std::min(n, d);
-
-    U0 = matrix_build_Id(n);
-    V0 = matrix_build_Id(d);
-
-    Vec v, w;
-
-    for (int k = 0; k < p; ++k) {
-
-        // =========================================================
-        // STEP SX: colonna k -> preserva diag, crea subdiag, zeri sotto
-        // blocco naturale: A[k+1:, k:]
-        // =========================================================
-        if (k < n - 2) {
-            int m = n - (k + 1);   // numero righe attive
-            int q = d - k;         // numero colonne attive
-
-            v.assign(m, 0.0);
-
-            // v = A[k+1:, k]
-            for (int i = 0; i < m; ++i)
-                v[i] = A[k + 1 + i][k];
-
-            w = householder_colonna(v);
-
-            Mat A_k = matrix_build_zero(m, q);
-            for (int i = 0; i < m; ++i)
-                for (int j = 0; j < q; ++j)
-                    A_k[i][j] = A[k + 1 + i][k + j];
-
-            Mat Wt = vector_to_matrix(w, true);
-            Mat W  = vector_to_matrix(w, false);
-            Mat Wt_Ak = matrix_prodotto_matrix(Wt, A_k);
-            Mat corr  = matrix_prodotto_coeff(matrix_prodotto_matrix(W, Wt_Ak), 2.0);
-
-            for (int i = 0; i < m; ++i)
-                for (int j = 0; j < q; ++j)
-                    A[k + 1 + i][k + j] -= corr[i][j];
-
-            // U0[:, k+1:] = U0[:, k+1:] * (I - 2ww^T)
-            Mat U0_k = matrix_build_zero(n, m);
-            for (int i = 0; i < n; ++i)
-                for (int j = 0; j < m; ++j)
-                    U0_k[i][j] = U0[i][k + 1 + j];
-
-            Mat U0_W    = vector_to_matrix(matrix_prodotto_vector(U0_k, w), false);
-            Mat U0_corr = matrix_prodotto_coeff(
-                              matrix_prodotto_matrix(U0_W, vector_to_matrix(w, true)),
-                              2.0);
-
-            for (int i = 0; i < n; ++i)
-                for (int j = 0; j < m; ++j)
-                    U0[i][k + 1 + j] -= U0_corr[i][j];
-        }
-
-        // =========================================================
-        // STEP DX: riga k -> azzera tutto a destra della diag
-        // blocco naturale: A[k:, k+1:]
-        // =========================================================
-        if (k < d - 2) {
-            int m = n - k;         // righe attive
-            int q = d - (k + 1);   // colonne attive a destra
-
-            v.assign(q, 0.0);
-
-            // v = A[k, k+1:]
-            for (int j = 0; j < q; ++j)
-                v[j] = A[k][k + 1 + j];
-
-            w = householder_riga(v);
-
-            Mat A_k = matrix_build_zero(m, q);
-            for (int i = 0; i < m; ++i)
-                for (int j = 0; j < q; ++j)
-                    A_k[i][j] = A[k + i][k + 1 + j];
-
-            Mat Ak_W    = vector_to_matrix(matrix_prodotto_vector(A_k, w), false);
-            Mat Ak_corr = matrix_prodotto_coeff(
-                              matrix_prodotto_matrix(Ak_W, vector_to_matrix(w, true)),
-                              2.0);
-
-            for (int i = 0; i < m; ++i)
-                for (int j = 0; j < q; ++j)
-                    A[k + i][k + 1 + j] -= Ak_corr[i][j];
-
-            // V0[:, k+1:] = V0[:, k+1:] * (I - 2ww^T)
-            Mat V0_k = matrix_build_zero(d, q);
-            for (int i = 0; i < d; ++i)
-                for (int j = 0; j < q; ++j)
-                    V0_k[i][j] = V0[i][k + 1 + j];
-
-            Mat V0_W    = vector_to_matrix(matrix_prodotto_vector(V0_k, w), false);
-            Mat V0_corr = matrix_prodotto_coeff(
-                              matrix_prodotto_matrix(V0_W, vector_to_matrix(w, true)),
-                              2.0);
-
-            for (int i = 0; i < d; ++i)
-                for (int j = 0; j < q; ++j)
-                    V0[i][k + 1 + j] -= V0_corr[i][j];
-        }
-
-        if (dump_flag) {
-            matrix_dump(A, "A al passo " + std::to_string(k));
-            matrix_dump(matrix_prodotto_matrix(matrix_trasposta(U0), U0), "U0_t U0");
-            matrix_dump(matrix_prodotto_matrix(matrix_trasposta(V0), V0), "V0_t V0");
-        }
-    }
-
-    B = A;
-}
-
-void bidiagonalizza_underdet_low(
+void trmatrix_bidiag_wide_to_lower(
     const Mat& X, 
     Mat& U0, 
     Mat& B, 
@@ -1665,8 +1763,8 @@ void bidiagonalizza_underdet_low(
             for (int j = 0; j < q; j++) {
                 v[j] = A[k][k+j];
             }
-            // 2. Calcola w = householder_riga(v)
-            w = householder_riga(v);
+            // 2. Calcola w = vector_householder_byrow(v)
+            w = vector_householder_byrow(v);
             //vector_dump(w, 10, w.size(), "W di householder riga destra");
             // 3. Aggiorna A[k:, k+1:] <- A[k:, k+1:] - 2*(A[k:,k+1:]*w)*w^T
             // blocco A_k: righe k..n-1, colonne k..d-1
@@ -1705,7 +1803,7 @@ void bidiagonalizza_underdet_low(
                 for (int j = 0; j < q; j++) 
                     V0[i][k+j] -= Two_V0_W_Wt[i][j];
             }
-            //matrix_dump(V0, "V0 al passo " + std::to_string(k));
+            if (dump_flag) matrix_dump(V0, "V0 al passo " + std::to_string(k));
             //
             //  Verifica di U0 e V0 ortogonali
             //
@@ -1714,7 +1812,7 @@ void bidiagonalizza_underdet_low(
             Mat V0t_V0 = matrix_prodotto_matrix(matrix_trasposta(V0), V0);
             //cout << "Trasposta U0" << endl;
             Mat U0t_U0 = matrix_prodotto_matrix(matrix_trasposta(U0), U0);
-            cout << "Fatto" << endl;
+            if (dump_flag) cout << "Fatto" << endl;
             //matrix_dump(U0t_U0, "U0_t U0");
             //matrix_dump(V0t_V0, "V0_t V0");
 
@@ -1732,8 +1830,8 @@ void bidiagonalizza_underdet_low(
                 v[i] = A[k+i+1][k];
             }
             if (dump_flag) vector_dump(v, 10, v.size(), "Colonna di A sotto diag con k="+std::to_string(k));
-            // 2. Calcola w = householder_colonna(vv)
-            w = householder_colonna(v);
+            // 2. Calcola w = vector_householder_bycol(vv)
+            w = vector_householder_bycol(v);
             //vector_dump(w, 10, w.size(), "W di householder colonna sinsitra");
             // 3. Aggiorna A[k:, :] <- A[k:, :] - 2*w*(w^T * A[k:, :])
             Mat A_k = matrix_build_zero(m, q);
@@ -1746,11 +1844,11 @@ void bidiagonalizza_underdet_low(
             Mat Wt = vector_to_matrix(w,true);
             // matrix_dump(Wt, "Wt come matrice 1 x n");
             Mat Wt_Ak = matrix_prodotto_matrix(Wt, A_k); // w va direttamente trasposto con true
-            matrix_dump(Wt_Ak, "Wt A_k" + std::to_string(k));
+            if (dump_flag) matrix_dump(Wt_Ak, "Wt A_k" + std::to_string(k));
             Mat W_Wt_Ak = matrix_prodotto_matrix(vector_to_matrix(w, false), Wt_Ak);
-            // matrix_dump(W_Wt_Ak, "W Wt A_k" + std::to_string(k));
+            if (dump_flag) matrix_dump(W_Wt_Ak, "W Wt A_k" + std::to_string(k));
             Mat Two_W_Wt_Ak = matrix_prodotto_coeff(W_Wt_Ak, 2.0);
-            // matrix_dump(Two_W_Wt_Ak, "2 W Wt A_k" + std::to_string(k));
+            if (dump_flag)  matrix_dump(Two_W_Wt_Ak, "2 W Wt A_k" + std::to_string(k));
             for (int i=0; i<m; i++){
                 for (int j = 0; j < q; j++) {
                     A[k+i+1][k+j] -= Two_W_Wt_Ak[i][j];
@@ -1781,446 +1879,47 @@ void bidiagonalizza_underdet_low(
     }
     B = A;
 }
-// questa non funziona perche' quando k = p-1, se n > d, 
-// allora il passo colonna non viene eseguito e quindi A non viene modificata, 
-// ma U0 viene comunque modificata con una matrice di Householder che non e' matrix_build_Id'. 
-// Quindi alla fine U0 non e' ortogonale. Invece con la versione precedente, 
-// quando k = p-1, se n > d, allora il passo colonna viene eseguito e modifica A e U0 in modo coerente. 
-// Quindi alla fine U0 e V0 sono ortogonali.
 
-void bidiagonalizza_overdet_low(
-    const Mat& X,
-    Mat& U0,
-    Mat& B,
-    Mat& V0,
-    bool dump_flag)
+
+void trmatrix_SVDQR(
+    const Mat& B,
+    Mat& Ub,
+    Mat& Vb,
+    Vec& sigma)
 {
-    Mat A = X;
+    //
+    // wrapper esterno per riordinare i parametri formali come quelli della svd_bidiagonale fornita
+    // e per far completare correttamente Vbred -> Vb (non tocca Ub perche' lavoriamo sempre underdet)
+    //
 
-    int n = A.size();
-    int d = A[0].size();
+    Mat Vbred;
+    double ev_tol = 1e-12;
 
-    if (dump_flag) matrix_dump(A, "Originale");
-
-    int p = std::min(n, d);
-
-    U0 = matrix_build_Id(n);
-    V0 = matrix_build_Id(d);
-
-    Vec v, w;
-
-    for (int k = 0; k < p; ++k) {
-
-        // ── Householder colonna: azzera A[k+2:, k] e lascia vivi A[k,k], A[k+1,k]
-        if (k < n - 1) {
-            int m = n - (k + 1);   // righe k+1..n-1
-            int q = d - k;         // colonne k..d-1
-
-            v.assign(m, 0.0);
-            for (int i = 0; i < m; ++i) {
-                v[i] = A[k + 1 + i][k];   // sotto-colonna, NON include A[k][k]
-            }
-
-            w = householder_colonna(v);
-
-            Mat A_k = matrix_build_zero(m, q);
-            for (int i = 0; i < m; ++i) {
-                for (int j = 0; j < q; ++j) {
-                    A_k[i][j] = A[k + 1 + i][k + j];
-                }
-            }
-
-            Mat Wt = vector_to_matrix(w, true);
-            Mat Wt_Ak = matrix_prodotto_matrix(Wt, A_k);
-            Mat W_Wt_Ak = matrix_prodotto_matrix(vector_to_matrix(w, false), Wt_Ak);
-            Mat Two_W_Wt_Ak = matrix_prodotto_coeff(W_Wt_Ak, 2.0);
-
-            for (int i = 0; i < m; ++i) {
-                for (int j = 0; j < q; ++j) {
-                    A[k + 1 + i][k + j] -= Two_W_Wt_Ak[i][j];
-                }
-            }
-
-            Mat U0_k = matrix_build_zero(n, m);
-            for (int i = 0; i < n; ++i) {
-                for (int j = 0; j < m; ++j) {
-                    U0_k[i][j] = U0[i][k + 1 + j];
-                }
-            }
-
-            Mat U0_W = vector_to_matrix(matrix_prodotto_vector(U0_k, w), false);
-            Mat U0_W_Wt = matrix_prodotto_matrix(U0_W, vector_to_matrix(w, true));
-            Mat Two_U0_W_Wt = matrix_prodotto_coeff(U0_W_Wt, 2.0);
-
-            for (int i = 0; i < n; ++i) {
-                for (int j = 0; j < m; ++j) {
-                    U0[i][k + 1 + j] -= Two_U0_W_Wt[i][j];
-                }
-            }
-        }
-    
-
-        // ── Householder riga: azzera A[k+1, k+1+1:] e lascia vivi A[k+1,k], A[k+1,k+1]
-        if (k < d - 1 && k + 1 < n) {
-            int m = n - (k + 1);    // righe k+1..n-1
-            int q = d - (k + 1);    // colonne k+1..d-1
-
-            v.assign(q, 0.0);
-            for (int j = 0; j < q; ++j) {
-                v[j] = A[k + 1][k + 1 + j];
-            }
-
-            w = householder_riga(v);
-            if (dump_flag) vector_dump(w, 10, w.size(), "W di householder riga destra");
-
-            Mat A_k = matrix_build_zero(m, q);
-            for (int i = 0; i < m; ++i) {
-                for (int j = 0; j < q; ++j) {
-                    A_k[i][j] = A[k + 1 + i][k + 1 + j];
-                }
-            }
-
-            Mat Ak_W = vector_to_matrix(matrix_prodotto_vector(A_k, w), false);
-            Mat Ak_W_Wt = matrix_prodotto_matrix(Ak_W, vector_to_matrix(w, true));
-            Mat Two_Ak_W_Wt = matrix_prodotto_coeff(Ak_W_Wt, 2.0);
-
-            for (int i = 0; i < m; ++i) {
-                for (int j = 0; j < q; ++j) {
-                    A[k + 1 + i][k + 1 + j] -= Two_Ak_W_Wt[i][j];
-                }
-            }
-
-            if (dump_flag) matrix_dump(A, "A al passo dx " + std::to_string(k));
-
-            Mat V0_k = matrix_build_zero(d, q);
-            for (int i = 0; i < d; ++i) {
-                for (int j = 0; j < q; ++j) {
-                    V0_k[i][j] = V0[i][k + 1 + j];
-                }
-            }
-
-            Mat V0_W = vector_to_matrix(matrix_prodotto_vector(V0_k, w), false);
-            Mat V0_W_Wt = matrix_prodotto_matrix(V0_W, vector_to_matrix(w, true));
-            Mat Two_V0_W_Wt = matrix_prodotto_coeff(V0_W_Wt, 2.0);
-
-            for (int i = 0; i < d; ++i) {
-                for (int j = 0; j < q; ++j) {
-                    V0[i][k + 1 + j] -= Two_V0_W_Wt[i][j];
-                }
-            }
-
-            if (dump_flag) matrix_dump(V0, "V0 al passo dx " + std::to_string(k));
-        }
-    }
-
-    B = A;
-}
-// A = U0 * B * V0^T
-
-// wrapper generale
-void bidiagonalizza(
-    const Mat& A, 
-    Mat& U0, 
-    Mat& B, 
-    Mat& V0, 
-    bool sup_diag,
-    bool dump_flag) 
-{
-    int m = A.size();
-    int n = A[0].size();
+    int m = B.size();
+    int n = B[0].size();
 
     if (m <= n) {
-        if (sup_diag) 
-            bidiagonalizza_underdet_up(A, U0, B, V0,  dump_flag);
-        else
-            bidiagonalizza_underdet_low(A, U0, B, V0,  dump_flag);
-        cout << "Bidiagonalizzazione diretta" << endl;
+        trmatrix_SVDQR_ridotta(B, Ub, sigma, Vbred, ev_tol);
+        Vb = trmatrix_completa_ridotta(Vbred);
     } else {
-        Mat At = matrix_trasposta(A);
+        Mat Bt = matrix_trasposta(B);
+        Mat U_bt, V_bt, V_btred;
 
-        Mat Ut, Bt, Vt;
-        if (sup_diag)
-            bidiagonalizza_underdet_up(At, Ut, Bt, Vt,  dump_flag);   // At = Ut * Bt * Vt^T
-        else
-            bidiagonalizza_underdet_low(At, Ut, Bt, Vt, dump_flag);   // At = Ut * Bt * Vt^T
-        cout << "Bidiagonalizzazione inversa" << endl;
-        U0 = Vt;           // A = Vt * Bt^T * Ut^T
-        B  = matrix_trasposta(Bt);
-        V0 = Ut;
+        trmatrix_SVDQR_ridotta(Bt, U_bt, sigma, V_btred, ev_tol);
+        V_bt = trmatrix_completa_ridotta(V_btred);
+
+        Ub = V_bt;           
+        Vb = U_bt;
     }
-}
-
-Mat matrice_At_A (
-    const Mat& A, 
-    bool A_right)  // default true. Come da nome fa At A (con A destra) se no fa A At
-{   Mat B;
-    if (A_right) {
-        int n = A[0].size(); // A = mXn => At A = nXm mXn = nXn
-        B = matrix_prodotto_matrix(matrix_trasposta(A), A);
-    } else {
-        int n = A.size(); // A = mXn => A At = mXn nXm = mXm
-        Mat B(n, Vec(n, 0.0));
-        B = matrix_prodotto_matrix(A, matrix_trasposta(A));
-    };
-    return B;
-}
-
-Mat matrice_diagonale(
-    const Vec& s, 
-    int m, 
-    int n) 
-{
-    Mat S = matrix_build_zero(m, n);
-    int r = std::min<int>(s.size(), std::min(m, n));
-    for (int i = 0; i < r; ++i)
-        S[i][i] = s[i];
-    return S;
-}
-
-// Norma di Frobenius di A - B
-double errore_F(
-    const Mat& A, 
-    const Mat& B) 
-{
-    double s = 0;
-    for (int i = 0; i < (int)A.size(); ++i)
-        for (int j = 0; j < (int)A[0].size(); ++j) {
-            double d = A[i][j] - B[i][j];
-            s += d*d;
-        }
-    return std::sqrt(s);
-}
-
-void calcola_medie_matrice(
-    const Mat& A, 
-    Vec& somma_col, 
-    Vec& somma_row) 
-{   
-    int m = A.size();
-    int n = A[0].size();
-    for (int i = 0; i < m; i++) {
-
-        for (int j = 0; j < n; j++) {
-            double Aij = A[i][j];
-            somma_row[i] += Aij;
-            somma_col[j] += Aij;
-        }
-        somma_row[i] /= (double) m;
-        for (int j = 0; j < n; j++) 
-            somma_col[j] /= (double) n;
-    }
-}
-
-Mat centra_matrice(
-    const Mat& A, 
-    const Vec& avg_vec,
-    bool by_col)
-{
-    int m = A.size();
-    int n = A[0].size();
-    Mat Res = matrix_build_zero(m,n);
-    for (int i = 0; i < m; i++)
-        for (int j = 0; j < n; j++)
-            if (by_col) {
-                Res[i][j]=A[i][j] - avg_vec[j];
-            }else{
-                Res[i][j]=A[i][j] - avg_vec[i];
-            }
-    return Res;
-}
-    
-void test_ortogonalita(
-    const Mat& A,
-    string s)
-{
-    matrix_dump(matrix_prodotto_matrix(matrix_trasposta(A), A), "Test di ortogonalita' di "+s);
-}
-//
-//  SVD sostitutiva in attesa di istruzioni 
-//
-
-void jacobi_simmetrica(
-    const Mat& D, 
-    Vec& lambda, 
-    Mat& V)
-{
-    Mat A = D; 
-    int n = A.size();
-    V = matrix_build_Id(n);
-
-    const int max_iter = 100 * n * n;
-    const double tol = 1e-12;
-
-    for (int iter = 0; iter < max_iter; ++iter)
-    {
-        int p = 0, q = 1;
-        double max_off = 0.0;
-
-        for (int i = 0; i < n; ++i)
-            for (int j = i + 1; j < n; ++j)
-                if (std::abs(A[i][j]) > max_off)
-                {
-                    max_off = std::abs(A[i][j]);
-                    p = i;
-                    q = j;
-                }
-
-        if (max_off < tol)
-            break;
-
-        double app = A[p][p];
-        double aqq = A[q][q];
-        double apq = A[p][q];
-
-        double tau = (aqq - app) / (2.0 * apq);
-        double t = (tau >= 0.0)
-                 ? 1.0 / (tau + std::sqrt(1.0 + tau * tau))
-                 : -1.0 / (-tau + std::sqrt(1.0 + tau * tau));
-
-        double c = 1.0 / std::sqrt(1.0 + t * t);
-        double s = t * c;
-
-        for (int k = 0; k < n; ++k)
-        {
-            if (k != p && k != q)
-            {
-                double aik = A[k][p];
-                double akq = A[k][q];
-
-                A[k][p] = c * aik - s * akq;
-                A[p][k] = A[k][p];
-
-                A[k][q] = s * aik + c * akq;
-                A[q][k] = A[k][q];
-            }
-        }
-
-        A[p][p] = c*c*app - 2.0*s*c*apq + s*s*aqq;
-        A[q][q] = s*s*app + 2.0*s*c*apq + c*c*aqq;
-        A[p][q] = 0.0;
-        A[q][p] = 0.0;
-
-        for (int k = 0; k < n; ++k)
-        {
-            double vip = V[k][p];
-            double viq = V[k][q];
-
-            V[k][p] = c * vip - s * viq;
-            V[k][q] = s * vip + c * viq;
-        }
-    }
-
-    lambda.resize(n);
-    for (int i = 0; i < n; ++i)
-        lambda[i] = A[i][i];
-}
-
-void ordina_autocoppie(
-    Vec& lambda,
-    Mat& V,
-    double zero_tol,
-    SortOrder order)   // default: discendente
-{
-    const int n = static_cast<int>(lambda.size());
-    // vettore indici 0..n-1
-    std::vector<int> idx(n);
-    for (int i = 0; i < n; ++i) idx[i] = i;
-
-    auto key = [&](int i) {
-        double a = lambda[i];
-        if (std::abs(a) < zero_tol) a = 0.0;  // filtro nullità
-        return a;
-    };
-
-    std::sort(idx.begin(), idx.end(),
-              [&](int i, int j) {
-                  double ai = key(i);
-                  double aj = key(j);
-                  return (order == SortOrder::Asc) ? (ai < aj) : (ai > aj);
-              });
-
-    // applica permutazione
-    Vec lambda_sorted(n);
-    Mat V_sorted = V;   // stessa dimensione
-
-    for (int k = 0; k < n; ++k)
-    {
-        int old = idx[k];
-        lambda_sorted[k] = lambda[old];
-        for (int r = 0; r < static_cast<int>(V.size()); ++r)
-            V_sorted[r][k] = V[r][old];
-    }
-
-    lambda.swap(lambda_sorted);
-    V.swap(V_sorted);
-}
-
-void gram_schmidt_modificato(
-    Mat& Q, 
-    int j0)
-{
-    if (Q.empty() || Q[0].empty()) return;
-    const int m = static_cast<int>(Q[0].size()); // colonne
-    const int n = static_cast<int>(Q.size());    // righe
-    if (j0 < 0) j0 = 0;
-    if (j0 >= m) return;
-
-    for (int j = j0; j < m; ++j)
-    {
-        // v_j = colonna j
-        // ortogonalizza rispetto a q_0, ..., q_{j-1}
-        for (int k = 0; k < j; ++k) // ortogonalizza rispetto a TUTTE le precedenti
-        {
-            // prodotto scalare q_k^T v_j
-            double dot = 0.0;
-            for (int i = 0; i < n; ++i)
-                dot += Q[i][k] * Q[i][j];
-
-            // v_j -= dot * q_k
-            for (int i = 0; i < n; ++i)
-                Q[i][j] -= dot * Q[i][k];
-        }
-
-        // normalizza v_j -> q_j
-        double norm2 = 0.0;
-        for (int i = 0; i < n; ++i)
-            norm2 += Q[i][j] * Q[i][j];
-
-        double norm = std::sqrt(norm2);
-        if (norm > 0.0)
-        {
-            double inv = 1.0 / norm;
-            for (int i = 0; i < n; ++i)
-                Q[i][j] *= inv;
-        } else {
-            // colonna quasi nulla: lasciala zero, se capita
-        }
-    }
-}
-
-Mat completa_base_ortonormale(
-    const Mat& A)
-// completa una matrice V ridotta da dXn a dXd aggiungendo (n-d) versori di Rd e poi la ri ortonorma
-{
-    int d = A.size();
-    int n = A[0].size();
     //
-    // debug ortonormalizzazione
+    // lascio sigma() come vettore per compatibilita' con la svd fornita
+    // bisogna ricordare sempre che viene completata all'esterno e 
+    // le dimensioni devono accordarsi sempre con Ub[0].size() e Vb[0].size 
+    // perche' le colonne di Vb cono le righe di Vb_t
+    // questo dovrebbe essere corretto sia per la versione ridotta che per la integrale
     //
-    // matrix_dump(A, "Verifica ridotta prima di completamento a dXd");
-    //
-    // fine debug
-    //
-    Mat Vb(d, Vec(d, 0.0));
-    if (n>=d) return A;
 
-    for (int j = 0; j < n; j++)
-        for (int i = 0; i< d; i++) Vb[i][j] = A[i][j];
-    for (int k = n; k < d; k++)
-        Vb[k][k]=1.0; // andiamo in ordine con gli ultimi d-n versori della base canonica
-    gram_schmidt_modificato(Vb, n);
-    return Vb;
-}
+};
 
 /*
     SVD ridotta di una matrice bidiagonale superiore B (p x d, p <= d).
@@ -2232,7 +1931,7 @@ Mat completa_base_ortonormale(
            BtB v_i = lambda_i v_i   =>   sigma_i = sqrt(lambda_i)  (lambda_i >= 0).
 
     2) Problema agli autovalori simmetrico:
-           jacobi_simmetrica(BtB, lambda, V)
+           linear_jacobi_autoval_simmetrica(BtB, lambda, V)
        dove:
            - lambda[i]  = autovalori (non necessariamente ordinati);
            - V[:,i]     = autovettori ortonormali corrispondenti.
@@ -2242,7 +1941,7 @@ Mat completa_base_ortonormale(
            se |lambda_i| < ev_tol => lambda_i := 0 (schiacciamo i quasi-null).
        - ordiniamo lambda in ordine decrescente, trascinando le colonne di V
          con la stessa permutazione:
-           ordina_autocoppie(lambda, V, ev_tol, SortOrder::Desc).
+           matrix_ordina_diagonale(lambda, V, ev_tol, SortOrder::Desc).
 
     4) Costruzione dei valori singolari e di V_ridotta:
        - per k = 0..p-1:
@@ -2265,7 +1964,7 @@ Mat completa_base_ortonormale(
        valida per tutti i sigma_i > 0.
 
     6) (Opzionale) Rifinitura dell'ortonormalità:
-       - gram_schmidt_modificato(Ub);
+       - matrix_ortogonalizza_GSmod(Ub);
        in pratica Ub^T Ub ≈ I_p e Vbred^T Vbred ≈ I_p.
 
     7) Identità finale (SVD ridotta di B):
@@ -2284,7 +1983,7 @@ Mat completa_base_ortonormale(
          Vr = V0 * Vbred (vettori singolari destri di X, forma ridotta).
 */
 
-void svd_bidiagonale_ridotta(
+void trmatrix_SVDQR_ridotta(
     const Mat& B,
     Mat& Ub,
     Vec& sigma,
@@ -2306,10 +2005,10 @@ void svd_bidiagonale_ridotta(
     // 2) Autovalori/autovettori di BtB (d x d)
     Vec lambda;
     Mat V;                                             // d x d
-    jacobi_simmetrica(BtB, lambda, V);
+    linear_jacobi_autoval_simmetrica(BtB, lambda, V);
 
     // 3) Ordina autovalori (desc) + colonne di V, con filtro nullità
-    ordina_autocoppie(lambda, V, ev_tol, SortOrder::Desc);
+    matrix_ordina_diagonale(lambda, V, ev_tol, SortOrder::Desc);
 
     // 4) Prepara sigma e Vb_red: tieni solo i primi p autovalori > 0
     sigma.assign(p, 0.0);
@@ -2364,48 +2063,130 @@ void svd_bidiagonale_ridotta(
     // dalle colonne di Vb ridotta (se hanno piu' componenti che elementi della base)
     // 
 }
-void svd_bidiagonale_compat(
-    const Mat& B,
-    Mat& Ub,
-    Mat& Vb,
-    Vec& sigma)
+
+void trmatrix_tridiag_wide(
+    const Mat& X,
+    Mat& U0,
+    Mat& B,
+    Mat& V0,
+    bool dump_flag)
 {
-    //
-    // wrapper esterno per riordinare i parametri formali come quelli della svd_bidiagonale fornita
-    // e per far completare correttamente Vbred -> Vb (non tocca Ub perche' lavoriamo sempre underdet)
-    //
+    Mat A = X;
 
-    Mat Vbred;
-    double ev_tol = 1e-12;
+    int n = A.size();
+    int d = A[0].size();
+    int p = std::min(n, d);
 
-    int m = B.size();
-    int n = B[0].size();
+    U0 = matrix_build_Id(n);
+    V0 = matrix_build_Id(d);
 
-    if (m <= n) {
-        svd_bidiagonale_ridotta(B, Ub, sigma, Vbred, ev_tol);
-        Vb = completa_base_ortonormale(Vbred);
-    } else {
-        Mat Bt = matrix_trasposta(B);
-        Mat U_bt, V_bt, V_btred;
+    Vec v, w;
 
-        svd_bidiagonale_ridotta(Bt, U_bt, sigma, V_btred, ev_tol);
-        V_bt = completa_base_ortonormale(V_btred);
+    for (int k = 0; k < p; ++k) {
 
-        Ub = V_bt;           
-        Vb = U_bt;
+        // =========================================================
+        // STEP SX: colonna k -> preserva diag, crea subdiag, zeri sotto
+        // blocco naturale: A[k+1:, k:]
+        // =========================================================
+        if (k < n - 2) {
+            int m = n - (k + 1);   // numero righe attive
+            int q = d - k;         // numero colonne attive
+
+            v.assign(m, 0.0);
+
+            // v = A[k+1:, k]
+            for (int i = 0; i < m; ++i)
+                v[i] = A[k + 1 + i][k];
+
+            w = vector_householder_bycol(v);
+
+            Mat A_k = matrix_build_zero(m, q);
+            for (int i = 0; i < m; ++i)
+                for (int j = 0; j < q; ++j)
+                    A_k[i][j] = A[k + 1 + i][k + j];
+
+            Mat Wt = vector_to_matrix(w, true);
+            Mat W  = vector_to_matrix(w, false);
+            Mat Wt_Ak = matrix_prodotto_matrix(Wt, A_k);
+            Mat corr  = matrix_prodotto_coeff(matrix_prodotto_matrix(W, Wt_Ak), 2.0);
+
+            for (int i = 0; i < m; ++i)
+                for (int j = 0; j < q; ++j)
+                    A[k + 1 + i][k + j] -= corr[i][j];
+
+            // U0[:, k+1:] = U0[:, k+1:] * (I - 2ww^T)
+            Mat U0_k = matrix_build_zero(n, m);
+            for (int i = 0; i < n; ++i)
+                for (int j = 0; j < m; ++j)
+                    U0_k[i][j] = U0[i][k + 1 + j];
+
+            Mat U0_W    = vector_to_matrix(matrix_prodotto_vector(U0_k, w), false);
+            Mat U0_corr = matrix_prodotto_coeff(
+                              matrix_prodotto_matrix(U0_W, vector_to_matrix(w, true)),
+                              2.0);
+
+            for (int i = 0; i < n; ++i)
+                for (int j = 0; j < m; ++j)
+                    U0[i][k + 1 + j] -= U0_corr[i][j];
+        }
+
+        // =========================================================
+        // STEP DX: riga k -> azzera tutto a destra della diag
+        // blocco naturale: A[k:, k+1:]
+        // =========================================================
+        if (k < d - 2) {
+            int m = n - k;         // righe attive
+            int q = d - (k + 1);   // colonne attive a destra
+
+            v.assign(q, 0.0);
+
+            // v = A[k, k+1:]
+            for (int j = 0; j < q; ++j)
+                v[j] = A[k][k + 1 + j];
+
+            w = vector_householder_byrow(v);
+
+            Mat A_k = matrix_build_zero(m, q);
+            for (int i = 0; i < m; ++i)
+                for (int j = 0; j < q; ++j)
+                    A_k[i][j] = A[k + i][k + 1 + j];
+
+            Mat Ak_W    = vector_to_matrix(matrix_prodotto_vector(A_k, w), false);
+            Mat Ak_corr = matrix_prodotto_coeff(
+                              matrix_prodotto_matrix(Ak_W, vector_to_matrix(w, true)),
+                              2.0);
+
+            for (int i = 0; i < m; ++i)
+                for (int j = 0; j < q; ++j)
+                    A[k + i][k + 1 + j] -= Ak_corr[i][j];
+
+            // V0[:, k+1:] = V0[:, k+1:] * (I - 2ww^T)
+            Mat V0_k = matrix_build_zero(d, q);
+            for (int i = 0; i < d; ++i)
+                for (int j = 0; j < q; ++j)
+                    V0_k[i][j] = V0[i][k + 1 + j];
+
+            Mat V0_W    = vector_to_matrix(matrix_prodotto_vector(V0_k, w), false);
+            Mat V0_corr = matrix_prodotto_coeff(
+                              matrix_prodotto_matrix(V0_W, vector_to_matrix(w, true)),
+                              2.0);
+
+            for (int i = 0; i < d; ++i)
+                for (int j = 0; j < q; ++j)
+                    V0[i][k + 1 + j] -= V0_corr[i][j];
+        }
+
+        if (dump_flag) {
+            matrix_dump(A, "A al passo " + std::to_string(k));
+            matrix_dump(matrix_prodotto_matrix(matrix_trasposta(U0), U0), "U0_t U0");
+            matrix_dump(matrix_prodotto_matrix(matrix_trasposta(V0), V0), "V0_t V0");
+        }
     }
-    //
-    // lascio sigma() come vettore per compatibilita' con la svd fornita
-    // bisogna ricordare sempre che viene completata all'esterno e 
-    // le dimensioni devono accordarsi sempre con Ub[0].size() e Vb[0].size 
-    // perche' le colonne di Vb cono le righe di Vb_t
-    // questo dovrebbe essere corretto sia per la versione ridotta che per la integrale
-    //
 
-};
+    B = A;
+}
 
-
-void check_sv_vs_lambda(
+void trmatrix_test_sv_autoval(
     Vec lambda,
     const Vec& sigma)
 {
@@ -2444,8 +2225,64 @@ void check_sv_vs_lambda(
               << "\n";
 }
 
+
+// 
+// Funzioni per matplot++
 //
-// gestione del menu principale e dei suoi item
+
+void matplot_legend_align(
+    legend_handle lg, 
+    int pos_enum, 
+    float xscale,
+    float yscale) {
+
+    // alla fine si e' scoperto che la posizione del centro della legenda dipende dai punti sulla scala X
+    // e quindi da K / 2 con un offset di 1 perche' il primo punto e' a 0 e non a 1 (bravo Copilot con gli option base 0)
+
+    using GA = matplot::legend::general_alignment;
+    using HA = matplot::legend::horizontal_alignment;
+    using VA = matplot::legend::vertical_alignment;
+    lg->box(false);
+
+    if (pos_enum == 0) { // up and out, centered
+        float xcenter = (xscale + 1.0) / 2.0;
+        lg->position({ xcenter , yscale}); 
+        lg->horizontal_location(HA::center);
+        lg->vertical_location(VA::bottom);
+        lg->box(true);
+    } else if (pos_enum == 1) { // bottom right    
+        lg->horizontal_location(HA::right);
+        lg->vertical_location(VA::bottom);
+    } else if (pos_enum == 2) { // center left
+        lg->horizontal_location(HA::left);
+        lg->vertical_location(VA::center);
+    } else if (pos_enum == 3) { // top left
+        lg->horizontal_location(HA::left);
+        lg->vertical_location(VA::top);
+    };
+};
+
+figure_handle matplot_table_init (
+    const bool ahold, 
+    const std::string &nome, 
+    const std::string &titolo, 
+    const int xlab, 
+    const int ylab) 
+{
+    figure_handle fig = matplot::figure(ahold);
+    fig->size(1800,900);
+    fig->position(10,10);
+    fig->name(nome);
+    fig->number_title(false);
+    fig->title_color({0., 1., 0., 1.});   //alpha, red, green, blue 0. ~ 1.
+    fig->tiledlayout(xlab, ylab); // stabilisce panel xlab righe x xlab colonne
+    fig->title(titolo);
+    fig->title_font_size_multiplier(3);
+    return fig;
+}
+
+//
+// funzioni di gestione del menu principale e dei suoi item
 //  
 
 MenuConfig load_menu_config(const std::string& filename) {

@@ -72,6 +72,10 @@ Vec nodi_random(
     const double amax,
     const int NPoints);
 
+Vec campiona_arctan(  // in via di sostituzione con generica
+        int n, 
+        double a, 
+        double b);
 //
 // funzioni matematiche ad uso callback 
 //
@@ -103,10 +107,18 @@ double fcallb(
 // funzioni macro algebra lineare
 // 
 
-Vec linear_risolvi_colonna(
-    const Mat& L,
-    const Mat& U,
-    Vec x);
+Vec linear_subst_BW(
+    const Mat &U, 
+    const Vec &y);
+
+Vec linear_subst_FW(
+    const Mat &L, 
+    const Vec &b);
+
+void linear_jacobi_autoval_simmetrica(
+    const Mat& A, 
+    Vec& lambda, 
+    Mat& V);
 
 Vec linear_LU_calcola_autovalori (
     const Mat& A);
@@ -118,6 +130,11 @@ void linear_LU_dec(
 
 Mat linear_LU_inversa (
     const Mat& A);
+
+Vec linear_LU_risolve_colonna(
+    const Mat& L,
+    const Mat& U,
+    Vec x);
 
 Vec linear_LU_risolve_sistema(
     const Mat& T,
@@ -141,6 +158,10 @@ double linear_max_autoval_pwr_AtA(
 //
 // funzioni per la gestione di vettori e matrici
 //
+    Mat matrix_build_derivata1(
+        int n, 
+        double a, 
+        double b) ;
 
 Mat matrix_build_gausskernel(
     const int N, 
@@ -148,6 +169,10 @@ Mat matrix_build_gausskernel(
     const double h, 
     bool norm_flag,
     Vec& Indicatori) ;
+
+Mat matrix_build_gram(
+        const Vec& x, 
+        const int K) ;
 
 Mat matrix_build_Id(
     int n);
@@ -161,7 +186,25 @@ Mat matrix_build_zero(
     int righe, 
     int colonne);
 
-Mat matrix_differenza(
+double matrix_calcola_errore_Fr(
+    const Mat& A, 
+    const Mat& B);
+
+void matrix_calcola_media(
+    const Mat& A, 
+    Vec& avg_col, 
+    Vec& avg_row);
+
+double matrix_calcola_norma(
+    int norma,
+    const Mat& A);
+
+Mat matrix_centra_su_media(
+    const Mat& A, 
+    const Vec& avg_vec,
+    bool by_col = true);
+
+Mat matrix_differenza_dump(
     const Mat& A, 
     const Mat& B);
 
@@ -177,9 +220,24 @@ Mat matrix_estende_ridotta(
 Mat matrix_normalize_byrow(
     Mat& K);
     
+void matrix_ordina_diagonale(
+    Vec& lambda,
+    Mat& V,
+    double zero_tol = 0.0,
+    SortOrder order = SortOrder::Desc);   // default: discendente
+
+void matrix_ortogonalizza_GSmod(
+    Mat& Q, 
+    int j0 = 0);
+
 Mat matrix_prodotto_coeff(
     const Mat& A, 
     const double coeff) ;
+
+Mat matrix_prodotto_AtA (
+    const Mat& A,
+    bool A_right = true
+);
 
 Mat matrix_prodotto_matrix(
     const Mat& A, 
@@ -188,6 +246,10 @@ Mat matrix_prodotto_matrix(
 Vec matrix_prodotto_vector(
     const Mat& A, 
     const Vec& v);
+
+void matrix_test_ortogonale(
+    const Mat& A,
+    string s);
 
 Mat matrix_trasposta(
     const Mat& A);
@@ -199,12 +261,30 @@ Vec vector_add_noise(
 Vec vector_build_versore_canonico(
     int j, 
     int N);
+    
+double vector_calcola_norma(
+    int norma, 
+    const Vec& V);
+
+Vec vector_campiona_f(
+    const Vec &x,           // vettore dei nodi di campionamento
+    double (*ft)(double));  // funzione da  campionare 
+
+Vec vector_campiona_f_k(
+    int k,                   // acceleratore di frequenza, es. k=1 per sin(t), k=2 per sin(2t), ecc.
+    const Vec &x,            // vettore dei nodi di campionamento
+    double (*ft)(double));   // funzione da  campionare 
 
 void vector_dump (
     Vec x, 
     int colspan, 
     int totnum, 
     const std::string s);
+Vec vector_householder_bycol(
+    const Vec& v);
+
+Vec vector_householder_byrow(
+    const Vec& v);
 
 double vector_prodotto_scalare(
     const Vec &u,
@@ -212,6 +292,12 @@ double vector_prodotto_scalare(
 
 Vec vector_reverse(
     const Vec& v);
+
+Vec vector_segnale_finestra(
+    int N,
+    double a, 
+    double b, 
+    double t);
 
 Vec vector_shift(
     const Vec &v, 
@@ -221,35 +307,12 @@ Mat vector_to_matrix(
     const Vec& v,
     bool transp);
 
-double vector_norma(
-    int norma, 
-    const Vec& V);
+Mat vector_to_matrix_diag(
+    const Vec& s, 
+    int m, 
+    int n) ;
 
-double matrix_norma(
-    int norma,
-    const Mat& A);
-
-Vec linear_FW_subst(
-    const Mat &L, 
-    const Vec &b);
-
-Vec linear_BW_subst(
-    const Mat &U, 
-    const Vec &y);
-
-Vec segnale_finestra(
-    int N,
-    double a, 
-    double b, 
-    double t);
-
-Vec householder_colonna(
-    const Vec& v);
-
-Vec householder_riga(
-    const Vec& v);
-
-void bidiagonalizza(
+void trmatrix_bidiagonalizza(
     const Mat& A, 
     Mat& U0, 
     Mat& B, 
@@ -257,36 +320,29 @@ void bidiagonalizza(
     bool sup_diag = false,  
     bool dump_flag = false);
 
-Mat matrice_At_A (
-    const Mat& A,
-    bool A_right = true
+void trmatrix_bidiag_wide_to_lower(
+    const Mat& X, 
+    Mat& U0, 
+    Mat& B, 
+    Mat& V0,
+    bool dump_flag) ;
+
+void trmatrix_bidiag_wide_to_upper(
+    const Mat& X, 
+    Mat& U0, 
+    Mat& B, 
+    Mat& V0,
+    bool dump_flag) ;
+
+
+void trmatrix_SVDQR(
+    const Mat& B,
+    Mat& Ub,
+    Mat& Vb,
+    Vec& sigma
 );
 
-Mat matrice_diagonale(
-    const Vec& s, 
-    int m, 
-    int n) ;
-
-
-double errore_F(
-    const Mat& A, 
-    const Mat& B);
-
-void calcola_medie_matrice(
-    const Mat& A, 
-    Vec& avg_col, 
-    Vec& avg_row);
-
-Mat centra_matrice(
-    const Mat& A, 
-    const Vec& avg_vec,
-    bool by_col = true);
-
-void test_ortogonalita(
-    const Mat& A,
-    string s);
-
-void svd_bidiagonale_ridotta(
+void trmatrix_SVDQR_ridotta(
     const Mat& B,      // p x d, p <= d, bidiagonale superiore
     Mat& Ub,           // p x p
     Vec& sigma,        // p
@@ -294,44 +350,26 @@ void svd_bidiagonale_ridotta(
     double ev_tol = 1e-12  // soglia per autovalori quasi nulli
 );
 
-void svd_bidiagonale_compat(
-    const Mat& B,
-    Mat& Ub,
-    Mat& Vb,
-    Vec& sigma
-);
-
-void jacobi_simmetrica(
-    const Mat& A, 
-    Vec& lambda, 
-    Mat& V);
-
-void ordina_autocoppie(
-    Vec& lambda,
-    Mat& V,
-    double zero_tol = 0.0,
-    SortOrder order = SortOrder::Desc);   // default: discendente
-
-void gram_schmidt_modificato(
-    Mat& Q, 
-    int j0 = 0);
-
-void check_sv_vs_lambda(
+void trmatrix_test_sv_autoval(
     Vec lambda,
     const Vec& sigma);
 
-figure_handle TableInit (
+// 
+// Funzioni per matplot++
+//
+
+void matplot_legend_align(
+    legend_handle lg, 
+    int pos_enum, 
+    float xscale,
+    float yscale) ;
+
+figure_handle matplot_table_init (
     const bool ahold, 
     const std::string &nome, 
     const std::string &titolo, 
     const int xlab, 
     const int ylab) ;
-
-void legend_align(
-    legend_handle lg, 
-    int pos_enum, 
-    float xscale,
-    float yscale) ;
 
 //
 // gestione menu principale
