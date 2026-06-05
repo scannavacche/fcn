@@ -69,6 +69,18 @@ Genera un vettore di nodi pseudo-casuali scalando campioni prodotti da `std::mt1
 ### `double f_x(double t)`
 Callback identità, restituisce il valore `t`.[file:16][file:32]
 
+### `double f_x1(double t)`
+Callback identità traslata, restituisce `t - 1`. Usata come coefficiente `at(t)` nei sistemi di Cauchy con termine lineare non omogeneo.[file:16][file:32]
+
+### `double at_zero(double t)`
+Callback costante nulla per il coefficiente di `z(t)` nel sistema di Cauchy: restituisce `0.0`.[file:16][file:32]
+
+### `double at_one(double t)`
+Callback costante unitaria per il coefficiente di `z(t)` nel sistema di Cauchy: restituisce `1.0`. Usata come default in `matrix_build_cauchy`.[file:16][file:32]
+
+### `double ft_zero(double t)`
+Callback sorgente nulla: restituisce `0.0`. Usata come termine forzante di default in `matrix_build_cauchy`.[file:16][file:32]
+
 ### `double f_sin(double t)`
 Callback seno, restituisce `sin(t)`.[file:16][file:32]
 
@@ -164,6 +176,143 @@ Applica il metodo delle potenze a una matrice quadrata già interpretata come \(
 
 ## funzioni per la gestione di vettori e matrici
 
+### `void matrix_build_cauchy(int n, double t0, double T, double z_bc, Vec &t, Vec &avals, Vec &fvals, Mat &L, Vec &b, double (*at)(double) = at_one, double (*ft)(double) = ft_zero, bool backw = false)`
+Costruisce il sistema lineare `Lx = b` associato a un problema di Cauchy lineare scalare del primo ordine con coefficiente `at(t)` e termine forzante `ft(t)`, cioe' nella forma `z'(t) = a(t) * z(t) + f(t)` discretizzato su una griglia di `n` nodi nell'intervallo `[t0, T].[file:16][file:32]
+
+La routine costruisce:
+- il vettore dei nodi `t`; 
+- il vettore `avals` dei campioni del coefficiente \(a(t)\);
+- il vettore `fvals` dei campioni del termine noto \(f(t)\);
+- la matrice bidiagonale `L`;
+- il termine noto `b`.[cite:1]
+
+### Signature
+
+```cpp
+void matrix_build_cauchy(
+    int n,
+    double t0,
+    double T,
+    double z_bc,
+    Vec &t,
+    Vec &avals,
+    Vec &fvals,
+    Mat &L,
+    Vec &b,
+    double (*at)(double),
+    double (*ft)(double),
+    bool backw
+);
+```
+
+### Parametri
+
+- `n`: numero di nodi della discretizzazione.
+- `t0`: estremo iniziale dell’intervallo.
+- `T`: estremo finale dell’intervallo.
+- `z_bc`: valore assegnato al bordo, iniziale o finale a seconda del verso di integrazione.
+- `t`: vettore dei nodi equispaziati.
+- `avals`: campioni del coefficiente `a(t)` sui nodi.
+- `fvals`: campioni del termine noto `f(t)` sui nodi.
+- `L`: matrice del sistema lineare discreto.
+- `b`: termine noto del sistema lineare discreto.
+- `at`: puntatore a funzione per il coefficiente `a(t)`; se `nullptr`, viene sostituito con una funzione costante unitaria.
+- `ft`: puntatore a funzione per il termine noto \(f(t)\); se `nullptr`, viene sostituito con una funzione costante nulla.
+- `backw`: selettore del verso di costruzione; `false` per schema forward, `true` per schema backward.[cite:1]
+
+### Convenzioni sulle callback
+
+La routine assume callback con signature compatibile `double(double)`.[file:16]
+
+Sono previste anche funzioni costanti di supporto come:
+
+```cpp
+double at_zero(double /*t*/) { return 0.0; }
+double at_one(double  /*t*/) { return 1.0; }
+double ft_zero(double /*t*/) { return 0.0; }
+```
+
+In particolare:
+- `at_zero` realizza il caso di integrazione pura \(a(t)=0\);
+- `at_one` realizza il caso \(a(t)=1\);
+- `ft_zero` realizza il caso omogeneo \(f(t)=0\).[cite:1]
+
+### Schema forward
+
+Nel caso `backw == false`, la routine costruisce un sistema bidiagonale inferiore associato alla discretizzazione forward del problema con dato iniziale.
+
+La riga interna del sistema è
+
+\[
+z_i - \bigl(1 + h\,a(t_{i-1})\bigr)\,z_{i-1} = h\,f(t_{i-1}),
+\qquad i = 1, \dots, n-1
+\]
+
+mentre la prima riga impone il dato iniziale
+
+\[
+z_0 = z_{bc}.
+\]
+
+In questo caso la matrice è triangolare inferiore e può essere risolta con `linear_subst_FW(...)`.[cite:1]
+
+### Schema backward
+
+Nel caso `backw == true`, la routine costruisce un sistema bidiagonale superiore associato alla discretizzazione backward del problema con dato finale.
+
+La riga interna del sistema è
+
+\[
+\bigl(-1 - h\,a(t_i)\bigr)\,z_i + z_{i+1} = h\,f(t_i),
+\qquad i = 0, \dots, n-2
+\]
+
+mentre l’ultima riga impone il dato finale
+
+\[
+z_{n-1} = z_{bc}.
+\]
+
+In questo caso la matrice è triangolare superiore e può essere risolta con `linear_subst_BW(...)`.[cite:1]
+
+### Casi particolari
+
+La stessa routine copre automaticamente diversi casi notevoli:
+- **integrazione pura**: \(z'(t)=f(t)\), ottenuta con \(a(t)=0\);
+- **equazione omogenea**: \(z'(t)=a(t)z(t)\), ottenuta con \(f(t)=0\);
+- **caso separabile testato**: \(z'(t)=z(t)+f(t)\), ottenuto con \(a(t)=1\).[cite:1]
+
+In questo modo la distinzione tra i diversi tipi di ODE non è affidata a funzioni pubbliche differenti, ma emerge direttamente dalla formula discreta e dai campioni delle callback `at` e `ft`.[cite:1]
+
+### Note implementative
+
+La routine inizializza internamente i vettori `t`, `avals`, `fvals`, la matrice `L` e il vettore `b`, così da evitare dipendenze da contenuti residui già presenti nei contenitori passati per riferimento.[file:32]
+
+Il passo di discretizzazione è
+
+\[
+h = \frac{T - t_0}{n - 1}.
+\]
+
+I nodi sono quindi costruiti come
+
+\[
+t_i = t_0 + i\,h,
+\qquad i = 0, \dots, n-1.
+\]
+
+Questa scelta mantiene una corrispondenza diretta tra nodo, campionamento dei coefficienti e riga discreta del sistema lineare.[cite:1]
+
+### `void matrix_build_cauchy_int(int n, double t0, double T, double x0, Vec &t, Vec &fvals, Mat &L, Vec &b, double (*ft)(double), bool backw)`
+Versione semplificata di `matrix_build_cauchy` con coefficiente `at(t) ≡ 0` (equazione di integrazione pura `z' = f(t)`). Campiona `ft` internamente e costruisce il sistema bidiagonale corrispondente. Deprecata dopo il collaudo di `matrix_build_cauchy`.[file:16][file:32]
+
+**Note implementative**
+- Caso limite con solo termine forzante; equivalente a un'integrazione numerica di `f(t)` con schema alle differenze finite.[file:32]
+
+### `void matrix_build_cauchy_sep(int n, double t0, double T, double x0, Vec &t, Vec &fvals, Mat &L, Vec &b, double (*ft)(double), bool backw)`
+Variante per ODE a variabili separabili `(ft ≡ 0)`: costruisce il sistema omogeneo `z' - a(t)z = 0`. 
+Utile come banco di test per confronto con la soluzione esatta analitica `z(t) = z_bc * exp(∫a(s)ds)`. Deprecata dopo  dopo il collaudo di `matrix_build_cauchy`.[file:16][file:32]
+
 ### `Mat matrix_build_derivata1(int n, double a, double b)`
 Costruisce una matrice delle differenze finite in avanti di dimensione \((n-1)\times n\) per approssimare la derivata prima su una griglia uniforme.[file:16][file:32]
 
@@ -196,6 +345,15 @@ Costruisce una matrice triangolare inferiore che rappresenta l’inversa della m
 
 ### `Mat matrix_build_zero(int righe, int colonne)`
 Costruisce una matrice nulla delle dimensioni richieste.[file:16][file:32]
+
+### `Vec matrix_calcola_deriv_byiter(const Vec &u, const double a, const double b)`
+Approssima la derivata del vettore `u` campionato sull'intervallo `[a, b]` tramite differenze finite iterative, senza costruire esplicitamente la matrice delle differenze.[file:16][file:32]
+
+### `Vec matrix_calcola_deriv_bymatr(const Mat &D, const Vec &u)`
+Calcola il prodotto matrice-vettore `D * u` dove `D` è la matrice delle differenze finite pre-costruita (tipicamente da `matrix_build_derivata1`). Approccio matriciale equivalente a `matrix_calcola_deriv_byiter`.[file:16][file:32]
+
+**Note implementative**
+- Le due varianti (`byiter` e `bymatr`) producono risultati identici sulla stessa griglia e sono mantenute entrambe come confronto didattico tra approccio iterativo e approccio matriciale.[file:32]
 
 ### `double matrix_calcola_errore_Fr(const Mat& A, const Mat& B)`
 Calcola la norma di Frobenius della differenza `A - B`.[file:16][file:32]
