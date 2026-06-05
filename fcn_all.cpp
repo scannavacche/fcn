@@ -413,10 +413,12 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         if (backw) {
         // backward: upper triangolare, condizione finale
 
-        	// qui abbiamo -(1+h) sulla diagonale e 1 a destra
+        	// qui abbiamo -(1+h) sulla diagonale e 1 a destra (buono per z' = z + f(t))
+            // test invece con -1 per integrale puro z' = f(t) 
         	b[n-1] = x0;  // condizione finale
             for (int i = 0; i < n - 1; ++i) {
-                L[i][i] = -(1.0 + h);
+                // L[i][i] = -(1.0 + h);
+                L[i][i] = -1.0;
                 L[i][i + 1] = 1.0;
                 b[i] = h * fvals[i];
             }
