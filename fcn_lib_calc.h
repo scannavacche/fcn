@@ -78,6 +78,9 @@ Vec nodi_random(
 
 double f_x(
     double t);
+    
+double f_x1(
+    double t) ;
 
 double f_sin(
     double t);
@@ -90,6 +93,10 @@ double f_atan(
 
 double f_atan_d(
     double t);
+
+double at_zero(double t);
+double at_one(double t) ; 
+double ft_zero(double t) ;
 
 double f_sin2plus1(
     double t);
@@ -154,7 +161,46 @@ double linear_max_autoval_pwr_AtA(
 //
 // funzioni per la gestione di vettori e matrici
 //
-    Mat matrix_build_derivata1(
+void matrix_build_cauchy(
+    int n, 
+    double t0,      // tempo iniziale t0
+    double T,       // tempo finale T
+    double z_bc,    // condizione al contorno z(t0) = z_bc (era x0 prima)
+    Vec &t,         // nodelist t_i 
+    Vec &avals,     // coefficiente di z(t) valutati nei nodi t_i
+    Vec &fvals,     // funzioni f(t) valutate nei nodi t_i
+    Mat &L, 
+    Vec &b, 
+    double (*at)(double) = at_one,
+    double (*ft)(double) = ft_zero,
+    bool backw = false) ;
+
+
+void matrix_build_cauchy_int(
+    int n, 
+    double t0, 
+    double T, 
+    double x0,
+    Vec &t, 
+    Vec &fvals, 
+    Mat &L, 
+    Vec &b, 
+    double (*ft)(double),
+    bool backw) ;
+
+void matrix_build_cauchy_sep(
+    int n, 
+    double t0, 
+    double T, 
+    double x0,
+    Vec &t, 
+    Vec &fvals, 
+    Mat &L, 
+    Vec &b, 
+    double (*ft)(double),
+    bool backw) ;
+
+Mat matrix_build_derivata1(
         int n, 
         double a, 
         double b) ;
@@ -181,6 +227,15 @@ Mat matrix_build_triang_inv(
 Mat matrix_build_zero(
     int righe, 
     int colonne);
+
+Vec matrix_calcola_deriv_byiter(
+    const Vec &u , 
+    const double a, 
+    const double b) ;
+
+Vec matrix_calcola_deriv_bymatr(
+    const Mat &D, 
+    const Vec &u) ;
 
 double matrix_calcola_errore_Fr(
     const Mat& A, 

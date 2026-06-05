@@ -351,160 +351,6 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
     // FCN – Laboratorio 2, Esercizio 1
     // Derivata numerica con differenze finite in avanti
 
-    Vec derivata_discreta_come_matrice(
-        const Mat &D, 
-        const Vec &u) { 
-
-        return matrix_prodotto_vector(D, u);
-    }
-
-    Vec derivata_discreta_come_RI(
-        const Vec &u , 
-        const double a, 
-        const double b) {
-            // ----------------------------------------------------------------------------
-            // Calcolo della derivata discreta senza costruire D esplicitamente
-            // per comprendere che un'applicazione lineare non necessariamente 
-            // deve essere calcolata tramite una matrice.
-            // u ∈ R^n, Du ∈ R^{n-1}.
-            // ----------------------------------------------------------------------------
-        int n = static_cast<int>(u.size());
-        Vec Du(n-1, 0.0);
-        double h = h_ticks(a, b, n-1);
-        // TODO: calcolare Du[i] con un ciclo for soltanto usando u[i+1] - u[i].
-        for (int j=0; j<n-1; ++j) {
-            Du[j] = (u[j+1]-u[j]) / h;
-        }
-        return Du;
-    }
-
-
-    // FCN – Laboratorio 2, Esercizio 1A
-    // Problema di Cauchy: x'(t) = x(t) + f(t), x(t0) = c
-    void costruisci_sistema_cauchy_pureint(
-        int n, 
-        double t0, 
-        double T, 
-        double x0,
-        Vec &t, 
-        Vec &fvals, 
-        Mat &L, 
-        Vec &b, 
-        double (*ft)(double),
-        bool backw) 
-        {
-        t = Vec(n);
-        fvals = Vec(n);
-        L = Mat(n, Vec(n, 0.0));
-        b = Vec(n, 0.0);
-
-        double h = (T - t0) / (n - 1);
-
-        // TODO 1: riempire il vettore dei nodi t_i e dei valori f(t_i)
-        
-        // migliorata: passare puntatore a funzione invece di indice di f
-        for (int i = 0; i < n; ++i) {
-            t[i] = t0 + i * h;
-            fvals[i] = fcallb(t[i], ft); 
-        };
-
-        // TODO 2: costruire L e b
-        if (backw) {
-        // Schema backward: x_i - (1+h)*x_{i+1} = h*f(t_i), i = 0..n-2
-        // Condizione finale: x_{n-1} = x0
-        // Produce matrice triangolare superiore, risolta da linear_subst_BW
-
-        	// qui abbiamo -(1+h) sulla diagonale e 1 a destra (buono per z' = z + f(t))
-            // test invece con -1 per integrale puro z' = f(t) 
-            for (int i = 0; i < n - 1; ++i) {
-                L[i][i] = -1.0;             //versione per z' = f(t) ok
-                L[i][i + 1] = 1.0;
-                b[i] = h * fvals[i+1]; // prima era i
-            }
-            L[n - 1][n - 1] = 1.0;
-            b[n - 1] = x0;
-    
-        }
-        else {
-            // forward: lower triangolare, con condizione iniziale
-
-			// Riga 0: x_0 = x0  => L[0][0] = 1, b[0] = x0
-			// Righe i>=1: - (1+h) x_{i-1} + x_i = h f(t_{i-1})
-			// X[0][0] sta sulla diagonale, potrei assegnargli 1 come agli altri Xii
-			// ma i termini sotto diagonale sono uno in meno: condiziono o li conto in riga)
-            L[0][0] = 1.0;
-            b[0] = x0;
-            for (int i = 1; i < n; ++i) {
-                L[i][i - 1] = -1.0;             //versione per z' = f(t) da testare 
-                L[i][i] = 1.0;
-                b[i] = h * fvals[i - 1];
-            }
-        }
-    }
-
-    void costruisci_sistema_cauchy_separabile(
-        int n, 
-        double t0, 
-        double T, 
-        double x0,
-        Vec &t, 
-        Vec &fvals, 
-        Mat &L, 
-        Vec &b, 
-        double (*ft)(double),
-        bool backw) 
-        {
-        t = Vec(n);
-        fvals = Vec(n);
-        L = Mat(n, Vec(n, 0.0));
-        b = Vec(n, 0.0);
-
-        double h = (T - t0) / (n - 1);
-
-        // TODO 1: riempire il vettore dei nodi t_i e dei valori f(t_i)
-        
-        // migliorata: passare puntatore a funzione invece di indice di f
-        for (int i = 0; i < n; ++i) {
-            t[i] = t0 + i * h;
-            fvals[i] = fcallb(t[i], ft); 
-        };
-
-        // TODO 2: costruire L e b
-        if (backw) {
-        // Schema backward: x_i - (1+h)*x_{i+1} = h*f(t_i), i = 0..n-2
-        // Condizione finale: x_{n-1} = x0
-        // Produce matrice triangolare superiore, risolta da linear_subst_BW
-
-        	// qui abbiamo -(1+h) sulla diagonale e 1 a destra (buono per z' = z + f(t))
-            // test invece con -1 per integrale puro z' = f(t) 
-            for (int i = 0; i < n - 1; ++i) {
-                L[i][i] = -(1.0 + h);   // versione per z' = z + f(t) da testare
-                L[i][i + 1] = 1.0;
-                b[i] = h * fvals[i+1]; // prima era i
-            }
-            L[n - 1][n - 1] = 1.0;
-            b[n - 1] = x0;
-    
-        }
-        else {
-            // forward: lower triangolare, con condizione iniziale
-
-			// Riga 0: x_0 = x0  => L[0][0] = 1, b[0] = x0
-			// Righe i>=1: - (1+h) x_{i-1} + x_i = h f(t_{i-1})
-			// X[0][0] sta sulla diagonale, potrei assegnargli 1 come agli altri Xii
-			// ma i termini sotto diagonale sono uno in meno: condiziono o li conto in riga)
-            L[0][0] = 1.0;
-            b[0] = x0;
-            for (int i = 1; i < n; ++i) {
-                L[i][i - 1] = -(1.0 + h);  // versione per z' = z + f(t) ok
-                L[i][i] = 1.0;
-                b[i] = h * fvals[i - 1];
-            }
-        }
-    }
-    // FCN – Laboratorio 2, Esercizio 1B
-    // Problema differenziale con condizioni al bordo: x''(t) = f(t), x(0) = 0, x(1) = 0
-
     void costruisci_sistema_bordo(
         int n, 
         double t0, 
@@ -1014,10 +860,10 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             Vec u = vector_campiona_f(x_eq, f_atan); 
 
             // 4) Applicazione di D: Du ≈ u'(t)
-            Vec Du = derivata_discreta_come_matrice(D, u);
+            Vec Du = matrix_calcola_deriv_bymatr(D, u);
 
             // 4a) Applicazione di D: Du ≈ u'(t)
-            Vec Du_sm = derivata_discreta_come_RI(u, a, b);  // ok sono sovrapposte
+            Vec Du_sm = matrix_calcola_deriv_byiter(u, a, b);  // ok sono sovrapposte
 
             // 5) Costruzione vettore dei nodi t_i
             Vec t(n);
@@ -1110,7 +956,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             redo = false;
 
             // Costruzione del sistema triangolare L x = b
-            costruisci_sistema_cauchy_separabile(n, t0, T, x0, t, fvals, L, b, f_x, false);
+            matrix_build_cauchy_sep(n, t0, T, x0, t, fvals, L, b, f_x, false);
             vector_dump(b, 10, 50, " b = t"); 
             // Risoluzione con sostituzione in avanti
             Vec x = linear_subst_FW(L, b);
@@ -1136,7 +982,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             xlabel("t");
             ylabel("x(t)");
 
-            costruisci_sistema_cauchy_separabile(n, t0, T, x0, t, fvals, L, b, f_sin, false);
+            matrix_build_cauchy_sep(n, t0, T, x0, t, fvals, L, b, f_sin, false);
             vector_dump(b, 10, 50, " b = sin(t) "); 
             // Risoluzione con sostituzione in avanti
             x = linear_subst_FW(L, b);
@@ -1149,7 +995,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             xlabel("t");
             ylabel("sin(t)");
 
-            costruisci_sistema_cauchy_separabile(n, t0, T, x0, t, fvals, L, b, f_cos, false); 
+            matrix_build_cauchy_sep(n, t0, T, x0, t, fvals, L, b, f_cos, false); 
             vector_dump(b, 10, 50, " b = cos(t) "); 
             // Risoluzione con sostituzione in avanti
             x = linear_subst_FW(L, b);
@@ -2515,7 +2361,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         double T  = PI;     // tempo finale
         double x0 = -1.0;     // condizione iniziale x(t0)
 
-        Vec t, fvals, b;
+        Vec t, avals, fvals, b;
         Mat L;
         
         bool leave = false;
@@ -2523,25 +2369,23 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         while (!leave) {
             int dummy = system("clear");
             redo = false;
-
-            // Costruzione del sistema triangolare L x = b
-            costruisci_sistema_cauchy_pureint(n, t0, T, x0, t, fvals, L, b, f_sin2plus1, true);
-            vector_dump(b, 10, b.size(), " b = 1/(1+sin^2) "); 
-            // Risoluzione con sostituzione indietro
-            Vec x = linear_subst_BW(L, b);
-            vector_dump(x, 10, x.size(), " x da Lx = b"); 
-            auto fig = matplot_table_init(true, "Cauchy", "Soluzione numerica del problema di Cauchy", 1, 1);
-            
-            // migliorie: aggiornare titolo con parametri 
-            
-            // Verifica della matrice L
-            
+            auto fig = matplot_table_init(true, "Cauchy", "Soluzione numerica del problema di Cauchy", 2, 2);            
             matplot::legend();
+            Vec x;
+{
+            // Costruzione del sistema triangolare L x = b
+            // matrix_build_cauchy_int(n, t0, T, x0, t, fvals, L, b, f_sin2plus1, true);
+            matrix_build_cauchy( n, t0, T, x0, t, avals, fvals, L, b, at_zero, f_sin2plus1, true) ;
+            // vector_dump(b, 10, b.size(), " b = 1/(1+sin^2) "); 
+            x = linear_subst_BW(L, b);
+            // vector_dump(x, 10, x.size(), " x da Lx = b"); 
+
             fig->nexttile(0);
-            ;
             imagesc(L)->display_name("Verifica matrice");
             colorbar();
-            
+}
+
+{        
             // Visualizzazione della soluzione numerica x(t)
             fig->nexttile(1);
             auto p = plot(t, x);
@@ -2551,6 +2395,29 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             ylabel("f(x(t))");
             auto ax=fig->current_axes();
             // ax->y_axis().limits({-1.00e-1, 1.00e-1 });
+}
+{
+            matrix_build_cauchy( n, t0, T, x0, t, avals, fvals, L, b, f_cos, f_sin2plus1, false) ;
+            x = linear_subst_FW(L, b);
+            fig->nexttile(2);
+            auto p = plot(t, x);
+            p->line_width(2);
+            p->display_name(" x(t) + 1 / (1 + sin^2(t))");
+            xlabel("t");
+            ylabel("f(x(t))");
+            auto ax=fig->current_axes();
+}
+{
+            matrix_build_cauchy( n, t0, T, 1, t, avals, fvals, L, b, at_one, ft_zero, false) ;
+            x = linear_subst_FW(L, b);
+            fig->nexttile(3);
+            auto p = plot(t, x);
+            p->line_width(2);
+            p->display_name(" x^-1(t) ");
+            xlabel("t");
+            ylabel("f(x(t))");
+            auto ax=fig->current_axes();
+}
 
 
             fig->draw();

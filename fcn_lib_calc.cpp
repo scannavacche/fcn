@@ -126,7 +126,12 @@ double h_ticks(
     const int a_points)
 {
         //  ora si chiama a_points per disambiguazione.
+        // i points vanno passati come numero di separatori, 
+        // quindi se voglio 10 nodi equidistanti allora points = 10 
+        // e h = (b-a)/9 perche' gli intervalli sono points-1
+        //
         // h e' la lunghezza dell' intervallo e gli intervalli sono points - 1
+        //
     if (a_stop>a_start) {
         return (a_stop-a_start)/double(a_points - 1);
     } else {
@@ -209,6 +214,10 @@ double fcallb(
 double f_x(double t) {
     return  t;
 }
+double f_x1(double t) {
+    const double eps = 1e-12;
+    return 1.0 / (std::abs(t) < eps ? std::copysign(eps, t) : t);}
+    
 double f_sin(double t) {
     return  std::sin(t); // esempio: f(t) = sin(t)
 }
@@ -221,7 +230,15 @@ double f_atan(double t) {
 double f_atan_d(double t) {
     return 1.0 / (1.0 + t * t); // derivata di atan(t), giuro che mi ha letto nel pensiero
 }
-
+double at_zero(double t) {
+    return 0.0;
+}   
+double at_one(double t) {
+    return 1.0;
+}  
+double ft_zero(double t) {
+    return 0.0;
+}    
 double f_sin2plus1(double t){
     double s = std::sin(t);
     return 1.0 / (1.0 + s*s);
@@ -604,26 +621,233 @@ double linear_max_autoval_pwr_AtA(
 //
 // funzioni per la manipolazione di matrici
 // 
-    Mat matrix_build_derivata1(
-        int n, 
-        double a, 
-        double b) {
-        int m = n - 1;               // numero di righe
-        Mat D(m, Vec(n, 0.0));
-        // ----------------------------------------------------------------------------
-        // TODO 1 --- Matrice D (differenze finite in avanti)
-        // Matrice D ∈ R^{(n-1)×n} che approssima la derivata prima su [0,1]:
-        // (Du)_i = (u_{i+1} - u_i) / h, con h = 1/(n-1), i = 0,...,n-2.
-        // ----------------------------------------------------------------------------
+void matrix_build_cauchy(
+    int n, 
+    double t0,      // tempo iniziale t0
+    double T,       // tempo finale T
+    double z_bc,    // condizione al contorno z(t0) = z_bc (era x0 prima)
+    Vec &t,         // nodelist t_i 
+    Vec &avals,     // coefficiente di z(t) valutati nei nodi t_i
+    Vec &fvals,     // funzioni f(t) valutate nei nodi t_i
+    Mat &L, 
+    Vec &b, 
+    double (*at)(double),   // default  at_one, se at == nullptr allora at(t) = 0.0
+    double (*ft)(double),   // default  ft_zero, se ft == nullptr allora ft(t) = 0.0    
+    bool backw)            // default false = forward, se true allora schema backward
 
+        // -----------------------------------------------------------------------------
+        // versione generalizzata con coefficiente at(t) davanti a z(t) e con f(t) generica, 
+        // da passare come puntatori a funzione con la convenzione che: 
+        // 1)   at(t) e ft(t) sono funzioni di t che restituiscono rispettivamente 
+        //      il coefficiente di z(t) e il termine noto f(t)
+        // 2)   esistono funzioni "costanti" 
+        //      at_zero(t) = 0.0 
+        //      at_one(t) = 1.0 
+        //      ft_zero(t) = 0.0 
+        //      at == nullptr come at_zero(t)
+        //      ft == nullptr come ft_zero(t)
+    
+        // continuiamo a farci passare il vettori dei nodi
+    {
+    t = Vec(n);                 // lo calcoliamo dentro insieme ai valori a(t) e f(t)
+    avals = Vec(n);
+    fvals = Vec(n);
+    L = Mat(n, Vec(n, 0.0));
+    b = Vec(n, 0.0);
+    using FnPtr = double(*)(double);
+    FnPtr ata;
+    FnPtr fta;    
+    ata = (at != nullptr) ? at : at_zero; // se at è nullptr, usa at_zero
+    fta = (ft != nullptr) ? ft : ft_zero; // se ft è nullptr, usa ft_zero
+    double h = h_ticks(t0, T, n);
 
-        double h = h_ticks(a, b, n - 1);
-        for (int i = 0; i < m; ++i) {
-            D[i][i]     = -1.0 / h;
-            D[i][i + 1] =  1.0 / h;
-        };
-        return D;
+    for (int i = 0; i < n; ++i) {
+        t[i] = t0 + i * h;
+        avals[i] = fcallb(t[i], ata);
+        fvals[i] = fcallb(t[i], fta);
+    };
+
+    if (backw) {
+
+    // Schema backward: x_i - (1+h)*x_{i+1} = h*f(t_i), i = 0..n-2
+    // Condizione finale: x_{n-1} = z_bc
+    // Produce matrice triangolare superiore, risolta da linear_subst_BW
+
+        for (int i = 0; i < n - 1; ++i) {
+            L[i][i] = -(1.0 + h * avals[i + 1]);   
+            L[i][i + 1] = 1.0;
+            b[i] = h * fvals[i + 1]; // prima era i
+        }
+        L[n - 1][n - 1] = 1.0;
+        b[n - 1] = z_bc;
+
     }
+    else {
+        // forward: lower triangolare, con condizione iniziale
+
+        // Riga 0: x_0 = x0  => L[0][0] = 1, b[0] = x0
+        // Righe i>=1: - (1+h) x_{i-1} + x_i = h f(t_{i-1})
+        // X[0][0] sta sulla diagonale, potrei assegnargli 1 come agli altri Xii
+        // ma i termini sotto diagonale sono uno in meno: condiziono o li conto in riga)
+        L[0][0] = 1.0;
+        b[0] = z_bc;
+        for (int i = 1; i < n; ++i) {
+            L[i][i - 1] = -(1.0 + h * avals[i - 1]);  // versione per z' = z + f(t) ok
+            L[i][i] = 1.0;
+            b[i] = h * fvals[i - 1];
+        }
+    }
+}
+
+
+
+
+// FCN – Laboratorio 2, Esercizio 1A
+// Problema di Cauchy: x'(t) = x(t) + f(t), x(t0) = c
+void matrix_build_cauchy_int(
+    int n, 
+    double t0, 
+    double T, 
+    double x0,
+    Vec &t, 
+    Vec &fvals, 
+    Mat &L, 
+    Vec &b, 
+    double (*ft)(double),
+    bool backw) 
+    {
+    t = Vec(n);
+    fvals = Vec(n);
+    L = Mat(n, Vec(n, 0.0));
+    b = Vec(n, 0.0);
+
+    double h = (T - t0) / (n - 1);
+
+    // TODO 1: riempire il vettore dei nodi t_i e dei valori f(t_i)
+    
+    // migliorata: passare puntatore a funzione invece di indice di f
+    for (int i = 0; i < n; ++i) {
+        t[i] = t0 + i * h;
+        fvals[i] = fcallb(t[i], ft); 
+    };
+
+    // TODO 2: costruire L e b
+    if (backw) {
+    // Schema backward: x_i - (1+h)*x_{i+1} = h*f(t_i), i = 0..n-2
+    // Condizione finale: x_{n-1} = x0
+    // Produce matrice triangolare superiore, risolta da linear_subst_BW
+
+        // qui abbiamo -(1+h) sulla diagonale e 1 a destra (buono per z' = z + f(t))
+        // test invece con -1 per integrale puro z' = f(t) 
+        for (int i = 0; i < n - 1; ++i) {
+            L[i][i] = -1.0;             //versione per z' = f(t) ok
+            L[i][i + 1] = 1.0;
+            b[i] = h * fvals[i+1]; // prima era i
+        }
+        L[n - 1][n - 1] = 1.0;
+        b[n - 1] = x0;
+
+    }
+    else {
+        // forward: lower triangolare, con condizione iniziale
+
+        // Riga 0: x_0 = x0  => L[0][0] = 1, b[0] = x0
+        // Righe i>=1: - (1+h) x_{i-1} + x_i = h f(t_{i-1})
+        // X[0][0] sta sulla diagonale, potrei assegnargli 1 come agli altri Xii
+        // ma i termini sotto diagonale sono uno in meno: condiziono o li conto in riga)
+        L[0][0] = 1.0;
+        b[0] = x0;
+        for (int i = 1; i < n; ++i) {
+            L[i][i - 1] = -1.0;             //versione per z' = f(t) da testare 
+            L[i][i] = 1.0;
+            b[i] = h * fvals[i - 1];
+        }
+    }
+}
+
+void matrix_build_cauchy_sep(
+    int n, 
+    double t0, 
+    double T, 
+    double x0,
+    Vec &t, 
+    Vec &fvals, 
+    Mat &L, 
+    Vec &b, 
+    double (*ft)(double),
+    bool backw) 
+    {
+    t = Vec(n);
+    fvals = Vec(n);
+    L = Mat(n, Vec(n, 0.0));
+    b = Vec(n, 0.0);
+
+    double h = (T - t0) / (n - 1);
+
+    // TODO 1: riempire il vettore dei nodi t_i e dei valori f(t_i)
+    
+    // migliorata: passare puntatore a funzione invece di indice di f
+    for (int i = 0; i < n; ++i) {
+        t[i] = t0 + i * h;
+        fvals[i] = fcallb(t[i], ft); 
+    };
+
+    // TODO 2: costruire L e b
+    if (backw) {
+    // Schema backward: x_i - (1+h)*x_{i+1} = h*f(t_i), i = 0..n-2
+    // Condizione finale: x_{n-1} = x0
+    // Produce matrice triangolare superiore, risolta da linear_subst_BW
+
+        // qui abbiamo -(1+h) sulla diagonale e 1 a destra (buono per z' = z + f(t))
+        // test invece con -1 per integrale puro z' = f(t) 
+        for (int i = 0; i < n - 1; ++i) {
+            L[i][i] = -(1.0 + h);   // versione per z' = z + f(t) da testare
+            L[i][i + 1] = 1.0;
+            b[i] = h * fvals[i+1]; // prima era i
+        }
+        L[n - 1][n - 1] = 1.0;
+        b[n - 1] = x0;
+
+    }
+    else {
+        // forward: lower triangolare, con condizione iniziale
+
+        // Riga 0: x_0 = x0  => L[0][0] = 1, b[0] = x0
+        // Righe i>=1: - (1+h) x_{i-1} + x_i = h f(t_{i-1})
+        // X[0][0] sta sulla diagonale, potrei assegnargli 1 come agli altri Xii
+        // ma i termini sotto diagonale sono uno in meno: condiziono o li conto in riga)
+        L[0][0] = 1.0;
+        b[0] = x0;
+        for (int i = 1; i < n; ++i) {
+            L[i][i - 1] = -(1.0 + h);  // versione per z' = z + f(t) ok
+            L[i][i] = 1.0;
+            b[i] = h * fvals[i - 1];
+        }
+    }
+}
+// FCN – Laboratorio 2, Esercizio 1B
+// Problema differenziale con condizioni al bordo: x''(t) = f(t), x(0) = 0, x(1) = 0
+
+Mat matrix_build_derivata1(
+    int n, 
+    double a, 
+    double b) {
+    int m = n - 1;               // numero di righe
+    Mat D(m, Vec(n, 0.0));
+    // ----------------------------------------------------------------------------
+    // TODO 1 --- Matrice D (differenze finite in avanti)
+    // Matrice D ∈ R^{(n-1)×n} che approssima la derivata prima su [0,1]:
+    // (Du)_i = (u_{i+1} - u_i) / h, con h = 1/(n-1), i = 0,...,n-2.
+    // ----------------------------------------------------------------------------
+
+
+    double h = h_ticks(a, b, n );
+    for (int i = 0; i < m; ++i) {
+        D[i][i]     = -1.0 / h;
+        D[i][i + 1] =  1.0 / h;
+    };
+    return D;
+}
 
 
 double matrix_build_gausskernel_item(  // forse non vale neanche la pena esportarla
@@ -736,6 +960,33 @@ Mat matrix_build_zero(
     // Crea una matrice N x N inizializzata a zero
 
     return Mat(righe, Vec(colonne, 0.0));
+}
+
+Vec matrix_calcola_deriv_byiter(
+    const Vec &u , 
+    const double a, 
+    const double b) {
+        // ----------------------------------------------------------------------------
+        // Calcolo della derivata discreta senza costruire D esplicitamente
+        // per comprendere che un'applicazione lineare non necessariamente 
+        // deve essere calcolata tramite una matrice.
+        // u ∈ R^n, Du ∈ R^{n-1}.
+        // ----------------------------------------------------------------------------
+    int n = static_cast<int>(u.size());
+    Vec Du(n-1, 0.0);
+    double h = h_ticks(a, b, n);
+    // TODO: calcolare Du[i] con un ciclo for soltanto usando u[i+1] - u[i].
+    for (int j=0; j<n-1; ++j) {
+        Du[j] = (u[j+1]-u[j]) / h;
+    }
+    return Du;
+}
+
+Vec matrix_calcola_deriv_bymatr(
+    const Mat &D, 
+    const Vec &u) { 
+
+    return matrix_prodotto_vector(D, u);
 }
 
 double matrix_calcola_errore_Fr(
