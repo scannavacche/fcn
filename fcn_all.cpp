@@ -411,19 +411,23 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
         // TODO 2: costruire L e b
         if (backw) {
-        // backward: upper triangolare, condizione finale
+        // Schema backward: x_i - (1+h)*x_{i+1} = h*f(t_i), i = 0..n-2
+        // Condizione finale: x_{n-1} = x0
+        // Produce matrice triangolare superiore, risolta da linear_subst_BW
 
         	// qui abbiamo -(1+h) sulla diagonale e 1 a destra (buono per z' = z + f(t))
             // test invece con -1 per integrale puro z' = f(t) 
-        	b[n-1] = x0;  // condizione finale
             for (int i = 0; i < n - 1; ++i) {
                 // L[i][i] = -(1.0 + h);
                 L[i][i] = -1.0;
                 L[i][i + 1] = 1.0;
-                b[i] = h * fvals[i];
+                b[i] = h * fvals[i+1]; // prima era i
             }
             L[n - 1][n - 1] = 1.0;
             b[n - 1] = x0;
+
+        }
+    }
         }
         else {
             // forward: lower triangolare, con condizione iniziale
