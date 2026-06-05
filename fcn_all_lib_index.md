@@ -97,4 +97,18 @@
 - `void trmatrix_bidiag_wide_to_lower(const Mat& X, Mat& U0, Mat& B, Mat& V0, bool dump_flag);`
 - `void trmatrix_bidiag_wide_to_upper(const Mat& X, Mat& U0, Mat& B, Mat& V0, bool dump_flag);`
 - `void trmatrix_SVDQR(const Mat& B, Mat& Ub, Mat& Vb, Vec& sigma);`
-- `void trmatrix_SVDQR_ridotta(const Mat& B, Mat& Ub, Vec& sigma, Mat& Vb_red, double ev_tol = 
+- `void trmatrix_SVDQR_ridotta(const Mat& B, Mat& Ub, Vec& sigma, Mat& Vb_red, double ev_tol = 1e-12);`
+- `void trmatrix_test_sv_autoval(Vec lambda, const Vec& sigma);`
+
+## Funzioni per matplot++
+
+- `void matplot_legend_align(legend_handle lg, int pos_enum, float xscale, float yscale);`
+- `figure_handle matplot_table_init(const bool ahold, const std::string &nome, const std::string &titolo, const int xlab, const int ylab);`
+
+## gestione menu principale
+
+- `struct MenuItem { int key; std::string label; std::string action; bool enabled; };`
+- `struct MenuConfig { std::string title; std::vector<MenuItem> items; };`
+- `MenuConfig load_menu_config(const std::string& filename);`
+- `const MenuItem* find_menu_item(const MenuConfig& menu, int key);`
+- `void wait_return_to_menu(bool bypass_waitakey);`
