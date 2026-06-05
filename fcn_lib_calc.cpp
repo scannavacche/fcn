@@ -241,7 +241,7 @@ Vec linear_subst_BW(
     x[0] = y[0] / U[0][0];
     for (int i = m-1; i > 0; --i) {
         double s = y[i];
-        for (int j = i+1; j < m - 1; ++j) {
+        for (int j = i+1; j < m ; ++j) {  // corretto, era m-1
             s -= U[i][j] * x[j];
         }
         x[i] = s / U[i][i];

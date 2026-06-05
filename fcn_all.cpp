@@ -425,9 +425,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             }
             L[n - 1][n - 1] = 1.0;
             b[n - 1] = x0;
-
-        }
-    }
+    
         }
         else {
             // forward: lower triangolare, con condizione iniziale
@@ -2474,7 +2472,14 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             // Risoluzione con sostituzione indietro
             Vec x = linear_subst_BW(L, b);
             vector_dump(x, 10, 50, " x da Lx = b"); 
+cout << "Prima riga L:" << endl;
+for (int j = 0; j < n; ++j) cout << L[0][j] << " ";
+cout << endl;
 
+cout << "b[0] = " << b[0] << endl;
+cout << "x[0] = " << x[0] << endl;
+cout << "x[1] = " << x[1] << endl;
+cout << "check riga 0 = " << (-x[0] + x[1]) - b[0] << endl;
             auto fig = matplot_table_init(true, "Cauchy", "Soluzione numerica del problema di Cauchy", 1, 1);
             
             // migliorie: aggiornare titolo con parametri 
