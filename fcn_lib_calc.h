@@ -363,6 +363,10 @@ Mat vector_to_matrix_diag(
     int m, 
     int n) ;
 
+//
+// funzioni specifiche di trasformazione matrici 
+//
+
 void trmatrix_bidiagonalizza(
     const Mat& A, 
     Mat& U0, 

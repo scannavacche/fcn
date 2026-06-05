@@ -184,7 +184,7 @@ La routine costruisce:
 - il vettore `avals` dei campioni del coefficiente \(a(t)\);
 - il vettore `fvals` dei campioni del termine noto \(f(t)\);
 - la matrice bidiagonale `L`;
-- il termine noto `b`.[cite:1]
+- il termine noto `b`.
 
 ### Signature
 
@@ -218,7 +218,7 @@ void matrix_build_cauchy(
 - `b`: termine noto del sistema lineare discreto.
 - `at`: puntatore a funzione per il coefficiente `a(t)`; se `nullptr`, viene sostituito con una funzione costante unitaria.
 - `ft`: puntatore a funzione per il termine noto \(f(t)\); se `nullptr`, viene sostituito con una funzione costante nulla.
-- `backw`: selettore del verso di costruzione; `false` per schema forward, `true` per schema backward.[cite:1]
+- `backw`: selettore del verso di costruzione; `false` per schema forward, `true` per schema backward.
 
 ### Convenzioni sulle callback
 
@@ -234,8 +234,8 @@ double ft_zero(double /*t*/) { return 0.0; }
 
 In particolare:
 - `at_zero` realizza il caso di integrazione pura \(a(t)=0\);
-- `at_one` realizza il caso \(a(t)=1\);
-- `ft_zero` realizza il caso omogeneo \(f(t)=0\).[cite:1]
+- `at_one` realizza il caso `a(t)=1`;
+- `ft_zero` realizza il caso omogeneo `f(t)=0`.
 
 ### Schema forward
 
@@ -243,18 +243,18 @@ Nel caso `backw == false`, la routine costruisce un sistema bidiagonale inferior
 
 La riga interna del sistema è
 
-\[
+$$
 z_i - \bigl(1 + h\,a(t_{i-1})\bigr)\,z_{i-1} = h\,f(t_{i-1}),
 \qquad i = 1, \dots, n-1
-\]
+$$
 
 mentre la prima riga impone il dato iniziale
 
-\[
+$$
 z_0 = z_{bc}.
-\]
+$$
 
-In questo caso la matrice è triangolare inferiore e può essere risolta con `linear_subst_FW(...)`.[cite:1]
+In questo caso la matrice è triangolare inferiore e può essere risolta con `linear_subst_FW(...)`.
 
 ### Schema backward
 
@@ -262,27 +262,25 @@ Nel caso `backw == true`, la routine costruisce un sistema bidiagonale superiore
 
 La riga interna del sistema è
 
-\[
+$$
 \bigl(-1 - h\,a(t_i)\bigr)\,z_i + z_{i+1} = h\,f(t_i),
 \qquad i = 0, \dots, n-2
-\]
+$$
 
 mentre l’ultima riga impone il dato finale
 
-\[
-z_{n-1} = z_{bc}.
-\]
+$$z_{n-1} = z_{bc}$$
 
-In questo caso la matrice è triangolare superiore e può essere risolta con `linear_subst_BW(...)`.[cite:1]
+In questo caso la matrice è triangolare superiore e può essere risolta con `linear_subst_BW(...)`.
 
 ### Casi particolari
 
 La stessa routine copre automaticamente diversi casi notevoli:
 - **integrazione pura**: \(z'(t)=f(t)\), ottenuta con \(a(t)=0\);
 - **equazione omogenea**: \(z'(t)=a(t)z(t)\), ottenuta con \(f(t)=0\);
-- **caso separabile testato**: \(z'(t)=z(t)+f(t)\), ottenuto con \(a(t)=1\).[cite:1]
+- **caso separabile testato**: \(z'(t)=z(t)+f(t)\), ottenuto con \(a(t)=1\).
 
-In questo modo la distinzione tra i diversi tipi di ODE non è affidata a funzioni pubbliche differenti, ma emerge direttamente dalla formula discreta e dai campioni delle callback `at` e `ft`.[cite:1]
+In questo modo la distinzione tra i diversi tipi di ODE non è affidata a funzioni pubbliche differenti, ma emerge direttamente dalla formula discreta e dai campioni delle callback `at` e `ft`.
 
 ### Note implementative
 
@@ -290,18 +288,18 @@ La routine inizializza internamente i vettori `t`, `avals`, `fvals`, la matrice 
 
 Il passo di discretizzazione è
 
-\[
+$$
 h = \frac{T - t_0}{n - 1}.
-\]
+$$
 
 I nodi sono quindi costruiti come
 
-\[
+$$
 t_i = t_0 + i\,h,
 \qquad i = 0, \dots, n-1.
-\]
+$$
 
-Questa scelta mantiene una corrispondenza diretta tra nodo, campionamento dei coefficienti e riga discreta del sistema lineare.[cite:1]
+Questa scelta mantiene una corrispondenza diretta tra nodo, campionamento dei coefficienti e riga discreta del sistema lineare.
 
 ### `void matrix_build_cauchy_int(int n, double t0, double T, double x0, Vec &t, Vec &fvals, Mat &L, Vec &b, double (*ft)(double), bool backw)`
 Versione semplificata di `matrix_build_cauchy` con coefficiente `at(t) ≡ 0` (equazione di integrazione pura `z' = f(t)`). Campiona `ft` internamente e costruisce il sistema bidiagonale corrispondente. Deprecata dopo il collaudo di `matrix_build_cauchy`.[file:16][file:32]
