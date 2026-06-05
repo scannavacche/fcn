@@ -315,7 +315,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
     //  Precisione di macchina e aritmetica IEEE 754
 
     template <typename T>
-    void checksum (
+    void checksum ( // mostra l'errore di arrotondamento per somma
         T add1, 
         T add2, 
         T sum12) {
@@ -353,7 +353,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
     Vec derivata_discreta_come_matrice(
         const Mat &D, 
-        const Vec &u) {
+        const Vec &u) { 
 
         return matrix_prodotto_vector(D, u);
     }

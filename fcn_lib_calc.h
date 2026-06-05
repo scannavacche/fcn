@@ -72,10 +72,6 @@ Vec nodi_random(
     const double amax,
     const int NPoints);
 
-Vec campiona_arctan(  // in via di sostituzione con generica
-        int n, 
-        double a, 
-        double b);
 //
 // funzioni matematiche ad uso callback 
 //
