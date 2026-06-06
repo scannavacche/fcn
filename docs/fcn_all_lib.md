@@ -96,6 +96,7 @@
 - `void vector_dump(Vec x, int colspan, int totnum, const std::string s);`
 - `Vec vector_householder_bycol(const Vec& v);`
 - `Vec vector_householder_byrow(const Vec& v);`
+- `Vec vector_householder_x1_forced(const Vec& v, const double alpha);'
 - `double vector_prodotto_scalare(const Vec &u, const Vec &v);`
 - `Vec vector_reverse(const Vec& v);`
 - `Vec vector_segnale_finestra(int N, double a, double b, double t);`
@@ -855,15 +856,19 @@ Mat matrix_centra_su_media(
 ```
 Centra la matrice sottraendo a ciascun elemento la media di colonna o di riga, a seconda del flag `by_col`
 
-### `matrix_differenza_dump`
+### `matrix_calcola_diff`
 
 ```cpp
-Mat matrix_differenza_dump(
+Mat matrix_calcola_diff(
     const Mat& A,
     const Mat& B
 );
 ```
 Restituisce la differenza `A - B` se le dimensioni sono compatibili; in caso contrario termina il programma con messaggio diagnostico
+
+**Note implementative**
+
+Ora un wrapper per matrix_calcola_subfact(A,B,1);
 
 ### `matrix_dump`
 
@@ -885,6 +890,16 @@ Mat matrix_estende_ridotta(
 );
 ```
 Riduce o mantiene una matrice alle dimensioni richieste, tagliando righe o colonne a seconda del flag `bycol`
+
+### matrix_householder_reflector
+
+```cpp
+Mat matrix_householder_reflector(
+    const Vec v);
+```
+
+Restituisce la matrice completa, riflettore di Householder del vettore v
+
 
 ### `matrix_normalize_byrow`
 
@@ -1072,6 +1087,37 @@ Vec vector_householder_byrow(
 ```
 Versione per righe del costruttore di Householder; nel codice delega direttamente alla versione per colonne
 
+### vector_householder_reflected
+
+```cpp
+Vec vector_householder_reflected(
+    const Vec v);
+```
+Restituisce la riflessione del vettore v attorno al sottospazio ortogonale al vettore di householder generato a partire dalla sua norma2
+
+### `vector_one_minus_one`
+
+```cpp
+Vec vector_one_minus_one(
+    const int n
+);
+```
+Costruisce un vettore (-1, 1, -1, 1 ...... , -1, 1, ... ) di n elementi v[i] = (-1)^i 
+
+**Note implementative** 
+- non usa l'elevazione a potenza per risparmiare ma discrimina in base alla parita' di i 
+- veramente in prima istanza l'avevo fatta con il flip del segno ;) per rispparmiare ancora
+
+### `vector_prodotto_coeff`
+
+```cpp
+Vec vector_prodotto_coeff(
+    const Vec v, 
+    double mu
+);
+```
+Prodotto vettore v per uno scalare mu 
+
 ### `vector_prodotto_scalare`
 
 ```cpp
@@ -1112,6 +1158,16 @@ Vec vector_shift(
 );
 ```
 Restituisce una copia del vettore traslata di una quantità costante `shift`
+
+### `vector_sommat`
+
+```cpp
+Vec vector_somma(
+    const Vec u, 
+    const Vec v);
+```
+Restituisce una somma algebrica di due vettori di pari dimensione, componente per componente
+
 
 ### `vector_to_matrix`
 

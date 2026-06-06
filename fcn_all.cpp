@@ -37,8 +37,8 @@ namespace {
     // namespace anonimo per funzioni di utilità locali al file, non visibili all'esterno
     //
 
-using Action = std::function<void()>;
-using ActionRegistry = std::unordered_map<std::string, Action>;
+    using Action = std::function<void()>;
+    using ActionRegistry = std::unordered_map<std::string, Action>;
 
     template <typename T>
     T taylor0_exp(
@@ -426,7 +426,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         FILE* fres = freopen("/dev/null", "w", stderr);       // evita le menate di gnuplot :)
 
         while (!leave) {
-            int dummy = system("clear"); 
+            clear_screen(); 
         // ── Parte A: nodi equidistanti ────────────────────────────────────────────
             NR = 2*PI;
             x_eq = nodi_equidistanti(0, NR, N);
@@ -577,7 +577,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
     
         
         while (!leave) {
-            int dummy = system("clear");
+            clear_screen();
             auto fig = matplot_table_init (false, "Taylor exp", "Convergenza di Taylor per exp(x)", 2, 2);
             int TCenter = 0;
             // ── Parte A2: tabella errori per eˣ con x = 1 ────────────────────────   
@@ -649,7 +649,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         FILE* fres = freopen("/dev/null", "w", stderr);       // evita le menate di gnuplot :)
         
         while (!leave) {
-            int dummy = system("clear"); 
+            clear_screen(); 
             auto fig = matplot_table_init (true, "Taylor cos", "Stima di cos(x) con Taylor centrato in 0", 2,2 );
             // ── Parte A2: tabella errori per cos(x) con x = 1 ────────────────────────   
             e_esatto = std::cos(deg2rad(target_arg)); // valore dal quale si calcola l'errore
@@ -705,7 +705,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         // ...
         bool found_e = false;
         double div_2 = 2.0;
-        int dummy = system("clear"); 
+        clear_screen(); 
 
         while (!found_e) {
             if ((1.0 + eps) == 1.0) found_e = true; else eps /= div_2;
@@ -835,7 +835,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         bool leave = false;
         bool redo = false;
         while (!leave) {
-            int dummy = system("clear");
+            clear_screen();
             redo = false;
             a = -domain_span;      // estremi dell'intervallo per arctan(t)
             b =  domain_span;
@@ -952,7 +952,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         bool leave = false;
         bool redo = false;
         while (!leave) {
-            int dummy = system("clear");
+            clear_screen();
             redo = false;
 
             // Costruzione del sistema triangolare L x = b
@@ -1041,7 +1041,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         bool redo = false;
         while (!leave) {
 
-            int dummy = system("clear");
+            clear_screen();
             // Costruzione del sistema triangolare L x = b
             costruisci_sistema_bordo(n, t0, T, x0, x1, t, fvals, A, b);
             vector_dump(fvals, 10, fvals.size(), "fvals");
@@ -1142,7 +1142,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
         while (!leave) {
             bool redo = false;
-            int dummy = system("clear");
+            clear_screen();
             double h = h_ticks(a,b,N); // passo di campionamento
 
             Vec fvals(N, 0.0);                  // qui abbiamo 1/(1+x^2) a integrare, campionata in N punti equispaziati tra a e b
@@ -1303,7 +1303,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         bool leave = false; 
         double a=-7,b=7; // intervallo di integrazione
 
-        int dummy = system("clear");
+        clear_screen();
         while (!leave) {
             bool redo = false;
 
@@ -1858,12 +1858,12 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
     void f3_svd_test(){
         bool leave = false;
-        int dummy = system("clear");
+        clear_screen();
         int n = 6, d = 5;
 
         while (!leave) 
         {
-            int dummy = system("clear");
+            clear_screen();
             {
                 Vec v = {3.0, 1.0, -2.0};
                 Vec w = vector_householder_bycol(v);
@@ -1910,7 +1910,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 Mat X0 = matrix_prodotto_matrix(U0, matrix_prodotto_matrix(B, V0_t));
                 matrix_dump(X, "X - Originale");
                 matrix_dump(X0, "X - Ricostruita U0 * (B * V0^T)");
-                Mat R = matrix_differenza_dump(X,X0);
+                Mat R = matrix_calcola_diff(X,X0);
                 matrix_dump(R, "R - Differenza X - U0 * B * V0^T");
 
                 printf(" Error_F_lab ||X - U0*B*V0^T||_F = %.2e\n", matrix_calcola_errore_Fr(X, X0));
@@ -1924,7 +1924,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 printf(" Norma spettrale PM econ ||R||_2 = %.2e\n",  matrix_calcola_norma(2,R));
                 printf(" Norma spettrale PM lab. ||R||_2 = %.2e\n",  matrix_calcola_norma(12,R));
                 printf(" Norma spettrale PM rayl ||R||_2 = %.2e\n\n",  matrix_calcola_norma(22,R));
-                //  test condizione di errore: Mat E = matrix_differenza_dump(U0, V0);
+                //  test condizione di errore: Mat E = matrix_calcola_diff(U0, V0);
            }
  
             bool redo = false;
@@ -1947,7 +1947,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
         while (!leave) 
         {
-            int dummy = system("clear");
+            clear_screen();
             // ── TODO 6: SVD completa ─────────────────────────────────────────────────
             {
                 std::mt19937 rng(7);
@@ -1975,7 +1975,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 Mat X0 = matrix_prodotto_matrix(matrix_prodotto_matrix(U0, B), V0_t);
                 // matrix_dump(X, "X Originale");
                 // matrix_dump(X0, "X = U0 * B * V0_t Ricostruita");
-                Mat R = matrix_differenza_dump(X,X0);
+                Mat R = matrix_calcola_diff(X,X0);
 
 
                 printf(" Error_F_lab         ||X - U0*B*V0^T||_F = %.2e\n", matrix_calcola_errore_Fr(X, X0));
@@ -2013,7 +2013,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 matrix_dump(Vbredt_Vbred, "Vbredt_Vbred");
                 Mat B_rebuilt = matrix_prodotto_matrix(Ub, matrix_prodotto_matrix(Sigma_red, Vbred_t));
                 matrix_dump(B_rebuilt, ,"B_rebuilt");
-                Mat Rred = matrix_differenza_dump(B, B_rebuilt);
+                Mat Rred = matrix_calcola_diff(B, B_rebuilt);
                 matrix_dump(Rred, "Rred differenze su B");
                 printf(" Error_F_lab         ||B - Ub*B*Vbred^T||_F = %.2e\n", matrix_calcola_errore_Fr(B, B_rebuilt));
                 printf(" Error_F_mia         ||X - Ub*B*Vbred^T||_F = %.2e\n", matrix_calcola_norma(-1, Rred));
@@ -2021,7 +2021,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
                 Mat X_rebuilt = matrix_prodotto_matrix(U0, matrix_prodotto_matrix(B_rebuilt, V0_t));
                 matrix_dump(X_rebuilt, "X_rebuilt");
-                Rred = matrix_differenza_dump(X, X_rebuilt);
+                Rred = matrix_calcola_diff(X, X_rebuilt);
                 matrix_dump(Rred, "Rred differenze su X");
                 printf(" Error_F_lab         ||X - U0*B_rebuilt*V0^T||_F = %.2e\n", matrix_calcola_errore_Fr(B, B_rebuilt));
                 printf(" Error_F_mia         ||X - U0*B_rebuilt*V0^T||_F = %.2e\n", matrix_calcola_norma(-1, Rred));
@@ -2056,7 +2056,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
                 matrix_dump(Ub_S_Vbt, "B = Ub_S_Vbt");
                 matrix_dump(B, "B Originale");
 
-                Mat RB = matrix_differenza_dump(B , Ub_S_Vbt);
+                Mat RB = matrix_calcola_diff(B , Ub_S_Vbt);
                 printf(" Error_F_mia || B - Ub * (Sigma * Vb_t)||_F = %.2e\n\n", matrix_calcola_norma(-1, RB));
                 matrix_dump(RB, "Matrice differenza B = B - Ub * (Sigma * Vb_t)");
 
@@ -2087,11 +2087,11 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 
                 // TODO: verifica ||X - U*Sigma*V^T||_F, ||U^T*U - I||_F, ||V^T*V - I||_F
 
-                Mat RX = matrix_differenza_dump(X, U_S_Vt);
+                Mat RX = matrix_calcola_diff(X, U_S_Vt);
                 matrix_dump(RX, "Differenze X - U Sigma V^t");
 
-                Mat RU = matrix_differenza_dump(matrix_build_Id(U.size()), matrix_prodotto_matrix(U, matrix_trasposta(U)));
-                Mat RV = matrix_differenza_dump(matrix_build_Id(V.size()), matrix_prodotto_matrix(V, V_t));
+                Mat RU = matrix_calcola_diff(matrix_build_Id(U.size()), matrix_prodotto_matrix(U, matrix_trasposta(U)));
+                Mat RV = matrix_calcola_diff(matrix_build_Id(V.size()), matrix_prodotto_matrix(V, V_t));
                 printf(" Error_F_mia ||X - U*Sigma*V^T||_F = %.2e\n", matrix_calcola_norma(-1, RX));
                 printf(" Error_F_mia ||U^T*U - I||_F = %.2e\n", matrix_calcola_norma(-1, RU));
                 printf(" Error_F_mia ||V^T*V - I||_F = %.2e\n\n", matrix_calcola_norma(-1, RV));
@@ -2130,7 +2130,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         while (!leave) 
         {
             // ── TODO 7: PCA e scatter plot ────────────────────────────────────────────
-            int dummy = system("clear");
+            clear_screen();
             // primo giro prende n come base ed a pari d plotta 4 scatter nx1, nx2, nx4, nx8 
             // secondo giro prende d come base ed a pari n plotta 4 scatter dx1, dx2, dx4, dx8 
             bool first_run = true;
@@ -2248,7 +2248,7 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
 			
             // ── TODO 7: PCA e scatter plot ────────────────────────────────────────────
             
-            int dummy = system("clear");
+            clear_screen();
             bool first_run = true;
 			auto fig = matplot_table_init(true, "PCA", "PCA — prime due componenti principali", 2, 2 );
 
@@ -2367,57 +2367,57 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         bool leave = false;
         bool redo = false;
         while (!leave) {
-            int dummy = system("clear");
+            clear_screen();
             redo = false;
             auto fig = matplot_table_init(true, "Cauchy", "Soluzione numerica del problema di Cauchy", 2, 2);            
             matplot::legend();
             Vec x;
-{
-            // Costruzione del sistema triangolare L x = b
-            // matrix_build_cauchy_int(n, t0, T, x0, t, fvals, L, b, f_sin2plus1, true);
-            matrix_build_cauchy( n, t0, T, x0, t, avals, fvals, L, b, at_zero, f_sin2plus1, true) ;
-            // vector_dump(b, 10, b.size(), " b = 1/(1+sin^2) "); 
-            x = linear_subst_BW(L, b);
-            // vector_dump(x, 10, x.size(), " x da Lx = b"); 
+            {
+                // Costruzione del sistema triangolare L x = b
+                // matrix_build_cauchy_int(n, t0, T, x0, t, fvals, L, b, f_sin2plus1, true);
+                matrix_build_cauchy( n, t0, T, x0, t, avals, fvals, L, b, at_zero, f_sin2plus1, true) ;
+                // vector_dump(b, 10, b.size(), " b = 1/(1+sin^2) "); 
+                x = linear_subst_BW(L, b);
+                // vector_dump(x, 10, x.size(), " x da Lx = b"); 
 
-            fig->nexttile(0);
-            imagesc(L)->display_name("Verifica matrice");
-            colorbar();
-}
+                fig->nexttile(0);
+                imagesc(L)->display_name("Verifica matrice");
+                colorbar();
+            }
 
-{        
-            // Visualizzazione della soluzione numerica x(t)
-            fig->nexttile(1);
-            auto p = plot(t, x);
-            p->line_width(2);
-            p->display_name("1 / (1 + sin^2(t))");
-            xlabel("t");
-            ylabel("f(x(t))");
-            auto ax=fig->current_axes();
-            // ax->y_axis().limits({-1.00e-1, 1.00e-1 });
-}
-{
-            matrix_build_cauchy( n, t0, T, x0, t, avals, fvals, L, b, f_cos, f_sin2plus1, false) ;
-            x = linear_subst_FW(L, b);
-            fig->nexttile(2);
-            auto p = plot(t, x);
-            p->line_width(2);
-            p->display_name(" x(t) + 1 / (1 + sin^2(t))");
-            xlabel("t");
-            ylabel("f(x(t))");
-            auto ax=fig->current_axes();
-}
-{
-            matrix_build_cauchy( n, t0, T, 1, t, avals, fvals, L, b, at_one, ft_zero, false) ;
-            x = linear_subst_FW(L, b);
-            fig->nexttile(3);
-            auto p = plot(t, x);
-            p->line_width(2);
-            p->display_name(" x^-1(t) ");
-            xlabel("t");
-            ylabel("f(x(t))");
-            auto ax=fig->current_axes();
-}
+            {        
+                // Visualizzazione della soluzione numerica x(t)
+                fig->nexttile(1);
+                auto p = plot(t, x);
+                p->line_width(2);
+                p->display_name("1 / (1 + sin^2(t))");
+                xlabel("t");
+                ylabel("f(x(t))");
+                auto ax=fig->current_axes();
+                // ax->y_axis().limits({-1.00e-1, 1.00e-1 });
+            }
+            {
+                matrix_build_cauchy( n, t0, T, x0, t, avals, fvals, L, b, f_cos, f_sin2plus1, false) ;
+                x = linear_subst_FW(L, b);
+                fig->nexttile(2);
+                auto p = plot(t, x);
+                p->line_width(2);
+                p->display_name(" x(t) + 1 / (1 + sin^2(t))");
+                xlabel("t");
+                ylabel("f(x(t))");
+                auto ax=fig->current_axes();
+            }
+            {
+                matrix_build_cauchy( n, t0, T, 1, t, avals, fvals, L, b, at_one, ft_zero, false) ;
+                x = linear_subst_FW(L, b);
+                fig->nexttile(3);
+                auto p = plot(t, x);
+                p->line_width(2);
+                p->display_name(" x^-1(t) ");
+                xlabel("t");
+                ylabel("f(x(t))");
+                auto ax=fig->current_axes();
+            }
 
 
             fig->draw();
@@ -2441,6 +2441,60 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
         };
     };
  
+    void sym_hhalpha() {
+
+        int n = 100;          // numero di punti della griglia        
+        bool leave = false;
+        bool redo = false;
+        while (!leave) {
+            clear_screen();
+            redo = false;
+            auto fig = matplot_table_init(true, "Householder", "Monitoraggio del riflesso", 1, 1);            
+            matplot::legend();
+            Vec v, w;
+            Vec x(n , 0.0), t( n , 1.0);
+
+            for (int i = 2; i < n; i++) 
+            {
+                v = vector_one_minus_one(i);
+                if (i <= 5) vector_dump(v, 10, v.size(), "input vec -1/1");  
+                if (i == 6) 
+                {
+                    Mat P = matrix_householder_reflector(v);
+                    matrix_dump(P, "Reflector per n = 6");
+                    matrix_test_ortogonale(P, "Riflettore di Householder");
+                }
+                w = vector_householder_reflected(v);
+                x[i]=(w[0]);
+                t[i]=i;
+            }
+            vector_dump(x, 10, x.size(), "w[0] serie"); 
+
+            // Visualizzazione della soluzione numerica x(t)
+
+            fig->nexttile(0);
+            auto ax=fig->current_axes();
+            // ax->x_axis().limits({2,0});
+            // ax->y_axis().limits({-1.00e-1, 1.00e-1 });
+
+            auto p = plot(t, x);
+            p->line_width(2);
+            p->display_name("test 1");
+            xlabel("n");
+            ylabel("alpha");
+
+            fig->draw();
+        
+            redo = false;
+            while (!redo && !leave) {
+                std::cout << "Inserire nuovo n 1..100 (<q> per uscire) > ";
+                cin_clear();
+                if (std::cin >> n) { if (n>=1 && n<=100) redo=true;} else {cout << "Key: " << n <<endl; leave=true;} ;
+                cin_clear();
+            };
+        };
+    };
+
 
     ActionRegistry build_action_registry() 
         {
@@ -2458,8 +2512,9 @@ using ActionRegistry = std::unordered_map<std::string, Action>;
             {"f3_svd_test",     f3_svd_test},
             {"f3_svd",          f3_svd},
             {"f3_svd_pca",      f3_svd_pca},
-            {"f3_svd_an",       f3_svd_an},
-            {"sym_cauchy",      sym_cauchy}
+            {"f3_svd_an",       f3_svd_an}, 
+            {"sym_cauchy",      sym_cauchy},
+            {"sym_hhalpha",     sym_hhalpha}
             };
         };
 };  
@@ -2536,7 +2591,7 @@ int main() {
         it->second();
         wait_return_to_menu(true);
         
-        int dummy = system("clear"); 
+        clear_screen(); 
 
     }
 

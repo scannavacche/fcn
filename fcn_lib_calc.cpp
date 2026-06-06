@@ -36,6 +36,9 @@ void cin_clear() {
     };
 };
 
+void clear_screen() 
+{int dummy = system("clear");}
+
 string color_bool(
     const bool val) {
     string s = "";
@@ -989,6 +992,40 @@ Vec matrix_calcola_deriv_bymatr(
     return matrix_prodotto_vector(D, u);
 }
 
+Mat matrix_calcola_diff(
+    const Mat& A, 
+    const Mat& B)
+{
+    return matrix_calcola_subfact(A,B,1);
+}
+
+Mat matrix_calcola_subfact(
+    const Mat& A, 
+    const Mat& B, 
+    const double fact)
+{
+    int ra = A.size(); 
+    int ca = A[0].size();
+    int rb = B.size();
+    int cb = B[0].size();
+    if ((ra == rb) && (ca == cb)) {
+        Mat R = matrix_build_zero(ra, ca);
+        for (int i = 0; i < ra; i++) {
+            for (int j = 0; j < ca; j++) {
+                R[i][j] = A[i][j] - fact * B[i][j];
+            }
+        };
+        return R;
+    } else {
+        cout << "Matrici di dimensioni incompatibili per sottrazione A: "
+            << ra << "x" << ca << " e B: "
+            << rb << "x" << cb << endl; 
+        exit(-1);
+    }
+       
+}
+
+
 double matrix_calcola_errore_Fr(
     const Mat& A, 
     const Mat& B) 
@@ -1155,31 +1192,6 @@ Mat trmatrix_completa_ridotta(
     return Vb;
 }
 
-Mat matrix_differenza_dump(
-    const Mat& A, 
-    const Mat& B)
-{
-    int ra = A.size(); 
-    int ca = A[0].size();
-    int rb = B.size();
-    int cb = B[0].size();
-    if ((ra == rb) && (ca == cb)) {
-        Mat R = matrix_build_zero(ra, ca);
-        for (int i = 0; i < ra; i++) {
-            for (int j = 0; j < ca; j++) {
-                R[i][j] = A[i][j] - B[i][j];
-            }
-        };
-        return R;
-    } else {
-        cout << "Matrici di dimensioni incompatibili per sottrazione A: "
-            << ra << "x" << ca << " e B: "
-            << rb << "x" << cb << endl; 
-        exit(-1);
-    }
-       
-}
-
 void matrix_dump(
     const Mat& G, 
     const std::string &nome) 
@@ -1241,6 +1253,20 @@ Mat matrix_estende_ridotta(
     }
 
 }
+
+Mat matrix_householder_reflector(const Vec v)
+{
+    int n = v.size();
+    assert(n>0);
+    Vec w = vector_householder_bycol(v);
+    Mat P = matrix_calcola_subfact(
+                matrix_build_Id(n), 
+                matrix_prodotto_matrix(
+                    vector_to_matrix( w, false), 
+                    vector_to_matrix( w, true)), 
+                2);
+    return P;
+ }
 
 Mat matrix_normalize_byrow(
     Mat& K)
@@ -1495,6 +1521,35 @@ Vec vector_build_versore_canonico(
     return e;
 }
 
+double vector_calcola_norma(
+    int norma, 
+    const Vec& V)
+{
+    int N = V.size(); 
+    switch (norma) {
+        case 2: // norma euclidea
+        {
+          double somma = 0;
+            for (int i = 0; i<N;  i++) {
+                double el = V[i];
+                somma += el*el;     // possiamo fidarci che sia >= 0 ?
+            }
+            return std::sqrt(somma);
+        }
+        case 0: // norma infinito (max modulo degli el)
+        {
+            double max_el =0;
+            for (int i = 0; i<N;  i++) {
+                double el = std::abs(V[i]);
+                if (el > max_el) max_el = el;
+            }
+            return max_el;
+        }
+        default:
+            return 0;
+    }
+}
+
 Vec vector_campiona_f(
     const Vec &x, // vettore dei nodi di campionamento
     double (*ft)(double))   // funzione da  campionare
@@ -1603,46 +1658,47 @@ Vec vector_householder_byrow(
 
     return vector_householder_bycol(v);
 }
-Vec vector_householder_rev_bycol(const Vec& v) {
-    Vec vr = vector_reverse(v);
-    Vec wr = vector_householder_bycol(vr);
-    return vector_reverse(wr);
-}
 
-Vec vector_householder_rev_byrow(const Vec& v) {
-    Vec vr = vector_reverse(v);
-    Vec wr = vector_householder_byrow(vr);
-    return vector_reverse(wr);
-}
-
-
-double vector_calcola_norma(
-    int norma, 
-    const Vec& V)
+Vec vector_householder_reflected(const Vec v) 
 {
-    int N = V.size(); 
-    switch (norma) {
-        case 2: // norma euclidea
-        {
-          double somma = 0;
-            for (int i = 0; i<N;  i++) {
-                double el = V[i];
-                somma += el*el;     // possiamo fidarci che sia >= 0 ?
-            }
-            return std::sqrt(somma);
-        }
-        case 0: // norma infinito (max modulo degli el)
-        {
-            double max_el =0;
-            for (int i = 0; i<N;  i++) {
-                double el = std::abs(V[i]);
-                if (el > max_el) max_el = el;
-            }
-            return max_el;
-        }
-        default:
-            return 0;
+    int n = v.size();
+    if (n<5) cout << endl;
+    if (n<5) vector_dump(v, 10, n, "Vettore da riflettere");
+    Vec w = vector_householder_bycol(v);
+    if (n<5) vector_dump(w, 10, n, "Vettore hh a n = " + itostr(n));
+    double wt = vector_prodotto_scalare(w, v);
+    if (n<5) cout << "coefficiente della proiezione di v su w = " << wt << endl << endl;
+    Vec wwt = vector_prodotto_coeff(w, -2 * wt);
+    if (n<5) vector_dump(wwt, 10, n, "Vettore wwt");
+    Vec x = vector_somma(v, wwt);
+    if (n<5) vector_dump(x, 10, n, "Vettore x riflesso");
+
+    return x;
+}
+
+Vec vector_one_minus_one(
+    const int n) 
+{
+    // crea un vettore di valori 1 e -1 alternati, di dimensione n
+    int m = n;
+    if (n < 1) m = 1; else m = n;
+    Vec v(m, 0.0);
+    // la facciamo col flip del segno per risparmiare 
+    v[0] = 1;
+    for (int i = 1; i < m; i++) {
+        v[i] = -v[i-1];
     }
+    return v;
+}
+
+Vec vector_prodotto_coeff(
+    const Vec v, 
+    double mu)
+{
+    Vec w = v;
+    int n = v.size();
+    for (int i = 0; i<n; i++) w[i] *= mu;
+    return w;
 }
 
 double vector_prodotto_scalare(
@@ -1698,6 +1754,19 @@ Vec vector_shift(
     }
     return v_shifted;
 }
+
+Vec vector_somma(
+    const Vec u, 
+    const Vec v)
+{
+    int nu = u.size();
+    int nv = v.size();
+    assert(nu == nv);
+    Vec s(nu, 0.0);
+    for (int i = 0; i<nu; i++) s[i] = u[i] + v[i];
+    return s;
+}
+    
 
 
 Mat vector_to_matrix(

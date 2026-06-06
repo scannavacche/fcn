@@ -27,6 +27,8 @@ enum class SortOrder { Asc, Desc };
 
 void cin_clear();
 
+void clear_screen() ;
+
 string color_bool(
     const bool val);
 
@@ -255,9 +257,14 @@ Mat matrix_centra_su_media(
     const Vec& avg_vec,
     bool by_col = true);
 
-Mat matrix_differenza_dump(
+Mat matrix_calcola_diff(
     const Mat& A, 
     const Mat& B);
+
+Mat matrix_calcola_subfact(
+    const Mat& A, 
+    const Mat& B,
+    const double fact);
 
 void matrix_dump(
     const Mat &A, 
@@ -267,6 +274,9 @@ Mat matrix_estende_ridotta(
     const Mat& A, 
     int n, 
     bool bycol);
+
+Mat matrix_householder_reflector(
+    const Vec v);
 
 Mat matrix_normalize_byrow(
     Mat& K);
@@ -331,11 +341,22 @@ void vector_dump (
     int colspan, 
     int totnum, 
     const std::string s);
+
 Vec vector_householder_bycol(
     const Vec& v);
 
 Vec vector_householder_byrow(
     const Vec& v);
+
+Vec vector_householder_reflected(
+    const Vec v);
+
+Vec vector_one_minus_one(
+    const int n) ;
+
+Vec vector_prodotto_coeff(
+    const Vec v, 
+    double mu);
 
 double vector_prodotto_scalare(
     const Vec &u,
@@ -353,6 +374,10 @@ Vec vector_segnale_finestra(
 Vec vector_shift(
     const Vec &v, 
     const double shift);
+
+Vec vector_somma(
+    const Vec u, 
+    const Vec v);
 
 Mat vector_to_matrix(
     const Vec& v,
