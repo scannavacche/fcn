@@ -2457,7 +2457,7 @@ namespace {
             for (int i = 2; i < n; i++) 
             {
                 v = vector_build_one_minus_one(i);
-                if (i <= 5) vector_dump(v, 10, v.size(), "input vec -1/1");  
+                // if (i <= 5) vector_dump(v, 10, v.size(), "input vec -1/1");  
                 if (i == 6) 
                 {
                     Mat P = matrix_householder_reflector(v);

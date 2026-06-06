@@ -1249,7 +1249,7 @@ Mat matrix_estende_ridotta(
 }
 
 Mat matrix_householder_reflector(
-    const Vec v)
+    const Vec& v)
 {
     int n = v.size();
     assert(n>0);
@@ -1689,16 +1689,16 @@ Vec vector_householder_reflected(
     const Vec v) 
 {
     int n = v.size();
-    if (n<5) cout << endl;
-    if (n<5) vector_dump(v, 10, n, "Vettore da riflettere");
+    // if (n<5) cout << endl;
+    // if (n<5) vector_dump(v, 10, n, "Vettore da riflettere");
     Vec w = vector_build_householder_bycol(v);
-    if (n<5) vector_dump(w, 10, n, "Vettore hh a n = " + itostr(n));
+    // if (n<5) vector_dump(w, 10, n, "Vettore hh a n = " + itostr(n));
     double wt = vector_prodotto_scalare(w, v);
-    if (n<5) cout << "coefficiente della proiezione di v su w = " << wt << endl << endl;
+    // if (n<5) cout << "coefficiente della proiezione di v su w = " << wt << endl << endl;
     Vec wwt = vector_prodotto_coeff(w, -2 * wt);
-    if (n<5) vector_dump(wwt, 10, n, "Vettore wwt");
+    // if (n<5) vector_dump(wwt, 10, n, "Vettore wwt");
     Vec x = vector_somma(v, wwt);
-    if (n<5) vector_dump(x, 10, n, "Vettore x riflesso");
+    // if (n<5) vector_dump(x, 10, n, "Vettore x riflesso");
 
     return x;
 }
