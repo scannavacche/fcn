@@ -239,6 +239,15 @@ Vec matrix_calcola_deriv_bymatr(
     const Mat &D, 
     const Vec &u) ;
 
+Mat matrix_calcola_diff(
+    const Mat& A, 
+    const Mat& B);
+
+Mat matrix_calcola_subfact(
+    const Mat& A, 
+    const Mat& B,
+    const double fact);
+
 double matrix_calcola_errore_Fr(
     const Mat& A, 
     const Mat& B);
@@ -257,15 +266,6 @@ Mat matrix_centra_su_media(
     const Vec& avg_vec,
     bool by_col = true);
 
-Mat matrix_calcola_diff(
-    const Mat& A, 
-    const Mat& B);
-
-Mat matrix_calcola_subfact(
-    const Mat& A, 
-    const Mat& B,
-    const double fact);
-
 void matrix_dump(
     const Mat &A, 
     const std::string &nome);
@@ -276,7 +276,7 @@ Mat matrix_estende_ridotta(
     bool bycol);
 
 Mat matrix_householder_reflector(
-    const Vec v);
+    const Vec& v);
 
 Mat matrix_normalize_byrow(
     Mat& K);
@@ -319,10 +319,6 @@ Vec vector_add_noise(
     Vec& v, 
     double e);
 
-Vec vector_build_versore_canonico(
-    int j, 
-    int N);
-
 Vec vector_build_householder_bycol(
     const Vec& v);
 
@@ -337,7 +333,11 @@ Vec vector_build_segnale_finestra(
     double a, 
     double b, 
     double t);
-    
+
+Vec vector_build_versore_canonico(
+    int j, 
+    int N);
+
 double vector_calcola_norma(
     int norma, 
     const Vec& V);

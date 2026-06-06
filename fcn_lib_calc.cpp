@@ -143,6 +143,24 @@ double h_ticks(
     }
 }
 
+Vec nodi_bubblesort (
+    const Vec x_uns, 
+    const int totnum){
+    double buff;
+    Vec x = x_uns;
+    for (int i=0;i<totnum;i++)
+    {
+        for (int j=i;j<totnum;j++){
+            if (x[i] > x[j]) {
+                buff=x[i];
+                x[i]=x[j];
+                x[j]=buff;
+            }
+        }
+    }
+    return x;
+}
+
 Vec nodi_equidistanti(
     const double amin, 
     const double amax, 
@@ -186,33 +204,9 @@ Vec nodi_random(
 
 }
 
-Vec nodi_bubblesort (
-    const Vec x_uns, 
-    const int totnum){
-    double buff;
-    Vec x = x_uns;
-    for (int i=0;i<totnum;i++)
-    {
-        for (int j=i;j<totnum;j++){
-            if (x[i] > x[j]) {
-                buff=x[i];
-                x[i]=x[j];
-                x[j]=buff;
-            }
-        }
-    }
-    return x;
-}
-
 //
 // funzioni matematiche ad uso callback 
 //
-
-double fcallb(
-    double t,  
-    double (*f)(double)) {
-    return f(t);
-}
 
 double f_x(double t) {
     return  t;
@@ -245,6 +239,12 @@ double ft_zero(double t) {
 double f_sin2plus1(double t){
     double s = std::sin(t);
     return 1.0 / (1.0 + s*s);
+}
+
+double fcallb(
+    double t,  
+    double (*f)(double)) {
+    return f(t);
 }
 
 //
