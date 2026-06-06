@@ -13,6 +13,7 @@
 ## funzioni di gestione interfaccia utente
 
 - `void cin_clear();`
+- `clear_screen()`
 - `string color_bool(const bool val);`
 - `string color_dbl(const double val);`
 - `void color_rst();`
@@ -34,13 +35,13 @@
 
 - `double f_x(double t);`
 - `double f_x1(double t);`
-- `double at_zero(double t);`
-- `double at_one(double t);`
-- `double ft_zero(double t);`
 - `double f_sin(double t);`
 - `double f_cos(double t);`
 - `double f_atan(double t);`
 - `double f_atan_d(double t);`
+- `double at_zero(double t);`
+- `double at_one(double t);`
+- `double ft_zero(double t);`
 - `double f_sin2plus1(double t);`
 - `double fcallb(double t, double (*f)(double));`
 
@@ -65,6 +66,7 @@
 - `void matrix_build_cauchy_sep(int n, double t0, double T, double x0, Vec &t, Vec &fvals, Mat &L, Vec &b, double (*ft)(double), bool backw);` // superata
 - `Mat matrix_build_derivata1(int n, double a, double b);`
 - `Mat matrix_build_gausskernel(const int N, const double sigma, const double h, bool norm_flag, Vec& Indicatori);`
+- `double matrix_build_gausskernel_item(const double t,const double s);`  // no API pubblica 
 - `Mat matrix_build_gram(const Vec& x, const int K);`
 - `Mat matrix_build_Id(int n);`
 - `Mat matrix_build_triang(int n);`
@@ -72,13 +74,16 @@
 - `Mat matrix_build_zero(int righe, int colonne);`
 - `Vec matrix_calcola_deriv_byiter(const Vec &u, const double a, const double b);`
 - `Vec matrix_calcola_deriv_bymatr(const Mat &D, const Vec &u);`
+- `Mat matrix_calcola_diff(const Mat& A, const Mat& B);`
 - `double matrix_calcola_errore_Fr(const Mat& A, const Mat& B);`
 - `void matrix_calcola_media(const Mat& A, Vec& avg_col, Vec& avg_row);`
 - `double matrix_calcola_norma(int norma, const Mat& A);`
+- `Mat matrix_calcola_subfact(const Mat& A, const Mat& B, const double fact);`
 - `Mat matrix_centra_su_media(const Mat& A, const Vec& avg_vec, bool by_col = true);`
-- `Mat matrix_differenza_dump(const Mat& A, const Mat& B);`
+- `Mat matrix_completa_ridotta(const Mat& A);`
 - `void matrix_dump(const Mat &A, const std::string &nome);`
 - `Mat matrix_estende_ridotta(const Mat& A, int n, bool bycol);`
+- `Mat matrix_householder_reflector(const Vec& v);
 - `Mat matrix_normalize_byrow(Mat& K);`
 - `void matrix_ordina_diagonale(Vec& lambda, Mat& V, double zero_tol = 0.0, SortOrder order = SortOrder::Desc);`
 - `void matrix_ortogonalizza_GSmod(Mat& Q, int j0 = 0);`
@@ -89,18 +94,21 @@
 - `void matrix_test_ortogonale(const Mat& A, string s);`
 - `Mat matrix_trasposta(const Mat& A);`
 - `Vec vector_add_noise(Vec& v, double e);`
+- `Vec vector_build_householder_bycol(const Vec& v);`
+- `Vec vector_build_householder_byrow(const Vec& v);`
+- `Vec vector_build_one_minus_one(const int n);`
+- `Vec vector_build_segnale_finestra(int N, double a, double b, double t);`
 - `Vec vector_build_versore_canonico(int j, int N);`
 - `double vector_calcola_norma(int norma, const Vec& V);`
 - `Vec vector_campiona_f(const Vec &x, double (*ft)(double));`
 - `Vec vector_campiona_f_k(int k, const Vec &x, double (*ft)(double));`
 - `void vector_dump(Vec x, int colspan, int totnum, const std::string s);`
-- `Vec vector_householder_bycol(const Vec& v);`
-- `Vec vector_householder_byrow(const Vec& v);`
-- `Vec vector_householder_x1_forced(const Vec& v, const double alpha);'
+- `Vec vector_householder_reflected(const Vec& v);'
+- `Vec vector_prodotto_coeff(const Vec& v);`
 - `double vector_prodotto_scalare(const Vec &u, const Vec &v);`
 - `Vec vector_reverse(const Vec& v);`
-- `Vec vector_segnale_finestra(int N, double a, double b, double t);`
 - `Vec vector_shift(const Vec &v, const double shift);`
+- `double vector_somma(const Vec &u, const Vec &v);`
 - `Mat vector_to_matrix(const Vec& v, bool transp);`
 - `Mat vector_to_matrix_diag(const Vec& s, int m, int n);`
 - `void trmatrix_bidiagonalizza(const Mat& A, Mat& U0, Mat& B, Mat& V0, bool sup_diag = false, bool dump_flag = false);`
@@ -160,6 +168,16 @@ Enumerazione per il riordino crescente o decrescente di autovalori, valori singo
 void cin_clear();
 ```
 Pulisce lo stato di `std::cin` in caso di errore e scarta l’eventuale input residuo disponibile nel buffer
+
+### clear_screen
+
+```cpp
+void clear_screen() 
+```
+Pulisce la console di testo
+
+**Note implementative**
+- wrapper attorno a `system("clear")`
 
 ### `color_bool`
 
@@ -280,33 +298,6 @@ double f_x1(
 ```
 Callback identità traslata, restituisce `t - 1`. Usata come coefficiente `at(t)` nei sistemi di Cauchy con termine lineare non omogeneo
 
-### `at_zero`
-
-```cpp
-double at_zero(
-    double t
-);
-```
-Callback costante nulla per il coefficiente di `z(t)` nel sistema di Cauchy: restituisce `0.0`
-
-### `at_one`
-
-```cpp
-double at_one(
-    double t
-);
-```
-Callback costante unitaria per il coefficiente di `z(t)` nel sistema di Cauchy: restituisce `1.0`. Usata come default in `matrix_build_cauchy`
-
-### `ft_zero`
-
-```cpp
-double ft_zero(
-    double t
-);
-```
-Callback sorgente nulla: restituisce `0.0`. Usata come termine forzante di default in `matrix_build_cauchy`
-
 ### `f_sin`
 
 ```cpp
@@ -342,6 +333,33 @@ double f_atan_d(
 );
 ```
 Callback derivata dell’arcotangente, restituisce \(1/(1+t^2)\)
+
+### `at_zero`
+
+```cpp
+double at_zero(
+    double t
+);
+```
+Callback costante nulla per il coefficiente di `z(t)` nel sistema di Cauchy: restituisce `0.0`
+
+### `at_one`
+
+```cpp
+double at_one(
+    double t
+);
+```
+Callback costante unitaria per il coefficiente di `z(t)` nel sistema di Cauchy: restituisce `1.0`. Usata come default in `matrix_build_cauchy`
+
+### `ft_zero`
+
+```cpp
+double ft_zero(
+    double t
+);
+```
+Callback sorgente nulla: restituisce `0.0`. Usata come termine forzante di default in `matrix_build_cauchy`
 
 ### `f_sin2plus1`
 
@@ -732,7 +750,8 @@ Costruisce una matrice kernel gaussiana campionata su una griglia uniforme, con 
 
 **Note implementative**
 - L’elemento \(K_{ij}\) è ottenuto da una gaussiana centrata sulla differenza `xi - xj`
-- Se `norm_flag` è attivo, le righe vengono normalizzate. Il vettore `Indicatori` viene riempito con quantità diagnostiche legate alla norma della matrice, della sua inversa e al numero di condizionamento approssimato
+- Se `norm_flag` è attivo, le righe vengono normalizzate. 
+- Il vettore `Indicatori` viene riempito con quantità diagnostiche legate alla norma della matrice, della sua inversa e al numero di condizionamento approssimato
 
 ### `matrix_build_gram`
 
@@ -809,6 +828,20 @@ Calcola il prodotto matrice-vettore `D * u` dove `D` è la matrice delle differe
 **Note implementative**
 - Le due varianti (`byiter` e `bymatr`) producono risultati identici sulla stessa griglia e sono mantenute entrambe come confronto didattico tra approccio iterativo e approccio matriciale
 
+### `matrix_calcola_diff`
+
+```cpp
+Mat matrix_calcola_diff(
+    const Mat& A,
+    const Mat& B
+);
+```
+Restituisce la differenza `A - B` se le dimensioni sono compatibili; in caso contrario termina il programma con messaggio diagnostico
+
+**Note implementative**
+
+Ora un wrapper per matrix_calcola_subfact(A,B,1);
+
 ### `matrix_calcola_errore_Fr`
 
 ```cpp
@@ -856,19 +889,30 @@ Mat matrix_centra_su_media(
 ```
 Centra la matrice sottraendo a ciascun elemento la media di colonna o di riga, a seconda del flag `by_col`
 
-### `matrix_calcola_diff`
+### `matrix_calcola_subfact`
 
 ```cpp
 Mat matrix_calcola_diff(
     const Mat& A,
-    const Mat& B
+    const Mat& B,
+	const double fact
 );
 ```
-Restituisce la differenza `A - B` se le dimensioni sono compatibili; in caso contrario termina il programma con messaggio diagnostico
+Restituisce la differenza `A - fact * B` se le dimensioni sono compatibili; in caso contrario termina il programma con messaggio diagnostico
 
 **Note implementative**
 
-Ora un wrapper per matrix_calcola_subfact(A,B,1);
+chiamata dal wrapper matrix_calcola_diff con fact = 1;
+
+
+### `matrix_completa_ridotta`
+
+```cpp
+Mat matrix_completa_ridotta(
+	const Mat& V
+);
+```
+completa una matrice V ridotta da dXn a dXd aggiungendo (n-d) versori di Rd e poi la ri ortonorma. API non pubblica.
 
 ### `matrix_dump`
 
@@ -940,16 +984,6 @@ Ortonormalizza le colonne di `Q` con Gram-Schmidt modificato, a partire dalla co
 - Serve sia come routine autonoma sia come supporto al completamento di basi ridotte in contesti SVD
 - Le colonne quasi nulle vengono lasciate a zero anziché generare errore
 
-### `matrix_prodotto_coeff`
-
-```cpp
-Mat matrix_prodotto_coeff(
-    const Mat& A,
-    const double coeff
-);
-```
-Restituisce il prodotto scalare `coeff * A`
-
 ### `matrix_prodotto_AtA`
 
 ```cpp
@@ -959,6 +993,16 @@ Mat matrix_prodotto_AtA(
 );
 ```
 Costruisce `A^T A` se `A_right` è `true`, oppure `A A^T` se `A_right` è `false`
+
+### `matrix_prodotto_coeff`
+
+```cpp
+Mat matrix_prodotto_coeff(
+    const Mat& A,
+    const double coeff
+);
+```
+Restituisce il prodotto scalare `coeff * A`
 
 ### `matrix_prodotto_matrix`
 
@@ -1008,6 +1052,53 @@ Vec vector_add_noise(
 );
 ```
 Aggiunge rumore casuale al vettore `v`, con ampiezza proporzionale alla sua norma e al parametro `e` espresso in millesimi
+
+### `vector_build_householder_bycol`
+
+```cpp
+Vec vector_build_householder_bycol(
+    const Vec& v
+);
+```
+Costruisce il vettore di Householder associato a una colonna, in modo che la riflessione annulli tutti gli elementi sotto il primo
+
+**Note implementative**
+- Se il vettore ha norma nulla, restituisce il primo versore canonico come trasformazione neutra
+- La convenzione di segno è scelta per aumentare la stabilità numerica nella costruzione di `u = v + sign(v0)||v||e1`
+
+### `vector_build_householder_byrow`
+
+```cpp
+Vec vector_build_householder_byrow(
+    const Vec& v
+);
+```
+Versione per righe del costruttore di Householder; nel codice delega direttamente alla versione per colonne
+
+### `vector_build_one_minus_one`
+
+```cpp
+Vec vector_one_minus_one(
+    const int n
+);
+```
+Costruisce un vettore (-1, 1, -1, 1 ...... , -1, 1, ... ) di n elementi v[i] = (-1)^i 
+
+**Note implementative** 
+- non usa l'elevazione a potenza per risparmiare ma discrimina in base alla parita' di i 
+- veramente in prima istanza l'avevo fatta con il flip del segno ;) per rispparmiare ancora
+
+### `vector_build_segnale_finestra`
+
+```cpp
+Vec vector_segnale_finestra(
+    int N,
+    double a,
+    double b,
+    double t
+);
+```
+Genera un segnale finestrato di lunghezza `N`, con valore `t` nell’intervallo relativo `[a, b]` e zero altrove
 
 ### `vector_build_versore_canonico`
 
@@ -1065,28 +1156,6 @@ void vector_dump(
 ```
 Stampa in console il contenuto del vettore con impaginazione a colonne, utile per debug e ispezione manuale
 
-### `vector_householder_bycol`
-
-```cpp
-Vec vector_householder_bycol(
-    const Vec& v
-);
-```
-Costruisce il vettore di Householder associato a una colonna, in modo che la riflessione annulli tutti gli elementi sotto il primo
-
-**Note implementative**
-- Se il vettore ha norma nulla, restituisce il primo versore canonico come trasformazione neutra
-- La convenzione di segno è scelta per aumentare la stabilità numerica nella costruzione di `u = v + sign(v0)||v||e1`
-
-### `vector_householder_byrow`
-
-```cpp
-Vec vector_householder_byrow(
-    const Vec& v
-);
-```
-Versione per righe del costruttore di Householder; nel codice delega direttamente alla versione per colonne
-
 ### vector_householder_reflected
 
 ```cpp
@@ -1094,19 +1163,6 @@ Vec vector_householder_reflected(
     const Vec v);
 ```
 Restituisce la riflessione del vettore v attorno al sottospazio ortogonale al vettore di householder generato a partire dalla sua norma2
-
-### `vector_one_minus_one`
-
-```cpp
-Vec vector_one_minus_one(
-    const int n
-);
-```
-Costruisce un vettore (-1, 1, -1, 1 ...... , -1, 1, ... ) di n elementi v[i] = (-1)^i 
-
-**Note implementative** 
-- non usa l'elevazione a potenza per risparmiare ma discrimina in base alla parita' di i 
-- veramente in prima istanza l'avevo fatta con il flip del segno ;) per rispparmiare ancora
 
 ### `vector_prodotto_coeff`
 
@@ -1137,18 +1193,6 @@ Vec vector_reverse(
 ```
 Restituisce una copia del vettore con ordine degli elementi invertito
 
-### `vector_segnale_finestra`
-
-```cpp
-Vec vector_segnale_finestra(
-    int N,
-    double a,
-    double b,
-    double t
-);
-```
-Genera un segnale finestrato di lunghezza `N`, con valore `t` nell’intervallo relativo `[a, b]` e zero altrove
-
 ### `vector_shift`
 
 ```cpp
@@ -1159,7 +1203,7 @@ Vec vector_shift(
 ```
 Restituisce una copia del vettore traslata di una quantità costante `shift`
 
-### `vector_sommat`
+### `vector_somma`
 
 ```cpp
 Vec vector_somma(

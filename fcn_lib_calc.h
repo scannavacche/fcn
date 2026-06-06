@@ -291,14 +291,14 @@ void matrix_ortogonalizza_GSmod(
     Mat& Q, 
     int j0 = 0);
 
-Mat matrix_prodotto_coeff(
-    const Mat& A, 
-    const double coeff) ;
-
 Mat matrix_prodotto_AtA (
     const Mat& A,
     bool A_right = true
 );
+
+Mat matrix_prodotto_coeff(
+    const Mat& A, 
+    const double coeff) ;
 
 Mat matrix_prodotto_matrix(
     const Mat& A, 

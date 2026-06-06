@@ -461,7 +461,7 @@ Vec linear_LU_risolve_colonna(
     return x;
     };
 
-    Vec linear_LU_risolve_sistema(
+Vec linear_LU_risolve_sistema(
     const Mat& T,
     const Vec& x)
 {
@@ -702,9 +702,6 @@ void matrix_build_cauchy(
     }
 }
 
-
-
-
 // FCN – Laboratorio 2, Esercizio 1A
 // Problema di Cauchy: x'(t) = x(t) + f(t), x(t0) = c
 void matrix_build_cauchy_int(
@@ -860,7 +857,7 @@ double matrix_build_gausskernel_item(  // forse non vale neanche la pena esporta
     if (s!= 0) {
         return std::exp( - (t*t)/(2*s*s));
     }else {
-        throw std::invalid_argument("Sigma nmullo in calcolo Kernel Gaussiano per t = " + std::to_string(t));
+        throw std::invalid_argument("Sigma nullo in calcolo Kernel Gaussiano per t = " + std::to_string(t));
     }
 }
 
@@ -999,33 +996,6 @@ Mat matrix_calcola_diff(
     return matrix_calcola_subfact(A,B,1);
 }
 
-Mat matrix_calcola_subfact(
-    const Mat& A, 
-    const Mat& B, 
-    const double fact)
-{
-    int ra = A.size(); 
-    int ca = A[0].size();
-    int rb = B.size();
-    int cb = B[0].size();
-    if ((ra == rb) && (ca == cb)) {
-        Mat R = matrix_build_zero(ra, ca);
-        for (int i = 0; i < ra; i++) {
-            for (int j = 0; j < ca; j++) {
-                R[i][j] = A[i][j] - fact * B[i][j];
-            }
-        };
-        return R;
-    } else {
-        cout << "Matrici di dimensioni incompatibili per sottrazione A: "
-            << ra << "x" << ca << " e B: "
-            << rb << "x" << cb << endl; 
-        exit(-1);
-    }
-       
-}
-
-
 double matrix_calcola_errore_Fr(
     const Mat& A, 
     const Mat& B) 
@@ -1039,7 +1009,6 @@ double matrix_calcola_errore_Fr(
         }
     return std::sqrt(s);
 }
-
 void matrix_calcola_media(
     const Mat& A, 
     Vec& somma_col, 
@@ -1149,6 +1118,31 @@ double matrix_calcola_norma(
     }
 };
 
+Mat matrix_calcola_subfact(
+    const Mat& A, 
+    const Mat& B, 
+    const double fact)
+{
+    int ra = A.size(); 
+    int ca = A[0].size();
+    int rb = B.size();
+    int cb = B[0].size();
+    if ((ra == rb) && (ca == cb)) {
+        Mat R = matrix_build_zero(ra, ca);
+        for (int i = 0; i < ra; i++) {
+            for (int j = 0; j < ca; j++) {
+                R[i][j] = A[i][j] - fact * B[i][j];
+            }
+        };
+        return R;
+    } else {
+        cout << "Matrici di dimensioni incompatibili per sottrazione A: "
+            << ra << "x" << ca << " e B: "
+            << rb << "x" << cb << endl; 
+        exit(-1);
+    }
+       
+}
 
 Mat matrix_centra_su_media(
     const Mat& A, 
@@ -1168,7 +1162,7 @@ Mat matrix_centra_su_media(
     return Res;
 }
 
-Mat trmatrix_completa_ridotta(
+Mat matrix_completa_ridotta(
     const Mat& A)
 // completa una matrice V ridotta da dXn a dXd aggiungendo (n-d) versori di Rd e poi la ri ortonorma
 {
@@ -1254,7 +1248,8 @@ Mat matrix_estende_ridotta(
 
 }
 
-Mat matrix_householder_reflector(const Vec v)
+Mat matrix_householder_reflector(
+    const Vec v)
 {
     int n = v.size();
     assert(n>0);
@@ -1379,19 +1374,6 @@ void matrix_ortogonalizza_GSmod(
     }
 }
 
-Mat matrix_prodotto_coeff(
-    const Mat& A, 
-    const double coeff) 
-{
-    Mat C = A; // copia di A
-    for (std::size_t i = 0; i < C.size(); ++i) {
-        for (std::size_t j = 0; j < C[i].size(); ++j) {
-            C[i][j] *= coeff;
-        }
-    }
-    return C;
-};
-
 Mat matrix_prodotto_AtA (
     const Mat& A, 
     bool A_right)  // default true. Come da nome fa At A (con A destra) se no fa A At
@@ -1406,6 +1388,19 @@ Mat matrix_prodotto_AtA (
     };
     return B;
 }
+
+Mat matrix_prodotto_coeff(
+    const Mat& A, 
+    const double coeff) 
+{
+    Mat C = A; // copia di A
+    for (std::size_t i = 0; i < C.size(); ++i) {
+        for (std::size_t j = 0; j < C[i].size(); ++j) {
+            C[i][j] *= coeff;
+        }
+    }
+    return C;
+};
 
 Mat matrix_prodotto_matrix(
     const Mat& A, 
@@ -2224,13 +2219,13 @@ void trmatrix_SVDQR(
 
     if (m <= n) {
         trmatrix_SVDQR_ridotta(B, Ub, sigma, Vbred, ev_tol);
-        Vb = trmatrix_completa_ridotta(Vbred);
+        Vb = matrix_completa_ridotta(Vbred);
     } else {
         Mat Bt = matrix_trasposta(B);
         Mat U_bt, V_bt, V_btred;
 
         trmatrix_SVDQR_ridotta(Bt, U_bt, sigma, V_btred, ev_tol);
-        V_bt = trmatrix_completa_ridotta(V_btred);
+        V_bt = matrix_completa_ridotta(V_btred);
 
         Ub = V_bt;           
         Vb = U_bt;
