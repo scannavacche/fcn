@@ -322,6 +322,21 @@ Vec vector_add_noise(
 Vec vector_build_versore_canonico(
     int j, 
     int N);
+
+Vec vector_build_householder_bycol(
+    const Vec& v);
+
+Vec vector_build_householder_byrow(
+    const Vec& v);
+
+Vec vector_build_one_minus_one(
+    const int n) ;
+
+Vec vector_build_segnale_finestra(
+    int N,
+    double a, 
+    double b, 
+    double t);
     
 double vector_calcola_norma(
     int norma, 
@@ -342,17 +357,8 @@ void vector_dump (
     int totnum, 
     const std::string s);
 
-Vec vector_householder_bycol(
-    const Vec& v);
-
-Vec vector_householder_byrow(
-    const Vec& v);
-
 Vec vector_householder_reflected(
     const Vec v);
-
-Vec vector_one_minus_one(
-    const int n) ;
 
 Vec vector_prodotto_coeff(
     const Vec v, 
@@ -364,12 +370,6 @@ double vector_prodotto_scalare(
 
 Vec vector_reverse(
     const Vec& v);
-
-Vec vector_segnale_finestra(
-    int N,
-    double a, 
-    double b, 
-    double t);
 
 Vec vector_shift(
     const Vec &v, 

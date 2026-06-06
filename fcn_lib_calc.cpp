@@ -1258,7 +1258,7 @@ Mat matrix_householder_reflector(const Vec v)
 {
     int n = v.size();
     assert(n>0);
-    Vec w = vector_householder_bycol(v);
+    Vec w = vector_build_householder_bycol(v);
     Mat P = matrix_calcola_subfact(
                 matrix_build_Id(n), 
                 matrix_prodotto_matrix(
@@ -1512,6 +1512,89 @@ Vec vector_add_noise(
     return r;
 }
 
+Vec vector_build_householder_bycol(
+    const Vec& v) 
+{
+    // =============================================================================
+//  TODO 1 – Riflessione di Householder su una colonna
+//
+//  Dato v ∈ R^m, restituisce w normalizzato tale che
+//     (I - 2ww^T) v = -sgn(v[0]) * ||v||_2 * e_1
+//
+//  Costruzione:
+//     u = v;
+//     u[0] += sgn(v[0]) * ||v||_2;    // sgn(0) = +1 per convenzione
+//     w = u / ||u||_2;
+//
+//  ATTENZIONE: se ||v||_2 == 0, restituisci w = e_1 (nessuna trasformazione).
+//
+//  Verifica nella funzione main: per v = {3, 1, -2},
+//  w risultante deve dare H*v = [-sqrt(14), 0, 0].
+// =============================================================================
+
+    int m = v.size();
+    Vec w(m, 0.0);
+    double n2 = vector_calcola_norma(2,v);
+    if (n2 == 0) 
+    {
+        w[0]=1;
+        return w; // restituisce e1
+    } else {
+        int sgn_v0 = 1;
+        for (int i=0;i<m;i++) w[i]=v[i];
+        if (w[0]<0) sgn_v0 = -1;
+        w[0] += sgn_v0 * n2;
+        n2 = vector_calcola_norma(2, w);   // ricicliamo, non ci serviva piu' norma di v
+        for (int i=0;i<m;i++) w[i] /= n2;
+        return w;
+    }
+}
+
+Vec vector_build_householder_byrow(
+    const Vec& v) 
+{
+// =============================================================================
+//  TODO 2 – Riflessione di Householder su una riga
+//
+//  Matematicamente identico a vector_build_householder_bycol.
+//  La distinzione è solo nell'uso: verrà applicato a destra (su righe).
+//  Puoi semplicemente delegare a vector_build_householder_bycol.
+// =============================================================================
+
+    return vector_build_householder_bycol(v);
+}
+
+Vec vector_build_one_minus_one(
+    const int n) 
+{
+    // crea un vettore di valori 1 e -1 alternati, di dimensione n
+    int m = n;
+    if (n < 1) m = 1; else m = n;
+    Vec v(m, 0.0);
+    // la facciamo col flip del segno per risparmiare 
+    v[0] = 1;
+    for (int i = 1; i < m; i++) {
+        v[i] = -v[i-1];
+    }
+    return v;
+}
+
+Vec vector_build_segnale_finestra(
+    int N,
+    double a, 
+    double b, 
+    double t)
+    {
+        // a e b in % su N, sono frazioni in [0,1]
+        Vec ws = Vec(N,0.0);
+        double temp;
+        for (int i=0; i<N; i++) {
+            temp = (double) i / (double) N;
+            if ((temp >=a) && (temp <= b)) ws[i]=t;
+        }
+        return ws;
+    }
+
 Vec vector_build_versore_canonico(
     int j, 
     int N)
@@ -1607,64 +1690,13 @@ void vector_dump (
 //    cout << "Uscito con "  << ipos;   
 }
 
-Vec vector_householder_bycol(
-    const Vec& v) 
-{
-    // =============================================================================
-//  TODO 1 – Riflessione di Householder su una colonna
-//
-//  Dato v ∈ R^m, restituisce w normalizzato tale che
-//     (I - 2ww^T) v = -sgn(v[0]) * ||v||_2 * e_1
-//
-//  Costruzione:
-//     u = v;
-//     u[0] += sgn(v[0]) * ||v||_2;    // sgn(0) = +1 per convenzione
-//     w = u / ||u||_2;
-//
-//  ATTENZIONE: se ||v||_2 == 0, restituisci w = e_1 (nessuna trasformazione).
-//
-//  Verifica nella funzione main: per v = {3, 1, -2},
-//  w risultante deve dare H*v = [-sqrt(14), 0, 0].
-// =============================================================================
-
-    int m = v.size();
-    Vec w(m, 0.0);
-    double n2 = vector_calcola_norma(2,v);
-    if (n2 == 0) 
-    {
-        w[0]=1;
-        return w; // restituisce e1
-    } else {
-        int sgn_v0 = 1;
-        for (int i=0;i<m;i++) w[i]=v[i];
-        if (w[0]<0) sgn_v0 = -1;
-        w[0] += sgn_v0 * n2;
-        n2 = vector_calcola_norma(2, w);   // ricicliamo, non ci serviva piu' norma di v
-        for (int i=0;i<m;i++) w[i] /= n2;
-        return w;
-    }
-}
-
-Vec vector_householder_byrow(
-    const Vec& v) 
-{
-// =============================================================================
-//  TODO 2 – Riflessione di Householder su una riga
-//
-//  Matematicamente identico a vector_householder_bycol.
-//  La distinzione è solo nell'uso: verrà applicato a destra (su righe).
-//  Puoi semplicemente delegare a vector_householder_bycol.
-// =============================================================================
-
-    return vector_householder_bycol(v);
-}
-
-Vec vector_householder_reflected(const Vec v) 
+Vec vector_householder_reflected(
+    const Vec v) 
 {
     int n = v.size();
     if (n<5) cout << endl;
     if (n<5) vector_dump(v, 10, n, "Vettore da riflettere");
-    Vec w = vector_householder_bycol(v);
+    Vec w = vector_build_householder_bycol(v);
     if (n<5) vector_dump(w, 10, n, "Vettore hh a n = " + itostr(n));
     double wt = vector_prodotto_scalare(w, v);
     if (n<5) cout << "coefficiente della proiezione di v su w = " << wt << endl << endl;
@@ -1676,20 +1708,6 @@ Vec vector_householder_reflected(const Vec v)
     return x;
 }
 
-Vec vector_one_minus_one(
-    const int n) 
-{
-    // crea un vettore di valori 1 e -1 alternati, di dimensione n
-    int m = n;
-    if (n < 1) m = 1; else m = n;
-    Vec v(m, 0.0);
-    // la facciamo col flip del segno per risparmiare 
-    v[0] = 1;
-    for (int i = 1; i < m; i++) {
-        v[i] = -v[i-1];
-    }
-    return v;
-}
 
 Vec vector_prodotto_coeff(
     const Vec v, 
@@ -1720,27 +1738,13 @@ double vector_prodotto_scalare(
     // DONE: prodotto scalare
 }
 
-Vec vector_reverse(const Vec& v) {
+Vec vector_reverse(
+    const Vec& v) 
+{
     Vec r = v;
     std::reverse(r.begin(), r.end());
     return r;
 }
-
-Vec vector_segnale_finestra(
-    int N,
-    double a, 
-    double b, 
-    double t)
-    {
-        // a e b in % su N, sono frazioni in [0,1]
-        Vec ws = Vec(N,0.0);
-        double temp;
-        for (int i=0; i<N; i++) {
-            temp = (double) i / (double) N;
-            if ((temp >=a) && (temp <= b)) ws[i]=t;
-        }
-        return ws;
-    }
 
 Vec vector_shift(
     const Vec &v, 
@@ -1767,8 +1771,6 @@ Vec vector_somma(
     return s;
 }
     
-
-
 Mat vector_to_matrix(
     const Vec& v,
     bool transp)
@@ -1915,8 +1917,8 @@ void trmatrix_bidiag_wide_to_upper(
             }
             if (dump_flag) vector_dump(v, 10, v.size(), "Colonna di A sotto diag con k="+std::to_string(k));
 
-            // 2. Calcola w = vector_householder_bycol(vv)
-            w = vector_householder_bycol(v);
+            // 2. Calcola w = vector_build_householder_bycol(vv)
+            w = vector_build_householder_bycol(v);
              if (dump_flag) vector_dump(w, 10, w.size(), "W di householder colonna sinistra");
 
             // 3. Aggiorna A[k:, :] <- A[k:, :] - 2*w*(w^T * A[k:, :])
@@ -1979,8 +1981,8 @@ void trmatrix_bidiag_wide_to_upper(
                 v[j] = A[k][k+j+1];
             }
             if (dump_flag) vector_dump(v, 10, v.size(), "Riga di A a destra con k="+std::to_string(k));
-            // 2. Calcola w = vector_householder_byrow(v)
-            w = vector_householder_byrow(v);
+            // 2. Calcola w = vector_build_householder_byrow(v)
+            w = vector_build_householder_byrow(v);
             if (dump_flag) vector_dump(w, 10, w.size(), "W di householder riga destra");
             // 3. Aggiorna A[k:, k+1:] <- A[k:, k+1:] - 2*(A[k:,k+1:]*w)*w^T
             Mat A_k = matrix_build_zero(m, q);
@@ -2085,8 +2087,8 @@ void trmatrix_bidiag_wide_to_lower(
             for (int j = 0; j < q; j++) {
                 v[j] = A[k][k+j];
             }
-            // 2. Calcola w = vector_householder_byrow(v)
-            w = vector_householder_byrow(v);
+            // 2. Calcola w = vector_build_householder_byrow(v)
+            w = vector_build_householder_byrow(v);
             //vector_dump(w, 10, w.size(), "W di householder riga destra");
             // 3. Aggiorna A[k:, k+1:] <- A[k:, k+1:] - 2*(A[k:,k+1:]*w)*w^T
             // blocco A_k: righe k..n-1, colonne k..d-1
@@ -2152,8 +2154,8 @@ void trmatrix_bidiag_wide_to_lower(
                 v[i] = A[k+i+1][k];
             }
             if (dump_flag) vector_dump(v, 10, v.size(), "Colonna di A sotto diag con k="+std::to_string(k));
-            // 2. Calcola w = vector_householder_bycol(vv)
-            w = vector_householder_bycol(v);
+            // 2. Calcola w = vector_build_householder_bycol(vv)
+            w = vector_build_householder_bycol(v);
             //vector_dump(w, 10, w.size(), "W di householder colonna sinsitra");
             // 3. Aggiorna A[k:, :] <- A[k:, :] - 2*w*(w^T * A[k:, :])
             Mat A_k = matrix_build_zero(m, q);
@@ -2420,7 +2422,7 @@ void trmatrix_tridiag_wide(
             for (int i = 0; i < m; ++i)
                 v[i] = A[k + 1 + i][k];
 
-            w = vector_householder_bycol(v);
+            w = vector_build_householder_bycol(v);
 
             Mat A_k = matrix_build_zero(m, q);
             for (int i = 0; i < m; ++i)
@@ -2466,7 +2468,7 @@ void trmatrix_tridiag_wide(
             for (int j = 0; j < q; ++j)
                 v[j] = A[k][k + 1 + j];
 
-            w = vector_householder_byrow(v);
+            w = vector_build_householder_byrow(v);
 
             Mat A_k = matrix_build_zero(m, q);
             for (int i = 0; i < m; ++i)

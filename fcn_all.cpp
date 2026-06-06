@@ -1507,7 +1507,7 @@ namespace {
 
             // matrix_dump(K, "Matrice Kernel di Gauss");
 
-            Vec ws0 = vector_segnale_finestra(N,(1./4.),(3./4.),1);
+            Vec ws0 = vector_build_segnale_finestra(N,(1./4.),(3./4.),1);
             Vec ws1 = matrix_prodotto_vector(K,ws0);
             Vec ws2 = matrix_prodotto_vector(K2,ws0);
             Vec ws4 = matrix_prodotto_vector(K4,ws0);
@@ -1866,7 +1866,7 @@ namespace {
             clear_screen();
             {
                 Vec v = {3.0, 1.0, -2.0};
-                Vec w = vector_householder_bycol(v);
+                Vec w = vector_build_householder_bycol(v);
 
                 // Calcola H*v esplicitamente per verifica
                 // H*v = v - 2*w*(w^T*v)
@@ -2456,7 +2456,7 @@ namespace {
 
             for (int i = 2; i < n; i++) 
             {
-                v = vector_one_minus_one(i);
+                v = vector_build_one_minus_one(i);
                 if (i <= 5) vector_dump(v, 10, v.size(), "input vec -1/1");  
                 if (i == 6) 
                 {
