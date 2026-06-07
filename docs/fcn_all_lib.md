@@ -126,7 +126,7 @@
 - `void matplot_legend_align(legend_handle lg, int pos_enum, float xscale, float yscale);`
 - `figure_handle matplot_table_init(const bool ahold, const std::string &nome, const std::string &titolo, const int xlab, const int ylab);`
 
-## gestione menu principale
+## Funzioni di gestione menu principale
 
 - `struct MenuItem { int key; std::string label; std::string action; bool enabled; };`
 - `struct MenuConfig { std::string title; std::vector<MenuItem> items; };`
