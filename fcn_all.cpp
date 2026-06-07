@@ -2360,6 +2360,8 @@ namespace {
         double t0 = -PI;     // tempo iniziale
         double T  = PI;     // tempo finale
         double x0 = -1.0;     // condizione iniziale x(t0)
+        double a_arg = 1;
+        double f_arg = 0;
 
         Vec t, avals, fvals, b;
         Mat L;
@@ -2375,7 +2377,7 @@ namespace {
             {
                 // Costruzione del sistema triangolare L x = b
                 // matrix_build_cauchy_int(n, t0, T, x0, t, fvals, L, b, f_sin2plus1, true);
-                matrix_build_cauchy( n, t0, T, x0, t, avals, fvals, L, b, at_zero, f_sin2plus1, true) ;
+                matrix_build_cauchy( n, t0, T, x0, t, avals, fvals, L, b, f_const, 0, f_sin2plus1, 0, true) ;
                 // vector_dump(b, 10, b.size(), " b = 1/(1+sin^2) "); 
                 x = linear_subst_BW(L, b);
                 // vector_dump(x, 10, x.size(), " x da Lx = b"); 
@@ -2397,7 +2399,7 @@ namespace {
                 // ax->y_axis().limits({-1.00e-1, 1.00e-1 });
             }
             {
-                matrix_build_cauchy( n, t0, T, x0, t, avals, fvals, L, b, f_cos, f_sin2plus1, false) ;
+                matrix_build_cauchy( n, t0, T, x0, t, avals, fvals, L, b, f_cos, 0, f_sin2plus1, 0, false) ;
                 x = linear_subst_FW(L, b);
                 fig->nexttile(2);
                 auto p = plot(t, x);
@@ -2408,7 +2410,7 @@ namespace {
                 auto ax=fig->current_axes();
             }
             {
-                matrix_build_cauchy( n, t0, T, 1, t, avals, fvals, L, b, at_one, ft_zero, false) ;
+                matrix_build_cauchy( n, t0, T, 1, t, avals, fvals, L, b, f_const, a_arg, f_const, f_arg, false) ;
                 x = linear_subst_FW(L, b);
                 fig->nexttile(3);
                 auto p = plot(t, x);
@@ -2432,9 +2434,19 @@ namespace {
                 if (!leave) {
                     std::cout << "Inserire nuovo valore iniziale x0 (<q> per uscire) > " ;
                     if (std::cin >> x0) { if (x0>=t0 && x0<=T) redo=true;} else {cout << "Key: " << x0 <<endl; leave=true;} ;
-                    std::cout << "Inserire numero di nodi n (<q> per uscire) > " ;
-                    if (std::cin >> n) { if (n>=1 && n<=2000) redo=true;} else {cout << "Key: " << n <<endl; leave=true;} ;
+                    if (!leave) {
 
+                        std::cout << "Inserire numero di nodi n (<q> per uscire) > " ;
+                        if (std::cin >> n) { if (n>=1 && n<=2000) redo=true;} else {cout << "Key: " << n <<endl; leave=true;} ;
+                        if (!leave) {
+                            std::cout << "Inserire coeff di z(t) [-2k, 2k] (<q> per uscire) > " ;
+                            if (std::cin >> a_arg) { if (a_arg>=-2000 && a_arg<=2000) redo=true;} else {cout << "Key: " << a_arg <<endl; leave=true;} ;
+                            if (!leave) {
+                                std::cout << "Inserire coeff di f(t) [-10k, 10k] (<q> per uscire) > " ;
+                                if (std::cin >> f_arg) { if (f_arg>=-1e5 && f_arg<=1e5) redo=true;} else {cout << "Key: " << f_arg <<endl; leave=true;} ;
+                            }
+                        }
+                    }
                 };
                 cin_clear();
             };

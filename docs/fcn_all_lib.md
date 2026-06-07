@@ -33,16 +33,16 @@
 
 ## funzioni matematiche ad uso callback
 
-- `double f_x(double t);`
-- `double f_x1(double t);`
-- `double f_sin(double t);`
-- `double f_cos(double t);`
-- `double f_atan(double t);`
-- `double f_atan_d(double t);`
-- `double at_zero(double t);`
-- `double at_one(double t);`
-- `double ft_zero(double t);`
-- `double f_sin2plus1(double t);`
+- `double f_atan(double t);`        // arctan
+- `double f_atan_d(double t);`      // d/dt arctan(t) = 1 / (1 + t^2)
+- `double f_const(double t);`       // costante t passata per argomento
+- `double f_cos(double t);`         // cos
+- `double f_one(double t);`         // costante 1
+- `double f_sin(double t);`         // sin
+- `double f_sin2plus1(double t);`   // 1 / (1 + sin^2(t))
+- `double f_x(double t);`           // variabile t, identita'
+- `double f_x1(double t);`          // 1 / t
+- `double f_zero(double t);`        // costante 0 
 - `double fcallb(double t, double (*f)(double));`
 
 ## funzioni macro algebra lineare
@@ -283,42 +283,6 @@ Genera un vettore di nodi pseudo-casuali scalando campioni prodotti da `std::mt1
 
 ## funzioni matematiche ad uso callback
 
-### `f_x`
-
-```cpp
-double f_x(
-    double t
-);
-```
-Callback identità, restituisce il valore `t`
-
-### `f_x1`
-
-```cpp
-double f_x1(
-    double t
-);
-```
-Callback identità traslata, restituisce `t - 1`. Usata come coefficiente `at(t)` nei sistemi di Cauchy con termine lineare non omogeneo
-
-### `f_sin`
-
-```cpp
-double f_sin(
-    double t
-);
-```
-Callback seno, restituisce `sin(t)`
-
-### `f_cos`
-
-```cpp
-double f_cos(
-    double t
-);
-```
-Callback coseno, restituisce `cos(t)`
-
 ### `f_atan`
 
 ```cpp
@@ -337,32 +301,44 @@ double f_atan_d(
 ```
 Callback derivata dell’arcotangente, restituisce \(1/(1+t^2)\)
 
-### `at_zero`
+### `f_const`
 
 ```cpp
-double at_zero(
+double f_const(
     double t
 );
 ```
-Callback costante nulla per il coefficiente di `z(t)` nel sistema di Cauchy: restituisce `0.0`
+Callback funzione costante, restituisce il valore del suo argomento `t`
+Va usata passando doppio argomento consecutivo: se stessa e t
+La funzione chiamante poi deve discriminare se le e' stato passato &f_const ed usare t 
+o procedere con la fcallb per assegnare l'argomento attuale.
 
-### `at_one`
+### `f_cos`
+
+```cpp
+double f_cos(
+    double t
+);
+```
+Callback coseno, restituisce `cos(t)`
+
+### `f_one`
 
 ```cpp
 double at_one(
     double t
 );
 ```
-Callback costante unitaria per il coefficiente di `z(t)` nel sistema di Cauchy: restituisce `1.0`. Usata come default in `matrix_build_cauchy`
+Callback costante unitaria per i coefficienti di `z(t)` e `f(t)` nel sistema di Cauchy: restituisce `1.0`. Usata come default in `matrix_build_cauchy`
 
-### `ft_zero`
+### `f_sin`
 
 ```cpp
-double ft_zero(
+double f_sin(
     double t
 );
 ```
-Callback sorgente nulla: restituisce `0.0`. Usata come termine forzante di default in `matrix_build_cauchy`
+Callback seno, restituisce `sin(t)`
 
 ### `f_sin2plus1`
 
@@ -372,6 +348,34 @@ double f_sin2plus1(
 );
 ```
 Callback che restituisce \(1/(1+\sin^2(t))\)
+
+### `f_x`
+
+```cpp
+double f_x(
+    double t
+);
+```
+Callback identità, restituisce il valore `t`
+
+### `f_x1`
+
+```cpp
+double f_x1(
+    double t
+);
+```
+Callback reciproco dell' identita', restituisce `1 / t`. 
+
+### `f_zero`
+
+```cpp
+double ft_zero(
+    double t
+);
+```
+Callback sorgente nulla per i coefficienti di `z(t)` e `f(t)` nel sistema di Cauchy: restituisce `0.0`. Usata 
+come default in `matrix_build_cauchy`
 
 ### `fcallb`
 

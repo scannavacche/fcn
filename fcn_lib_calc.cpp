@@ -227,13 +227,16 @@ double f_atan(double t) {
 double f_atan_d(double t) {
     return 1.0 / (1.0 + t * t); // derivata di atan(t), giuro che mi ha letto nel pensiero
 }
-double at_zero(double t) {
-    return 0.0;
-}   
-double at_one(double t) {
+double f_const(double t) {
+    //
+    // serve doppio argomento per passare t a parte: (..., f_const, t, .....)
+    // 
+    return t;
+}
+double f_one(double t) {    // usata per i valori di default, se no si usa f_const, 1
     return 1.0;
 }  
-double ft_zero(double t) {
+double f_zero(double t) {   // usata per i valori di default, se no si usa f_const, 1
     return 0.0;
 }    
 double f_sin2plus1(double t){
@@ -634,8 +637,10 @@ void matrix_build_cauchy(
     Vec &fvals,     // funzioni f(t) valutate nei nodi t_i
     Mat &L, 
     Vec &b, 
-    double (*at)(double),   // default  at_one, se at == nullptr allora at(t) = 0.0
-    double (*ft)(double),   // default  ft_zero, se ft == nullptr allora ft(t) = 0.0    
+    double (*at)(double),   // default  f_one, se at == nullptr allora at(t) = 0.0
+    double a_arg,           // argomento (se richiesto) della funzione at
+    double (*ft)(double),   // default  f_zero, se ft == nullptr allora ft(t) = 0.0
+    double f_arg,           // argomento (se richiesto) della funzione ft
     bool backw)            // default false = forward, se true allora schema backward
 
         // -----------------------------------------------------------------------------
@@ -644,14 +649,15 @@ void matrix_build_cauchy(
         // 1)   at(t) e ft(t) sono funzioni di t che restituiscono rispettivamente 
         //      il coefficiente di z(t) e il termine noto f(t)
         // 2)   esistono funzioni "costanti" 
-        //      at_zero(t) = 0.0 
-        //      at_one(t) = 1.0 
-        //      ft_zero(t) = 0.0 
-        //      at == nullptr come at_zero(t)
-        //      ft == nullptr come ft_zero(t)
+        //      f_zero(t) = 0.0 
+        //      f_one(t) = 1.0 
+        //      f_zero(t) = 0.0 
+        //      f_const(t) = t (non si puo' usare come default parameter, ci sono le at ed ft apposta)
+        //      at == nullptr come f_zero(t)
+        //      ft == nullptr come f_zero(t)
     
         // continuiamo a farci passare il vettori dei nodi
-    {
+{
     t = Vec(n);                 // lo calcoliamo dentro insieme ai valori a(t) e f(t)
     avals = Vec(n);
     fvals = Vec(n);
@@ -660,15 +666,23 @@ void matrix_build_cauchy(
     using FnPtr = double(*)(double);
     FnPtr ata;
     FnPtr fta;    
-    ata = (at != nullptr) ? at : at_zero; // se at è nullptr, usa at_zero
-    fta = (ft != nullptr) ? ft : ft_zero; // se ft è nullptr, usa ft_zero
+    ata = (at != nullptr) ? at : f_zero; // se at è nullptr, usa f_zero
+    fta = (ft != nullptr) ? ft : f_zero; // se ft è nullptr, usa f_zero
     double h = h_ticks(t0, T, n);
 
     for (int i = 0; i < n; ++i) {
         t[i] = t0 + i * h;
-        avals[i] = fcallb(t[i], ata);
-        fvals[i] = fcallb(t[i], fta);
-    };
+        if (ata == &f_const) {
+            avals[i] = a_arg;           // usa la costante
+        } else {
+            avals[i] = fcallb(t[i], ata);
+        }
+        if (fta == &f_const) {
+            fvals[i] = f_arg;           // usa la costante
+        } else {
+            fvals[i] = fcallb(t[i], fta);
+        }
+    }
 
     if (backw) {
 
@@ -684,8 +698,7 @@ void matrix_build_cauchy(
         L[n - 1][n - 1] = 1.0;
         b[n - 1] = z_bc;
 
-    }
-    else {
+    } else {
         // forward: lower triangolare, con condizione iniziale
 
         // Riga 0: x_0 = x0  => L[0][0] = 1, b[0] = x0

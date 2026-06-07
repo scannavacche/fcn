@@ -96,9 +96,10 @@ double f_atan(
 double f_atan_d(
     double t);
 
-double at_zero(double t);
-double at_one(double t) ; 
-double ft_zero(double t) ;
+double f_const(double t) ;
+double f_zero(double t);
+double f_one(double t) ; 
+double f_zero(double t) ;
 
 double f_sin2plus1(
     double t);
@@ -173,8 +174,10 @@ void matrix_build_cauchy(
     Vec &fvals,     // funzioni f(t) valutate nei nodi t_i
     Mat &L, 
     Vec &b, 
-    double (*at)(double) = at_one,
-    double (*ft)(double) = ft_zero,
+    double (*at)(double) = f_one,
+    double a_arg = 1,           // argomento (se at == &f_const) della funzione at
+    double (*ft)(double) = f_zero,
+    double f_arg = 0,           // argomento (se at == &f_const) della funzione ft
     bool backw = false) ;
 
 
