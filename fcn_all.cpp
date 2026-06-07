@@ -506,7 +506,7 @@ namespace {
             curr_tile = 0 ;
             fig->nexttile(curr_tile); // punta al panel corrente, va bene con option base 0
             mtpr[curr_tile] = matplot::imagesc(G_eq);
-            matplot_legend_align(matplot::legend(), 0, K, 0.4);
+            matplot_legend_align(matplot::legend(), LeAl::Auto, K, 0.4);
             mtpr[curr_tile]->display_name("100 nodi equidistanti in 0..2PI");
             matplot::colorbar();
 
@@ -516,7 +516,7 @@ namespace {
             curr_tile=1;
             fig->nexttile(curr_tile); // punta al panel corrente, va bene con option base 0
             mtpr[curr_tile] = matplot::imagesc(G_rnd);
-            matplot_legend_align(matplot::legend(), 0, K, 0.4);
+            matplot_legend_align(matplot::legend(), LeAl::Auto, K, 0.4);
             mtpr[curr_tile]->display_name("100 nodi random");
             matplot::colorbar();
             
@@ -527,7 +527,7 @@ namespace {
             curr_tile=2;
             fig->nexttile(curr_tile); // punta al panel corrente, va bene con option base 0
             mtpr[curr_tile] = matplot::imagesc(G_asym1);
-            matplot_legend_align(matplot::legend(), 0, K, 0.4);
+            matplot_legend_align(matplot::legend(), LeAl::Auto, K, 0.4);
             mtpr[curr_tile]->display_name("100 nodi equidistanti in 0..PI");
             matplot::colorbar();
         
@@ -536,7 +536,7 @@ namespace {
             curr_tile=3;
             fig->nexttile(curr_tile); // punta al panel corrente, va bene con option base 0
             mtpr[curr_tile] = matplot::imagesc(G_asym2);
-            matplot_legend_align(matplot::legend(), 0, K, 0.4);
+            matplot_legend_align(matplot::legend(), LeAl::Auto, K, 0.4);
             mtpr[curr_tile]->display_name("100 nodi equidistanti in 0..PI/2");
             matplot::colorbar();
             
@@ -885,7 +885,7 @@ namespace {
             ax = f->current_axes();
             ax->title("u(t) = arctan(t) e derivata numerica");
             ax->legend();
-            matplot_legend_align(matplot::legend(), 1, 0.0, 0.0);
+            matplot_legend_align(matplot::legend(), LeAl::Bottom+LeAl::Right, 0.0, 0.0);
 
             // u(t)
             hold(on);
@@ -1244,7 +1244,7 @@ namespace {
             r->display_name("u'(t) = T^-1 U(t)");
  
 
-            matplot_legend_align(matplot::legend(), 2, 0,0);
+            matplot_legend_align(matplot::legend(), LeAl::VCenter+LeAl::Left, 0,0);
             matplot::legend();
             xlabel("t [rad]");
             ylabel("valore");
@@ -1273,7 +1273,7 @@ namespace {
             r1->display_name("Err i su i+1");
  
 
-            matplot_legend_align(matplot::legend(), 1, 0,0);
+            matplot_legend_align(matplot::legend(), LeAl::Bottom+LeAl::Right, 0,0);
             matplot::legend();
             xlabel("t [rad]");
             ylabel("valore");
@@ -1421,7 +1421,7 @@ namespace {
             }
             hold(on);
 
-            matplot_legend_align(matplot::legend(), 3, 0,0);
+            matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Left,0,0);
 
             auto p2 = plot(x_vals, cond_2_vals);
             p2->display_name("kappa_2 (spettrale)");
@@ -1577,11 +1577,11 @@ namespace {
 
                 figure_handle f = matplot_table_init(true, "Deconvoluzione", title + std::to_string(sigma*h), 2, 2);
 
-                matplot_legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Left, 0,0);
 
                 f->nexttile(0);
                 auto ax = f->current_axes();
-                matplot_legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Left, 0,0);
                 title = "Su segnale base con I2="+ format_numstr(kappa2[0][0]) + " |K|=" + format_numstr(kappa2[0][1]) + " |K^-1|="+format_numstr(kappa2[0][2]);
                 ax->title(title);
                 hold(on);
@@ -1605,7 +1605,7 @@ namespace {
 
                 f->nexttile(1);
                 ax = f->current_axes();
-                matplot_legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Left, 0,0);
                 title = "smoothed q=" + std::to_string((int)sigma)+" con I2="+ format_numstr(kappa2[1][0]) + " |K|=" + format_numstr(kappa2[1][1]) + " |K^-1|="+format_numstr(kappa2[1][2]);
                 ax->title(title);
                 hold(on);
@@ -1628,7 +1628,7 @@ namespace {
             
                 f->nexttile(2);
                 ax = f->current_axes();
-                matplot_legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Left, 0,0);
                 title = "smoothed q=" + std::to_string((int)sigma*2)+" con I2="+ format_numstr(kappa2[2][0]) + " |K|=" + format_numstr(kappa2[2][1]) + " |K^-1|="+format_numstr(kappa2[2][2]);
                 ax->title(title);
                 hold(on);
@@ -1651,7 +1651,7 @@ namespace {
 
                 f->nexttile(3);
                 ax = f->current_axes();
-                matplot_legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Left, 0,0);
                 title = "smoothed q=" + std::to_string((int)sigma*4)+" con I2="+ format_numstr(kappa2[3][0]) + " |K|=" + format_numstr(kappa2[3][1]) + " |K^-1|="+format_numstr(kappa2[3][2]);
                 ax->title(title);
                 hold(on);
@@ -1700,11 +1700,11 @@ namespace {
 
                 figure_handle f = matplot_table_init(true, "Deconvoluzione perturbata", title + format_numstr(sigma), 1, 1);
 
-                matplot_legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Left, 0,0);
 
                 f->nexttile(0);
                 auto ax = f->current_axes();
-                matplot_legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Left, 0,0);
                 title = "smoothed q=" + std::to_string((int)sigma)+" I2="+ format_numstr(kappa2[0][0]) + " |K|=" + format_numstr(kappa2[0][1]) + " |K^-1|="+format_numstr(kappa2[0][2]);
                 ax->title(title);
                 hold(on);
@@ -1737,7 +1737,7 @@ namespace {
 
                 f->nexttile(1);
                 ax = f->current_axes();
-                matplot_legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Left, 0,0);
                 title = "smoothed q=" + std::to_string((int)sigma)+" I2="+ format_numstr(kappa2[0][0]) + " |K|=" + format_numstr(kappa2[0][1]) + " |K^-1|="+format_numstr(kappa2[0][2]);
                 ax->title(title);
                 hold(on);
@@ -1768,7 +1768,7 @@ namespace {
             
                 f->nexttile(2);
                 ax = f->current_axes();
-                matplot_legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Left, 0,0);
                 title = "smoothed q=" + std::to_string((int)sigma)+" con I2="+ format_numstr(kappa2[0][0]) + " |K|=" + format_numstr(kappa2[0][1]) + " |K^-1|="+format_numstr(kappa2[0][2]);
                 ax->title(title);
                 hold(on);
@@ -1799,7 +1799,7 @@ namespace {
 
                 f->nexttile(3);
                 ax = f->current_axes();
-                matplot_legend_align(matplot::legend(), 3, 0,0);
+                matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Left, 0,0);
                 title = "smoothed q=" + std::to_string((int)sigma)+" I2="+ format_numstr(kappa2[0][0]) + " |K|=" + format_numstr(kappa2[0][1]) + " |K^-1|="+format_numstr(kappa2[0][2]);
                 ax->title(title);
                 hold(on);
@@ -2525,7 +2525,12 @@ namespace {
         while (!leave) {
             clear_screen();
             redo = false;
-            auto fig = matplot_table_init(true, "Eulero vs Heun", "Metodi iterativi per problema di Cauchy", 2, 2);            
+
+            Vec h_vals;
+            Vec err_euler_vals;
+            Vec err_heun_vals;
+
+            auto fig = matplot_table_init(true, "Eulero vs Heun", "Metodi iterativi per problema di Cauchy, approssimazione", 2, 2);            
             matplot::legend();
 
             for (int k = 0; k < nN; ++k) {
@@ -2554,13 +2559,15 @@ namespace {
                     ode_scalar_step_heun(t, h, &y_heun, ode_scalar_rhs_decay);
                     y_euler_vec[i+1] = y_euler;
                     y_heun_vec[i+1]  = y_heun;
-
                     double y_ex = y0 * std::exp(-1.0 * (t_nodes[i+1] - a));
                     y_exact_vec[i+1] = y_ex;
                 }
                 double y_exact = y0 * std::exp(-1.0 * (b - a));
                 double err_euler = std::fabs(y_euler - y_exact);
                 double err_heun = std::fabs(y_heun - y_exact);
+                h_vals.push_back(h);
+                err_euler_vals.push_back(err_euler);
+                err_heun_vals.push_back(err_heun);
 
                 std::cout << N << " " << h << " "
                         << err_euler << " " << err_heun << "\n";
@@ -2603,16 +2610,43 @@ namespace {
                 // pf->color("cyan");
                 // ptn2->color("blue");
 
-                matplot_legend_align(matplot::legend(), 2, 0,0);
+                matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Right, 0,0);
                 matplot::legend();
-                xlabel("nodes");
-                ylabel("y approx");
+                xlabel("t (nodi equidistanti)");
+                ylabel("y approssimata");
 
             }
 
         
             fig->draw();
-        
+
+            auto fig_err = matplot_table_init(true, "Eulero vs Heun", "Metodi iterativi per problema di Cauchy, O(h) dell' errore globale in b", 1, 1);
+            matplot::hold(on);
+            fig_err->nexttile(0); //  ed unico
+            auto ax=fig_err->current_axes();
+
+            // Eulero
+            auto pe = matplot::loglog(h_vals, err_euler_vals);
+            pe->line_style("--");
+            pe->marker("");
+            pe->line_width(3);
+            pe->color("green");
+            pe->display_name("Euler error");
+
+            // Heun
+            auto ph = matplot::loglog(h_vals, err_heun_vals);
+            ph->line_style("-.");
+            ph->marker("");
+            ph->line_width(3);
+            ph->color("red");
+            ph->display_name("Heun error");
+
+            matplot::xlabel("h");
+            matplot::ylabel("|y(b) - y_num(b)|");
+            matplot_legend_align(matplot::legend(), LeAl::Bottom+LeAl::Right, 0,0);
+            matplot::legend();
+            fig_err->draw();
+
             redo = false;
             while (!redo && !leave) {
                 std::cout << "Inserire nuovo max b 0 .. 100 (<q> per uscire) > ";
@@ -2629,7 +2663,7 @@ namespace {
         };
     };
  
-    void ode_heun() {
+    void ode_osc2d() {
         //
         // visto che sia eulero che heun sono gia' implmentati nella precedente
         // ci teniamo un template buono per RK da rinominare ;)
@@ -2711,7 +2745,7 @@ namespace {
             {"sym_cauchy",      sym_cauchy},
             {"sym_hhalpha",     sym_hhalpha},
             {"ode_euler",       ode_euler},
-            {"ode_heun",        ode_heun}
+            {"ode_osc2d",       ode_osc2d}
             };
         };
 };  

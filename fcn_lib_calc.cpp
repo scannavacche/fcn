@@ -2669,20 +2669,38 @@ void matplot_legend_align(
     using VA = matplot::legend::vertical_alignment;
     lg->box(false);
 
-    if (pos_enum == 0) { // up and out, centered
+    if (pos_enum == LeAl::Auto) { // up and out, centered
         float xcenter = (xscale + 1.0) / 2.0;
         lg->position({ xcenter , yscale}); 
         lg->horizontal_location(HA::center);
         lg->vertical_location(VA::bottom);
         lg->box(true);
-    } else if (pos_enum == 1) { // bottom right    
+    } else if (pos_enum == LeAl::Bottom+LeAl::Left) { // bottom left    
+        lg->horizontal_location(HA::left);
+        lg->vertical_location(VA::bottom);
+    } else if (pos_enum == LeAl::Bottom+LeAl::HCenter) { // bottom hcenter    
+        lg->horizontal_location(HA::center);
+        lg->vertical_location(VA::bottom);
+    } else if (pos_enum == LeAl::Bottom+LeAl::Right) { // bottom right    
         lg->horizontal_location(HA::right);
         lg->vertical_location(VA::bottom);
-    } else if (pos_enum == 2) { // center left
+    } else if (pos_enum == LeAl::VCenter+LeAl::Left) { // vcenter left
         lg->horizontal_location(HA::left);
         lg->vertical_location(VA::center);
-    } else if (pos_enum == 3) { // top left
+    } else if (pos_enum == LeAl::VCenter+LeAl::HCenter) { // vcenter hcenter (scemo)
         lg->horizontal_location(HA::left);
+        lg->vertical_location(VA::center);
+    } else if (pos_enum == LeAl::VCenter+LeAl::Right) { // vcenter right
+        lg->horizontal_location(HA::left);
+        lg->vertical_location(VA::center);
+    } else if (pos_enum == LeAl::Top+LeAl::Left) { // top left
+        lg->horizontal_location(HA::left);
+        lg->vertical_location(VA::top);
+    } else if (pos_enum == LeAl::Top+LeAl::HCenter) { // top hcenter
+        lg->horizontal_location(HA::left);
+        lg->vertical_location(VA::top);
+    } else if (pos_enum == LeAl::Top+LeAl::Right) { // top right    
+        lg->horizontal_location(HA::right);
         lg->vertical_location(VA::top);
     };
 };

@@ -463,6 +463,16 @@ void trmatrix_test_sv_autoval(
 // Funzioni per matplot++
 //
 
+enum LeAl : int {
+    Auto    = -1,
+    Left    = 0,
+    HCenter = 1,
+    Right   = 2,
+    Bottom  = 4,
+    VCenter = 8,
+    Top     = 12
+};
+
 void matplot_legend_align(
     legend_handle lg, 
     int pos_enum, 
