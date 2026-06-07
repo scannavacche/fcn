@@ -12,6 +12,8 @@ using namespace std;
 using Vec = std::vector<double>;
 using VecN = std::vector<int>;
 using Mat = std::vector<Vec>;
+using VecStr = std::vector<std::string>;
+using MatStr = std::vector<VecStr>;
 
 using namespace matplot;
 using KM = matplot::keyword_manual_type ;

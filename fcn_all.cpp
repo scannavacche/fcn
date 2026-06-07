@@ -392,6 +392,50 @@ namespace {
         // tutto restituito tramite args
     }
 
+    void TablePlot_Oscillator(
+            const int istage,
+            const Mat& euler_mat, 
+            const Mat& exact_mat,
+            const Mat& t_nodes_mat,
+            const int N_values[],
+            const MatStr& Table_des)
+    {
+            figure_handle fig = matplot_table_init(true, "Metodi iterativi per problema di Cauchy", Table_des[istage][1], 2, 2); 
+                // Visualizzazione  confronto q(t) 
+            for (int k = 0; k < 4; k++) {
+
+                fig->nexttile(k);
+                axes_handle ax = fig->current_axes();
+                ax = fig->current_axes();
+                ax->title(Table_des[istage][0]+itostr(N_values[k]) + " Intervalli");
+                ax->hold(on);
+
+                    // q->use_y2(true);
+                    // ax->y2_axis().limits({-1.6, 1.6});  
+
+                auto q = plot(t_nodes_mat[k], euler_mat[k]);
+                q->line_style(" -");
+                q->line_width(6);
+                q->color("green");
+                q->marker("");
+                q->display_name(Table_des[istage][2]);
+
+                auto eq = plot(t_nodes_mat[k], exact_mat[k]);
+                eq->color("black");
+                eq->line_style("_");
+                eq->marker("");
+                eq->line_width(2);
+                eq->display_name(Table_des[istage][3]);
+                }
+
+                matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Right, 0,0);
+                matplot::legend();
+                xlabel("t (nodi equidistanti)");
+                ylabel("y approssimata");
+
+            fig->draw();
+    }
+
     void preriscaldamento_anti_overhead(Mat& A) {
         //
         // gia' una volta bastava ma proviamo con tre giri 
@@ -2677,124 +2721,89 @@ namespace {
         double q0 = 1.0;     // condizione al bordo q(t0)
         double p0 = 1.0;     // condizione al bordo p(t0)
         double omega = ode_oscillator_omega;
-        std::cout << "# N h err_euler err_heun\n";
 
         bool leave = false;
         bool redo = false;
+        MatStr Table_des(4, VecStr(4));
+        Table_des[0][0] = "q(t) vs t con ";
+        Table_des[0][1] = "Oscillatore 2D: q(t) = q0 * cos(wt) + p0/w * sin(wt)";
+        Table_des[0][2] = "Eulero";
+        Table_des[0][3] = "Esatta";
+
+        Table_des[1][0] = "p(t) vs t con "; 
+        Table_des[1][1] = "Oscillatore 2D: p(t) = -w * q0 sin(wt) + p0 * cos(wt)";
+        Table_des[0][2] = "Eulero";
+        Table_des[0][3] = "Esatta";
+
+        Table_des[2][0] = ""; 
+        Table_des[2][1] = "";
+
+        Table_des[3][0] = ""; 
+        Table_des[3][1] = "";
+
         while (!leave) {
             clear_screen();
             redo = false;
             ode_set_oscillator_omega(omega); // loop successivi, se reimpostato utente
-            Vec h_vals;
-            Vec err_euler_vals;     // <===
-            Vec err_heun_vals;      // <===
 
-            // figure_handle fig[4];
-            // axes_handle ax[4];
+            // vettori di soluzione(matrici con un vettore per nodelist 0..3)
+ 
+            Mat q_euler_mat(4);
+            Mat p_euler_mat(4);
+            Mat q_exact_mat(4);
+            Mat p_exact_mat(4);
+            Mat t_nodes_mat(4);
 
-            auto fig2 = matplot_table_init(true, "Metodi iterativi per problema di Cauchy", "Oscillatore 2D: diagramma di fase (q,p)", 2, 2);            
-            auto fig3 = matplot_table_init(true, "Metodi iterativi per problema di Cauchy", "Oscillatore 2D: Energia = 1/2 * p(t)^2 + w^2 * q(t)^2", 2, 2);            
-            auto fig0 = matplot_table_init(true, "Metodi iterativi per problema di Cauchy", "Oscillatore 2D: q(t) = q0 * cos(wt) + p0/w * sin(wt)", 2, 2);            
-            auto fig1 = matplot_table_init(true, "Metodi iterativi per problema di Cauchy", "Oscillatore 2D: p(t) = -w * q0 sin(wt) + p0 * cos(wt)", 2, 2);            
+            double p0_w = p0 / omega; 
+            double w_q0 = - omega * q0; 
+            double y[2];   // stato: y[0] = q, y[1] = p
+            y[0] = q0;
+            y[1] = p0;
+
 
             for (int k = 0; k < nN; ++k) {
                 const int N = N_values[k];  
+
                 if (N <= 0) continue;
+
+                q_euler_mat[k].resize(N + 1);
+                p_euler_mat[k].resize(N + 1);
+                q_exact_mat[k].resize(N + 1);
+                p_exact_mat[k].resize(N + 1);
+                t_nodes_mat[k].resize(N + 1);
 
                 // passo e nodi equidistanti
                 const double h = h_ticks(a, b, N+1); // n_ticks vuole nodi
-                Vec t_nodes = nodi_equidistanti(a, b, N+1); // dovrebbe riempire t_nodes con N_values[k]+1 nodi
-
-                // vettori di soluzione
-                Vec q_euler_vec(N+1);
-                Vec p_euler_vec(N+1);
-                Vec p_exact_vec(N+1);
-                Vec q_exact_vec(N+1);
-
-                double y[2];   // stato: y[0] = q, y[1] = p
-                y[0] = q0;
-                y[1] = p0;
+                t_nodes_mat[k] = nodi_equidistanti(a, b, N+1); // dovrebbe riempire t_nodes con N_values[k]+1 nodi
 
                 // condizioni iniziali
-                q_euler_vec[0] = y[0];
-                p_euler_vec[0] = y[1];
-                q_exact_vec[0] = y[0];
-                p_exact_vec[0] = y[1];
-
-                double p0_w = p0 / omega; 
-                double w_q0 = - omega * q0; 
+                q_euler_mat[k][0] = y[0];
+                p_euler_mat[k][0] = y[1];
+                q_exact_mat[k][0] = y[0];
+                p_exact_mat[k][0] = y[1];
 
                 for (int i = 0; i < N; ++i) {
-                    double t = t_nodes[i];
+                    double t = t_nodes_mat[k][i];
                     ode_vecN_step_euler(t, h, y, 2 , ode_vec2_rhs_oscillator);
-                    q_euler_vec[i+1] = y[0];
-                    p_euler_vec[i+1] = y[1]; 
-                    double wt = omega * t_nodes[i+1];  
-                    q_exact_vec[i+1] = q0 * f_cos(wt) + p0_w * f_sin(wt);
-                    p_exact_vec[i+1] = w_q0 * f_sin(wt) + p0 * f_cos(wt);      
+                    q_euler_mat[k][i+1] = y[0];
+                    p_euler_mat[k][i+1] = y[1]; 
+                    double wt = omega * t_nodes_mat[k][i+1];  
+                    q_exact_mat[k][i+1] = q0 * f_cos(wt) + p0_w * f_sin(wt);
+                    p_exact_mat[k][i+1] = w_q0 * f_sin(wt) + p0 * f_cos(wt);  
                 }
-                h_vals.push_back(h);
-                // Visualizzazione  confronto q(t) 
-                fig0->nexttile(k);
-                auto ax0 = fig0->current_axes();
-                ax0->title("q(t) vs t con "+itostr(N) + " Intervalli");
-                hold(on);
-
-                // q->use_y2(true);
-                // ax->y2_axis().limits({-1.6, 1.6});  
-
-                auto q = plot(t_nodes, q_euler_vec);
-                q->line_style(" -");
-                q->line_width(6);
-                q->color("green");
-                q->marker("");
-                q->display_name("Euler");
-
-                auto eq = plot(t_nodes, q_exact_vec);
-                eq->color("black");
-                eq->line_style("_");
-                eq->marker("");
-                eq->line_width(2);
-                eq->display_name("Exact");
-
-                matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Right, 0,0);
-                matplot::legend();
-                xlabel("t (nodi equidistanti)");
-                ylabel("q approssimata");
-/*
-                // Visualizzazione  confronto p(t) 
-                fig1->nexttile(k);
-                auto ax1 = fig1->current_axes();
-                ax1->title("p(t) vs t con "+itostr(N) + " Intervalli");
-                ax1->hold(on);
-
-                // q->use_y2(true);
-                // ax->y2_axis().limits({-1.6, 1.6});  
-
-                auto p = plot(t_nodes, p_euler_vec);
-                p->line_style(" -");
-                p->line_width(6);
-                p->color("cyan");
-                p->marker("");
-                p->display_name("Euler");
-
-                auto ep = plot(t_nodes, p_exact_vec);
-                ep->color("black");
-                ep->line_style("_");
-                ep->marker("");
-                ep->line_width(2);
-                ep->display_name("Exact");
-
-                matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Right, 0,0);
-                matplot::legend();
-                xlabel("t (nodi equidistanti)");
-                ylabel("p approssimata");
-*/
             }
-        
-            fig0->draw();
- //           fig1->draw();
 
+            TablePlot_Oscillator(
+                0,              // qui gli devo passare quale table plottare
+                q_euler_mat, q_exact_mat, t_nodes_mat,
+                N_values, Table_des );
+
+            TablePlot_Oscillator(
+                1,              // qui gli devo passare quale table plottare
+                p_euler_mat, p_exact_mat, t_nodes_mat,
+                N_values, Table_des );
+            
+           
 
             redo = false;
             while (!redo && !leave) {
