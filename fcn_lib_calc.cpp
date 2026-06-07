@@ -251,6 +251,99 @@ double fcallb(
 }
 
 //
+// Funzioni per soluzioni di ODE con metodi iterativi
+//
+
+// scalare: y' = lambda * y
+double ode_scalar_rhs_decay(double t, double y) {
+    (void)t;
+    const double lambda = -1.0;
+    return lambda * y;
+}
+
+// Passo di Eulero scalare 
+
+void ode_scalar_step_euler(double t, double h, double* y,
+                           double (*f)(double, double)) {
+    *y = *y + h * f(t, *y);
+}
+
+// Passo di Heun scalare (Eulero migliorato, ordine 2)
+void ode_scalar_step_heun(double t, double h, double* y,
+                          double (*f)(double, double)) {
+    const double k1 = f(t, *y);
+    const double k2 = f(t + h, *y + h * k1);
+    *y = *y + 0.5 * h * (k1 + k2);
+}
+
+// test sul decadimento scalare
+int ode_scalar_test_euler_decay() {
+    const double t0 = 0.0;
+    const double T  = 5.0;
+    const double h  = 0.1;
+    const int    N  = static_cast<int>((T - t0) / h);
+
+    double t = t0;
+    double y = 1.0;
+
+    for (int n = 0; n <= N; ++n) {
+        double y_exact = std::exp(-1.0 * (t - t0));
+        std::cout << t << " " << y << " " << y_exact << "\n";
+
+        if (n < N) {
+            ode_scalar_step_euler(t, h, &y, ode_scalar_rhs_decay);
+            t += h;
+        }
+    }
+    return 0;
+}
+
+int ode_scalar_test_heun_decay() {
+    const double t0 = 0.0;
+    const double T  = 5.0;
+    const double h  = 0.1;
+    const int    N  = static_cast<int>((T - t0) / h);
+
+    double t = t0;
+    double y = 1.0; // y0
+
+    for (int n = 0; n <= N; ++n) {
+        // soluzione esatta sul nodo (per confronto)
+        double y_exact = std::exp(-1.0 * (t - t0));
+        std::cout << t << " " << y << " " << y_exact << "\n";
+
+        if (n < N) {
+            ode_scalar_step_heun(t, h, &y, ode_scalar_rhs_decay);
+            t += h;
+        }
+    }
+
+    return 0;
+}
+
+// RHS vettoriale 2D (oscillatore)
+void ode_vec2_rhs_oscillator(double t,
+                             const double* y,
+                             double* dydt, int n) {
+    (void)t;
+    (void)n; // assumiamo n == 2
+    const double a11 = 0.0, a12 = 1.0;
+    const double a21 = -1.0, a22 = 0.0;
+    dydt[0] = a11 * y[0] + a12 * y[1];
+    dydt[1] = a21 * y[0] + a22 * y[1];
+}
+
+void ode_vecN_step_euler(double t, double h,
+                         double* y, int n,
+                         void (*f)(double, const double*, double*, int)) {
+    std::vector<double> dydt(n);
+    f(t, y, dydt.data(), n);
+    for (int i = 0; i < n; ++i) {
+        y[i] += h * dydt[i];
+    }
+}
+
+//
 // funzioni macro di algebra lineare
 //
 

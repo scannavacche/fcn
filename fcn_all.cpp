@@ -2507,6 +2507,189 @@ namespace {
         };
     };
 
+    void ode_euler() {
+        //
+        // confronto Eulero-Heun test runner
+        //
+        int N_values[] = {10, 20, 40, 80}; // numero di intervalli (i nodi sono +1)  su cui iterare 
+        int nN = 4;  // dimensione di N_values
+
+        const double a = 0.0;
+        double b = 5.0;
+        double y0 = 1.0;     // condizione al bordo x(t0)
+
+        std::cout << "# N h err_euler err_heun\n";
+
+        bool leave = false;
+        bool redo = false;
+        while (!leave) {
+            clear_screen();
+            redo = false;
+            auto fig = matplot_table_init(true, "Eulero vs Heun", "Metodi iterativi per problema di Cauchy", 2, 2);            
+            matplot::legend();
+
+            for (int k = 0; k < nN; ++k) {
+                const int N = N_values[k];  
+                if (N <= 0) continue;
+
+                // passo e nodi equidistanti
+                const double h = h_ticks(a, b, N+1); // n_ticks vuole nodi
+                Vec t_nodes = nodi_equidistanti(a, b, N+1); // dovrebbe riempire t_nodes con N_values[k]+1 nodi
+                // vettori di soluzione
+                Vec y_euler_vec(N+1);
+                Vec y_heun_vec(N+1);
+                Vec y_exact_vec(N+1);
+
+                // condizioni iniziali
+                double y_euler = y0;
+                double y_heun  = y0;
+
+                y_euler_vec[0] = y_euler;
+                y_heun_vec[0]  = y_heun;
+                y_exact_vec[0] = y0; // esatta in a
+
+                for (int i = 0; i < N; ++i) {
+                    double t = t_nodes[i];
+                    ode_scalar_step_euler(t, h, &y_euler, ode_scalar_rhs_decay);
+                    ode_scalar_step_heun(t, h, &y_heun, ode_scalar_rhs_decay);
+                    y_euler_vec[i+1] = y_euler;
+                    y_heun_vec[i+1]  = y_heun;
+
+                    double y_ex = y0 * std::exp(-1.0 * (t_nodes[i+1] - a));
+                    y_exact_vec[i+1] = y_ex;
+                }
+                double y_exact = y0 * std::exp(-1.0 * (b - a));
+                double err_euler = std::fabs(y_euler - y_exact);
+                double err_heun = std::fabs(y_heun - y_exact);
+
+                std::cout << N << " " << h << " "
+                        << err_euler << " " << err_heun << "\n";
+
+                // Visualizzazione della soluzione numerica x(t)
+                fig->nexttile(k);
+                auto ax=fig->current_axes();
+                ax->title("Confronto per N intervalli "+itostr(N));
+                hold(on);
+
+                // q->use_y2(true);
+                // ax->y2_axis().limits({-1.6, 1.6});  
+
+                auto p = plot(t_nodes, y_euler_vec);
+                p->line_style(" -");
+                p->line_width(6);
+                p->color("green");
+                p->marker("");
+                p->display_name("Euler");
+
+                auto q = plot(t_nodes, y_heun_vec);
+                q->line_width(6);
+                q->color("red");
+                q->line_style("- ");
+                q->marker("");
+                q->display_name("Heun");
+
+                auto r = plot(t_nodes, y_exact_vec);
+                r->color("black");
+                r->line_style("_");
+                r->marker("");
+                r->line_width(2);
+                r->display_name("Exact");
+
+                // p2->marker(".");
+                // p1->marker("+");
+                // pI->marker("r");
+  
+                // pI->color("magenta");
+                // pf->color("cyan");
+                // ptn2->color("blue");
+
+                matplot_legend_align(matplot::legend(), 2, 0,0);
+                matplot::legend();
+                xlabel("nodes");
+                ylabel("y approx");
+
+            }
+
+        
+            fig->draw();
+        
+            redo = false;
+            while (!redo && !leave) {
+                std::cout << "Inserire nuovo max b 0 .. 100 (<q> per uscire) > ";
+
+                cin_clear();
+
+                if (std::cin >> b) { if (b>=0 && b<=100) redo=true;} else {cout << "Key: " << b <<endl; leave=true;} ;
+                if (!leave) {
+                    std::cout << "Inserire nuovo valore iniziale y0 (<q> per uscire) > " ;
+                    if (std::cin >> y0) { if (y0>=a && y0<=b) redo=true;} else {cout << "Key: " << y0 <<endl; leave=true;} ;
+                };
+                cin_clear();
+            };
+        };
+    };
+ 
+    void ode_heun() {
+        //
+        // visto che sia eulero che heun sono gia' implmentati nella precedente
+        // ci teniamo un template buono per RK da rinominare ;)
+        //
+
+        int n = 100;          // numero di punti della griglia
+        double t0 = -PI;      // tempo iniziale
+        double T  = PI;       // tempo finale
+        double x0 = -1.0;     // condizione al bordo x(t0)
+        Vec t(n, 0.0);        // grid 
+        
+        bool leave = false;
+        bool redo = false;
+        while (!leave) {
+            clear_screen();
+            redo = false;
+            auto fig = matplot_table_init(true, "Eulero", "Metodi iterativi per problema di Cauchy", 1, 1);            
+            matplot::legend();
+            Vec x;
+            {
+
+                // fig->nexttile(0);
+                // imagesc(L)->display_name("Verifica matrice");
+                // colorbar();
+            }
+
+            {        
+                // Visualizzazione della soluzione numerica x(t)
+                fig->nexttile(1);
+                auto p = plot(t, x);
+                p->line_width(2);
+                p->display_name("");
+                xlabel("t");
+                ylabel("f(x(t))");
+                auto ax=fig->current_axes();
+                // ax->y_axis().limits({-1.00e-1, 1.00e-1 });
+            }
+
+            fig->draw();
+        
+            redo = false;
+            while (!redo && !leave) {
+                std::cout << "Inserire nuovo T finale -10 .. 10 (<q> per uscire) > ";
+
+                cin_clear();
+
+                if (std::cin >> T) { if (T>=-10 && T<=-10) redo=true;} else {cout << "Key: " << T <<endl; leave=true;} ;
+                if (!leave) {
+                    std::cout << "Inserire nuovo valore iniziale x0 (<q> per uscire) > " ;
+                    if (std::cin >> x0) { if (x0>=t0 && x0<=T) redo=true;} else {cout << "Key: " << x0 <<endl; leave=true;} ;
+                    if (!leave) {
+                        std::cout << "Inserire numero di nodi n (<q> per uscire) > " ;
+                        if (std::cin >> n) { if (n>=1 && n<=2000) redo=true;} else {cout << "Key: " << n <<endl; leave=true;} ;
+                    }
+                };
+                cin_clear();
+            };
+        };
+    };
+ 
 
     ActionRegistry build_action_registry() 
         {
@@ -2526,7 +2709,9 @@ namespace {
             {"f3_svd_pca",      f3_svd_pca},
             {"f3_svd_an",       f3_svd_an}, 
             {"sym_cauchy",      sym_cauchy},
-            {"sym_hhalpha",     sym_hhalpha}
+            {"sym_hhalpha",     sym_hhalpha},
+            {"ode_euler",       ode_euler},
+            {"ode_heun",        ode_heun}
             };
         };
 };  
