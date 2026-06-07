@@ -126,24 +126,27 @@ void PhasingTheLimits(
     double& q_max, 
     const double tol)
 {
-    q_min = 0;
-    q_max = 0;
-    for (int i = 0; i < el.size(); i++)
-        for (int j = 0; j < el[0].size(); j++) 
-        {
+    // assumiamo el ed ex non vuoti
+    q_min = std::min(el[0][0], ex[0][0]);
+    q_max = std::max(el[0][0], ex[0][0]);
+
+    for (int i = 0; i < el.size(); ++i)
+        for (int j = 0; j < el[i].size(); ++j) {
             double el_ij = el[i][j];
             double ex_ij = ex[i][j];
             double e_min = std::min(el_ij, ex_ij);
             double e_max = std::max(el_ij, ex_ij);
             if (q_min > e_min) q_min = e_min;
             if (q_max < e_max) q_max = e_max;
-        } 
-    if (tol != 0) {
-        if (std::abs(tol) <= 1) q_min *= (1 - tol);
-        q_max *= (1 + tol);
+        }
+
+    if (tol != 0.0) {
+        double range = q_max - q_min;
+        double margin = tol * range;
+        q_min -= margin;
+        q_max += margin;
     }
 }
-
 
 //
 // funzioni di base per intervalli 

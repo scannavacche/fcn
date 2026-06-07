@@ -453,7 +453,7 @@ namespace {
             "Metodi iterativi per problema di Cauchy",
             Table_des[istage][1], 
             2, 2);
-        const double tol = 0.0;
+        const double tol = 0.05;
         double q_min, q_max, p_min, p_max;
         PhasingTheLimits(q_euler_mat, q_exact_mat, q_min, q_max, tol);
         PhasingTheLimits(p_euler_mat, p_exact_mat, p_min, p_max, tol);
@@ -489,10 +489,66 @@ namespace {
             ylabel("p");
 
         }
-
-
         fig->draw();
     }
+
+void ErrorPlot_Oscillator(
+    int istage,                    // 3
+    const Mat& q_euler_mat,
+    const Mat& q_exact_mat,
+    const Mat& p_euler_mat,
+    const Mat& p_exact_mat,
+    const Mat& t_nodes_mat,
+    const int N_values[],
+    const MatStr& Table_des
+) {
+    figure_handle fig = matplot_table_init(
+        true,
+        "Metodi iterativi per problema di Cauchy",
+        Table_des[istage][1],      // es. "Oscillatore 2D: errore nel tempo"
+        2, 2
+    );
+
+    for (int k = 0; k < 4; ++k) {
+        fig->nexttile(k);
+        auto ax = fig->current_axes();
+        ax->title(Table_des[istage][0] + itostr(N_values[k]) + " Intervalli");
+        ax->hold(on);
+
+        // costruisci vettori di errore per questo k
+        std::vector<double> e_q, e_p;
+        e_q.reserve(q_euler_mat[k].size());
+        e_p.reserve(p_euler_mat[k].size());
+        for (std::size_t j = 0; j < q_euler_mat[k].size(); ++j) {
+            e_q.push_back(q_euler_mat[k][j] - q_exact_mat[k][j]);
+            e_p.push_back(p_euler_mat[k][j] - p_exact_mat[k][j]);
+        }
+
+        // errore su q(t)
+        auto eq = plot(t_nodes_mat[k], e_q);
+        eq->color(Table_des[istage][4]);
+        eq->display_name(Table_des[istage][2]);
+        eq->line_width(5);
+        eq->line_style(" -");
+        eq->marker("");
+
+        // errore su p(t)
+        auto ep = plot(t_nodes_mat[k], e_p);
+        ep->color("red");
+        ep->display_name(Table_des[istage][3]);
+        ep->line_width(4);
+        ep->line_style(" -");
+        ep->marker("");
+
+        matplot::legend();
+        xlabel("t (nodi equidistanti)");
+        ylabel("errore");
+
+    }
+
+    fig->draw();
+}
+
     void preriscaldamento_anti_overhead(Mat& A) {
         //
         // gia' una volta bastava ma proviamo con tre giri 
@@ -2800,11 +2856,11 @@ namespace {
         Table_des[2][3] = "Esatta";
         Table_des[2][4] = "red";
 
-        Table_des[3][0] = ""; 
-        Table_des[3][1] = "";
-        Table_des[3][2] = "Eulero";
-        Table_des[3][3] = "Esatta";
-        Table_des[3][4] = "magenta";
+        Table_des[3][0] = "Error(t)"; 
+        Table_des[3][1] = "Oscillatore 2D: errore nel tempo";
+        Table_des[3][2] = "Errore q(t)";
+        Table_des[3][3] = "Errore p(t)";
+        Table_des[3][4] = "green";
 
         while (!leave) {
             clear_screen();
@@ -2859,27 +2915,40 @@ namespace {
                 }
             }
 
-            
-            //cout << "i primi tre tempi \t" << t_nodes_mat[1][0] <<"\t" << t_nodes_mat[1][1] << "\t" << t_nodes_mat[1][2] <<endl;
-            //cout << "i primi tre q_eul \t" << q_euler_mat[1][0] <<"\t" << q_euler_mat[1][1] << "\t" << q_euler_mat[1][2] <<endl;
-            //cout << "i primi tre q_exa \t" << q_exact_mat[1][0] <<"\t" << q_exact_mat[1][1] << "\t" << q_exact_mat[1][2] <<endl;
-
-
             TablePlot_Oscillator(
                 0,              // qui gli devo passare quale table plottare
                 q_euler_mat, q_exact_mat, t_nodes_mat,
-                N_values, Table_des );
+                N_values, Table_des 
+            );
+
 
             TablePlot_Oscillator(
                 1,              // qui gli devo passare quale table plottare
                 p_euler_mat, p_exact_mat, t_nodes_mat,
-                N_values, Table_des );
+                N_values, Table_des 
+            );
+
             PhasePlot_Oscillator(
                 2, 
                 q_euler_mat, p_euler_mat,
                 q_exact_mat, p_exact_mat,
-                N_values, Table_des);
-           
+                N_values, Table_des
+            );
+
+            ErrorPlot_Oscillator(
+                3,                  
+                q_euler_mat, q_exact_mat,
+                p_euler_mat, p_exact_mat,
+                t_nodes_mat, N_values, Table_des
+            );
+
+            /*
+                        manca solo questa tabellina sull' errore globale
+                        
+            max_abs_err_q[k] = max_j |q_euler_mat[k][j] - q_exact_mat[k][j]|,
+
+            max_abs_err_p[k] = max_j |p_euler_mat[k][j] - p_exact_mat[k][j]|           
+            */
            
 
             redo = false;
