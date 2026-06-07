@@ -4429,6 +4429,10 @@ Se vuoi, nel passo successivo possiamo fissare un caso specifico (es. $\omega = 
 
 ---
 
+---
+parte ripulita, da qui in poi
+---
+
 # ma secondo te, visto che ho solo trasformato fig ed ax in array e duplicato il codice di euler q vs exact q  per fare la successiva euler p vs exact p, ho fatto qualche errore di mio o a matplotplusplus non piacciono quei due array?
 
 Perche' mi apre i panels esattamente come prima ma non plotta niente, su entrambe le fig[0] e fig[1]. O c'e' qualcosa che non riesco a vedere o devo tornare agli scalari.
@@ -5446,4 +5450,8 @@ Vuoi che, a partire da questa versione funzionante con `fig0`, ti proponga una s
 [^54_1]: https://wwwold.iac.cnr.it/~pasca/corso/slides/calcolo_numerico/eq_differenziali.pdf
 
 [^54_2]: https://lucia-gastaldi.unibs.it/didattica2007/automazione/lezioni/ode.pdf
+
+---
+ripulita sin qui
+---
 
