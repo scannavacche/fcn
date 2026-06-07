@@ -61,7 +61,7 @@
 
 ## Funzioni per la gestione di vettori e matrici
 
-- `void matrix_build_cauchy(int n, double t0, double T, double z_bc, Vec &t, Vec &avals, Vec &fvals, Mat &L, Vec &b, double (*at)(double) = at_one, double (*ft)(double) = ft_zero, bool backw = false);`
+- `void matrix_build_cauchy(int n, double t0, double T, double z_bc, Vec &t, Vec &avals, double at, Vec &fvals, double, ft, Mat &L, Vec &b, double (*at)(double) = at_one, double (*ft)(double) = ft_zero, bool backw = false);`
 - `void matrix_build_cauchy_int(int n, double t0, double T, double x0, Vec &t, Vec &fvals, Mat &L, Vec &b, double (*ft)(double), bool backw);` // superata
 - `void matrix_build_cauchy_sep(int n, double t0, double T, double x0, Vec &t, Vec &fvals, Mat &L, Vec &b, double (*ft)(double), bool backw);` // superata
 - `Mat matrix_build_derivata1(int n, double a, double b);`
