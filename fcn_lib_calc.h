@@ -52,6 +52,13 @@ double deg2rad(
 string format_numstr(
     double v);
 
+void PhasingTheLimits(
+    const Mat& el, 
+    const Mat& ex, 
+    double& q_min, 
+    double& q_max, 
+    const double tol);
+
 
 //
 // funzioni di base per intervalli 

@@ -400,42 +400,99 @@ namespace {
             const int N_values[],
             const MatStr& Table_des)
     {
-            figure_handle fig = matplot_table_init(true, "Metodi iterativi per problema di Cauchy", Table_des[istage][1], 2, 2); 
-                // Visualizzazione  confronto q(t) 
-            for (int k = 0; k < 4; k++) {
+        figure_handle fig = matplot_table_init(
+            true, 
+            "Metodi iterativi per problema di Cauchy", 
+            Table_des[istage][1],
+             2, 2); 
 
-                fig->nexttile(k);
-                axes_handle ax = fig->current_axes();
-                ax = fig->current_axes();
-                ax->title(Table_des[istage][0]+itostr(N_values[k]) + " Intervalli");
-                ax->hold(on);
+        for (int k = 0; k < 4; k++) {
 
-                    // q->use_y2(true);
-                    // ax->y2_axis().limits({-1.6, 1.6});  
+            fig->nexttile(k);
+            axes_handle ax = fig->current_axes();
+            ax = fig->current_axes();
+            ax->title(Table_des[istage][0]+itostr(N_values[k]) + " Intervalli");
+            ax->hold(on);
 
-                auto q = plot(t_nodes_mat[k], euler_mat[k]);
-                q->line_style(" -");
-                q->line_width(6);
-                q->color("green");
-                q->marker("");
-                q->display_name(Table_des[istage][2]);
+                // q->use_y2(true);
+                // ax->y2_axis().limits({-1.6, 1.6});  
 
-                auto eq = plot(t_nodes_mat[k], exact_mat[k]);
-                eq->color("black");
-                eq->line_style("_");
-                eq->marker("");
-                eq->line_width(2);
-                eq->display_name(Table_des[istage][3]);
-                }
+            auto q = plot(t_nodes_mat[k], euler_mat[k]);
+            q->line_style(" -");
+            q->line_width(6);
+            q->color(Table_des[istage][4]);
+            q->marker("");
+            q->display_name(Table_des[istage][2]);
 
-                matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Right, 0,0);
-                matplot::legend();
-                xlabel("t (nodi equidistanti)");
-                ylabel("y approssimata");
+            auto eq = plot(t_nodes_mat[k], exact_mat[k]);
+            eq->color("black");
+            eq->line_style("_");
+            eq->marker("");
+            eq->line_width(2);
+            eq->display_name(Table_des[istage][3]);
 
-            fig->draw();
+            matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Right, 0,0);
+            matplot::legend();
+            xlabel("t (nodi equidistanti)");
+            ylabel("y approssimata");
+        }
+        fig->draw();
     }
 
+    void PhasePlot_Oscillator(
+        const int istage, 
+        const Mat& q_euler_mat,
+        const Mat& p_euler_mat,
+        const Mat& q_exact_mat,
+        const Mat& p_exact_mat,
+        const int N_values[],
+        const MatStr& Table_des)
+    {
+        figure_handle fig = matplot_table_init(
+            true,
+            "Metodi iterativi per problema di Cauchy",
+            Table_des[istage][1], 
+            2, 2);
+        const double tol = 0.0;
+        double q_min, q_max, p_min, p_max;
+        PhasingTheLimits(q_euler_mat, q_exact_mat, q_min, q_max, tol);
+        PhasingTheLimits(p_euler_mat, p_exact_mat, p_min, p_max, tol);
+       
+
+        for (int k = 0; k < 4; ++k) {
+            fig->nexttile(k);
+            auto ax = fig->current_axes();
+            ax->title(Table_des[istage][0] + itostr(N_values[k]) + " Intervalli");
+            ax->hold(on);
+
+            ax->xlim({q_min, q_max});
+            ax->ylim({p_min, p_max});
+
+            // Eulero: curva verde in fase
+            auto ph_eul = plot(q_euler_mat[k], p_euler_mat[k]);
+            ph_eul->color(Table_des[istage][4]);
+            ph_eul->display_name(Table_des[istage][2]);
+            ph_eul->line_width(5);
+            ph_eul->line_style(" -");
+            ph_eul->marker("");
+
+            // Esatta: curva nera in fase
+            auto ph_ex = plot(q_exact_mat[k], p_exact_mat[k]);
+            ph_ex->color("black");
+            ph_ex->display_name(Table_des[istage][3]);
+            ph_ex->line_width(3);
+            ph_ex->line_style(" -");
+            ph_ex->marker("");
+
+            matplot::legend();
+            xlabel("q");
+            ylabel("p");
+
+        }
+
+
+        fig->draw();
+    }
     void preriscaldamento_anti_overhead(Mat& A) {
         //
         // gia' una volta bastava ma proviamo con tre giri 
@@ -2724,22 +2781,30 @@ namespace {
 
         bool leave = false;
         bool redo = false;
-        MatStr Table_des(4, VecStr(4));
+        MatStr Table_des(4, VecStr(5));
         Table_des[0][0] = "q(t) vs t con ";
         Table_des[0][1] = "Oscillatore 2D: q(t) = q0 * cos(wt) + p0/w * sin(wt)";
         Table_des[0][2] = "Eulero";
         Table_des[0][3] = "Esatta";
+        Table_des[0][4] = "green";
 
         Table_des[1][0] = "p(t) vs t con "; 
         Table_des[1][1] = "Oscillatore 2D: p(t) = -w * q0 sin(wt) + p0 * cos(wt)";
-        Table_des[0][2] = "Eulero";
-        Table_des[0][3] = "Esatta";
+        Table_des[1][2] = "Eulero";
+        Table_des[1][3] = "Esatta";
+        Table_des[1][4] = "cyan";
 
-        Table_des[2][0] = ""; 
-        Table_des[2][1] = "";
+        Table_des[2][0] = "q(t) vs p(t) con "; 
+        Table_des[2][1] = "Oscillatore 2D: diagramma di fase";
+        Table_des[2][2] = "Eulero";
+        Table_des[2][3] = "Esatta";
+        Table_des[2][4] = "red";
 
         Table_des[3][0] = ""; 
         Table_des[3][1] = "";
+        Table_des[3][2] = "Eulero";
+        Table_des[3][3] = "Esatta";
+        Table_des[3][4] = "magenta";
 
         while (!leave) {
             clear_screen();
@@ -2754,11 +2819,6 @@ namespace {
             Mat p_exact_mat(4);
             Mat t_nodes_mat(4);
 
-            double p0_w = p0 / omega; 
-            double w_q0 = - omega * q0; 
-            double y[2];   // stato: y[0] = q, y[1] = p
-            y[0] = q0;
-            y[1] = p0;
 
 
             for (int k = 0; k < nN; ++k) {
@@ -2775,6 +2835,12 @@ namespace {
                 // passo e nodi equidistanti
                 const double h = h_ticks(a, b, N+1); // n_ticks vuole nodi
                 t_nodes_mat[k] = nodi_equidistanti(a, b, N+1); // dovrebbe riempire t_nodes con N_values[k]+1 nodi
+
+                double p0_w = p0 / omega; 
+                double w_q0 = - omega * q0; 
+                double y[2];   // stato: y[0] = q, y[1] = p
+                y[0] = q0;
+                y[1] = p0;
 
                 // condizioni iniziali
                 q_euler_mat[k][0] = y[0];
@@ -2793,6 +2859,12 @@ namespace {
                 }
             }
 
+            
+            //cout << "i primi tre tempi \t" << t_nodes_mat[1][0] <<"\t" << t_nodes_mat[1][1] << "\t" << t_nodes_mat[1][2] <<endl;
+            //cout << "i primi tre q_eul \t" << q_euler_mat[1][0] <<"\t" << q_euler_mat[1][1] << "\t" << q_euler_mat[1][2] <<endl;
+            //cout << "i primi tre q_exa \t" << q_exact_mat[1][0] <<"\t" << q_exact_mat[1][1] << "\t" << q_exact_mat[1][2] <<endl;
+
+
             TablePlot_Oscillator(
                 0,              // qui gli devo passare quale table plottare
                 q_euler_mat, q_exact_mat, t_nodes_mat,
@@ -2802,7 +2874,12 @@ namespace {
                 1,              // qui gli devo passare quale table plottare
                 p_euler_mat, p_exact_mat, t_nodes_mat,
                 N_values, Table_des );
-            
+            PhasePlot_Oscillator(
+                2, 
+                q_euler_mat, p_euler_mat,
+                q_exact_mat, p_exact_mat,
+                N_values, Table_des);
+           
            
 
             redo = false;

@@ -119,6 +119,31 @@ std::string format_numstr(double value) {
     return ss.str();
 }
 
+void PhasingTheLimits(
+    const Mat& el, 
+    const Mat& ex, 
+    double& q_min, 
+    double& q_max, 
+    const double tol)
+{
+    q_min = 0;
+    q_max = 0;
+    for (int i = 0; i < el.size(); i++)
+        for (int j = 0; j < el[0].size(); j++) 
+        {
+            double el_ij = el[i][j];
+            double ex_ij = ex[i][j];
+            double e_min = std::min(el_ij, ex_ij);
+            double e_max = std::max(el_ij, ex_ij);
+            if (q_min > e_min) q_min = e_min;
+            if (q_max < e_max) q_max = e_max;
+        } 
+    if (tol != 0) {
+        if (std::abs(tol) <= 1) q_min *= (1 - tol);
+        q_max *= (1 + tol);
+    }
+}
+
 
 //
 // funzioni di base per intervalli 
