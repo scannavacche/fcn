@@ -5,6 +5,10 @@
 - `using Vec = std::vector<double>;`
 - `using VecN = std::vector<int>;`
 - `using Mat = std::vector<Vec>;`
+- `using VecStr = std::vector<std::string>;`    <==>
+- `using MatStr = std::vector<VecStr>;`         <==>
+
+
 - `using KM = matplot::keyword_manual_type;`
 - `using KA = matplot::keyword_automatic_type;`
 - `const double PI = std::acos(-1.0);`
@@ -23,6 +27,7 @@
 - `std::string itostr(const int nn);`
 - `double deg2rad(const int alpha);`
 - `string format_numstr(double v);`
+- `void PhasingTheLimits(const Mat& el,const Mat& ex,double& q_min,double& q_max,const double tol);` <==>
 
 ## Funzioni di base per intervalli
 
@@ -120,6 +125,18 @@
 - `void trmatrix_SVDQR(const Mat& B, Mat& Ub, Mat& Vb, Vec& sigma);`
 - `void trmatrix_SVDQR_ridotta(const Mat& B, Mat& Ub, Vec& sigma, Mat& Vb_red, double ev_tol = 1e-12);`
 - `void trmatrix_test_sv_autoval(Vec lambda, const Vec& sigma);`
+
+## Funzioni per soluzioni di ODE con metodi iterativi                   <==>
+
+- `static double ode_oscillator_omega = 1.0;`    // tipico field
+- `void ode_set_oscillator_omega(double omega);` // tipico setter 
+- `double ode_scalar_rhs_decay(double t,double y);` // scalare: y' = lambda * y
+- `void ode_scalar_step_euler(double t,double h,double* y,double (*f)(double, double));`  // Passo Eulero scalare 
+- `void ode_scalar_step_heun(double t,double h,double* y, double (*f)(double, double));` // Passo Heun scalare
+- `void ode_vec2_rhs_oscillator(double t,const double* y,double* dydt,int n);`
+- `void ode_vecN_step_euler(double t,double h,double* y,int n, void (*f)(double,const double*,double*,int) );`  
+- `int ode_scalar_test_euler_decay(); // test di eulero sul decadimento (in R)`
+- `int ode_scalar_test_heun_decay();  // test di heun sul decadimento (in R)`
 
 ## Funzioni per matplot++
 

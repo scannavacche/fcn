@@ -282,12 +282,17 @@ double fcallb(
 // Funzioni per soluzioni di ODE con metodi iterativi
 //
 
-void ode_set_oscillator_omega(double omega) { // helper per cambiare frequenza all' osc armonico
+void ode_set_oscillator_omega(  // helper/setter per cambiare frequenza all' osc armonico
+    double omega) 
+{ 
     ode_oscillator_omega = omega;
 }
 
 // scalare: y' = lambda * y
-double ode_scalar_rhs_decay(double t, double y) {
+double ode_scalar_rhs_decay(
+    double t, 
+    double y) 
+{
     (void)t;
     const double lambda = -1.0;
     return lambda * y;
@@ -295,21 +300,30 @@ double ode_scalar_rhs_decay(double t, double y) {
 
 // Passo di Eulero scalare 
 
-void ode_scalar_step_euler(double t, double h, double* y,
-                           double (*f)(double, double)) {
+void ode_scalar_step_euler(
+    double t, 
+    double h, 
+    double* y,
+    double (*f)(double, double)) 
+{
     *y = *y + h * f(t, *y);
 }
 
 // Passo di Heun scalare (Eulero migliorato, ordine 2)
-void ode_scalar_step_heun(double t, double h, double* y,
-                          double (*f)(double, double)) {
+void ode_scalar_step_heun(
+    double t, 
+    double h, 
+    double* y,
+    double (*f)(double, double)) 
+{
     const double k1 = f(t, *y);
     const double k2 = f(t + h, *y + h * k1);
     *y = *y + 0.5 * h * (k1 + k2);
 }
 
 // test sul decadimento scalare
-int ode_scalar_test_euler_decay() {
+int ode_scalar_test_euler_decay() 
+{
     const double t0 = 0.0;
     const double T  = 5.0;
     const double h  = 0.1;
@@ -330,7 +344,8 @@ int ode_scalar_test_euler_decay() {
     return 0;
 }
 
-int ode_scalar_test_heun_decay() {
+int ode_scalar_test_heun_decay() 
+{
     const double t0 = 0.0;
     const double T  = 5.0;
     const double h  = 0.1;
@@ -354,9 +369,12 @@ int ode_scalar_test_heun_decay() {
 }
 
 // RHS vettoriale 2D (oscillatore)
-void ode_vec2_rhs_oscillator(double t,
-                             const double* y,
-                             double* dydt, int n) {
+void ode_vec2_rhs_oscillator(
+    double t,
+    const double* y,
+    double* dydt, 
+    int n) 
+{
     (void)t;
     (void)n; // assumiamo n == 2
     const double omega = ode_oscillator_omega;
@@ -369,9 +387,18 @@ void ode_vec2_rhs_oscillator(double t,
     dydt[1] = -omega * omega * y[0]; // p' = -omega^2 q
 }
 
-void ode_vecN_step_euler(double t, double h,
-                         double* y, int n,
-                         void (*f)(double, const double*, double*, int)) {
+void ode_vecN_step_euler(
+    double t, 
+    double h,
+    double* y, 
+    int n,
+    void (*f)(
+        double, 
+        const double*, 
+        double*, 
+        int)
+    ) 
+{
     std::vector<double> dydt(n);
     f(t, y, dydt.data(), n);
     for (int i = 0; i < n; ++i) {
