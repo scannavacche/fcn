@@ -10,7 +10,7 @@
 - `const double PI = std::acos(-1.0);`
 - `enum class SortOrder { Asc, Desc };`
 
-## funzioni di gestione interfaccia utente
+## Funzioni di gestione interfaccia utente
 
 - `void cin_clear();`
 - `void clear_screen()`
@@ -18,20 +18,20 @@
 - `string color_dbl(const double val);`
 - `void color_rst();`
 
-## funzioni di conversione formato ed equivalenza unita' di misura
+## Funzioni di conversione formato ed equivalenza unita' di misura
 
 - `std::string itostr(const int nn);`
 - `double deg2rad(const int alpha);`
 - `string format_numstr(double v);`
 
-## funzioni di base per intervalli
+## Funzioni di base per intervalli
 
 - `double h_ticks(const double a_start, const double a_stop, const int a_points);`
 - `Vec nodi_bubblesort(const Vec x_uns, const int totnum);`
 - `Vec nodi_equidistanti(const double amin, const double amax, const int NPoints);`
 - `Vec nodi_random(const double amin, const double amax, const int NPoints);`
 
-## funzioni matematiche ad uso callback
+## Funzioni matematiche ad uso callback
 
 - `double f_atan(double t);`        // arctan
 - `double f_atan_d(double t);`      // d/dt arctan(t) = 1 / (1 + t^2)
@@ -45,7 +45,7 @@
 - `double f_zero(double t);`        // costante 0 
 - `double fcallb(double t, double (*f)(double));`
 
-## funzioni macro algebra lineare
+## Funzioni macro algebra lineare
 
 - `Vec linear_subst_BW(const Mat &U, const Vec &y);`
 - `Vec linear_subst_FW(const Mat &L, const Vec &b);`
@@ -59,7 +59,7 @@
 - `double linear_max_autoval_pwr_any(const Mat& M, int max_iter, double tol);`
 - `double linear_max_autoval_pwr_AtA(const Mat& M, int max_iter, double tol);`
 
-## funzioni per la gestione di vettori e matrici
+## Funzioni per la gestione di vettori e matrici
 
 - `void matrix_build_cauchy(int n, double t0, double T, double z_bc, Vec &t, Vec &avals, Vec &fvals, Mat &L, Vec &b, double (*at)(double) = at_one, double (*ft)(double) = ft_zero, bool backw = false);`
 - `void matrix_build_cauchy_int(int n, double t0, double T, double x0, Vec &t, Vec &fvals, Mat &L, Vec &b, double (*ft)(double), bool backw);` // superata
@@ -163,7 +163,7 @@ Costante geometrica \(\pi\) calcolata tramite `acos(-1.0)`
 ### `enum class SortOrder { Asc, Desc };`
 Enumerazione per il riordino crescente o decrescente di autovalori, valori singolari e colonne associate
 
-## funzioni di gestione interfaccia utente
+## Funzioni di gestione interfaccia utente
 
 ### `cin_clear`
 
@@ -207,7 +207,7 @@ void color_rst();
 ```
 Ripristina il colore standard del terminale emettendo il codice ANSI di reset
 
-## funzioni di conversione formato ed equivalenza unita' di misura
+## Funzioni di conversione formato ed unita' di misura
 
 ### `itostr`
 
@@ -236,7 +236,7 @@ string format_numstr(
 ```
 Formatta un numero reale in notazione scientifica con due cifre decimali significative nel mantissa output
 
-## funzioni di base per intervalli
+## Funzioni di base per intervalli
 
 ### `h_ticks`
 
@@ -281,7 +281,7 @@ Vec nodi_random(
 ```
 Genera un vettore di nodi pseudo-casuali scalando campioni prodotti da `std::mt19937` sull’intervallo richiesto
 
-## funzioni matematiche ad uso callback
+## Funzioni matematiche ad uso callback
 
 ### `f_atan`
 
@@ -387,7 +387,7 @@ double fcallb(
 ```
 Wrapper generico per valutare una callback reale `f` nel punto `t`
 
-## funzioni macro algebra lineare
+## Funzioni macro algebra lineare
 
 ### `linear_subst_BW`
 
@@ -543,7 +543,7 @@ Applica il metodo delle potenze a una matrice quadrata già interpretata come \(
 - Il vettore iniziale è uniforme e normalizzato
 - La procedura è più semplice concettualmente, ma richiede che la matrice di input sia già stata costruita esplicitamente
 
-## funzioni per la gestione di vettori e matrici
+## Funzioni per la gestione di vettori e matrici
 
 ### `matrix_build_cauchy`
 
@@ -1241,7 +1241,7 @@ Mat vector_to_matrix_diag(
 ```
 Costruisce una matrice diagonale `m x n` usando gli elementi del vettore `s` sulla diagonale principale fino alla minima dimensione disponibile
 
-## funzioni specifiche di trasformazione matrici
+## Funzioni specifiche di trasformazione matrici
 
 ### `trmatrix_bidiagonalizza`
 
@@ -1368,42 +1368,46 @@ figure_handle matplot_table_init(
 ```
 Inizializza una figura Matplot++ con layout tiled, dimensioni fissate, nome finestra e titolo configurato
 
-## gestione menu principale
+## Funzioni di gestione menu principale
 
 ### `struct MenuItem`
-Struttura dati che rappresenta un elemento di menu con chiave numerica, etichetta, azione associata e flag di abilitazione
+```cpp
+struct MenuItem {
+    int key;
+    std::string label;
+    std::string action;
+    bool enabled;
+};
+```
+Struttura dati che rappresenta un elemento di menu con chiave numerica, etichetta, azione associata e flag di abilitazione.
 
 ### `struct MenuConfig`
-Struttura dati che rappresenta una configurazione di menu completa, con titolo e lista di `MenuItem`
+```cpp
+struct MenuConfig {
+    std::string title;
+    std::vector<MenuItem> items;
+};
+```
+Struttura dati che rappresenta una configurazione di menu completa, con titolo e lista di `MenuItem`.
 
 ### `load_menu_config`
-
 ```cpp
-MenuConfig load_menu_config(
-    const std::string& filename
-);
+MenuConfig load_menu_config(const std::string& filename);
 ```
-Carica una configurazione di menu da file JSON e costruisce la struttura `MenuConfig` corrispondente
+Carica una configurazione di menu da file JSON e costruisce la struttura `MenuConfig` corrispondente.
 
 **Note implementative**
-- La routine usa `nlohmann::json`, verifica la presenza dell’array `items` e lancia eccezioni in caso di file non accessibile o struttura non valida
-- Nel sorgente sono presenti messaggi di debug su working directory e dimensione del file letto
+- La routine usa `nlohmann::json`, verifica la presenza dell'array `items` e lancia eccezioni in caso di file non accessibile o struttura non valida.
+- Nel sorgente sono presenti messaggi di debug su working directory e dimensione del file letto.
 
 ### `find_menu_item`
-
 ```cpp
-const MenuItem* find_menu_item(
-    const MenuConfig& menu,
-    int key
-);
+const MenuItem* find_menu_item(const MenuConfig& menu, int key);
 ```
-Restituisce un puntatore all’elemento di menu con chiave `key`, oppure `nullptr` se non trovato
+Restituisce un puntatore all'elemento di menu con chiave `key`, oppure `nullptr` se non trovato.
 
 ### `wait_return_to_menu`
-
 ```cpp
-void wait_return_to_menu(
-    bool bypass_waitakey
-);
+void wait_return_to_menu(bool bypass_waitakey);
 ```
-Attende il tasto INVIO prima del ritorno al menu, salvo disattivazione esplicita tramite `bypass_waitakey`
+Attende il tasto INVIO prima del ritorno al menu, salvo disattivazione esplicita tramite `bypass_waitakey`.
