@@ -1,0 +1,1 @@
+pandoc fcn_all_lib.md -o fcn_all_lib.pdf --pdf-engine=xelatex -V geometry:"top=1.6cm, bottom=1.6cm, left=2cm, right=2cm"  --from=markdown+tex_math_single_backslash -V header-includes="\usepackage{needspace}"

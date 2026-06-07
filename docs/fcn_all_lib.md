@@ -111,6 +111,9 @@
 - `double vector_somma(const Vec &u, const Vec &v);`
 - `Mat vector_to_matrix(const Vec& v, bool transp);`
 - `Mat vector_to_matrix_diag(const Vec& s, int m, int n);`
+
+## Funzioni di trasformazione matrici
+
 - `void trmatrix_bidiagonalizza(const Mat& A, Mat& U0, Mat& B, Mat& V0, bool sup_diag = false, bool dump_flag = false);`
 - `void trmatrix_bidiag_wide_to_lower(const Mat& X, Mat& U0, Mat& B, Mat& V0, bool dump_flag);`
 - `void trmatrix_bidiag_wide_to_upper(const Mat& X, Mat& U0, Mat& B, Mat& V0, bool dump_flag);`
