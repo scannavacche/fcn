@@ -213,8 +213,7 @@ double f_x(double t) {
 }
 double f_x1(double t) {
     const double eps = 1e-12;
-    return 1.0 / (std::abs(t) < eps ? std::copysign(eps, t) : t);}
-    
+    return 1.0 / (std::abs(t) < eps ? std::copysign(eps, t) : t);} 
 double f_sin(double t) {
     return  std::sin(t); // esempio: f(t) = sin(t)
 }
@@ -253,6 +252,10 @@ double fcallb(
 //
 // Funzioni per soluzioni di ODE con metodi iterativi
 //
+
+void ode_set_oscillator_omega(double omega) { // helper per cambiare frequenza all' osc armonico
+    ode_oscillator_omega = omega;
+}
 
 // scalare: y' = lambda * y
 double ode_scalar_rhs_decay(double t, double y) {
@@ -327,10 +330,14 @@ void ode_vec2_rhs_oscillator(double t,
                              double* dydt, int n) {
     (void)t;
     (void)n; // assumiamo n == 2
-    const double a11 = 0.0, a12 = 1.0;
-    const double a21 = -1.0, a22 = 0.0;
-    dydt[0] = a11 * y[0] + a12 * y[1];
-    dydt[1] = a21 * y[0] + a22 * y[1];
+    const double omega = ode_oscillator_omega;
+
+    // const double a11 = 0.0, a12 = 1.0;
+    // const double a21 = -1.0, a22 = 0.0;
+    // dydt[0] = a11 * y[0] + a12 * y[1];
+    // dydt[1] = a21 * y[0] + a22 * y[1];
+    dydt[0] = y[1];                  // q' = p
+    dydt[1] = -omega * omega * y[0]; // p' = -omega^2 q
 }
 
 void ode_vecN_step_euler(double t, double h,

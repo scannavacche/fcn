@@ -112,6 +112,11 @@ double fcallb(
 // Funzioni per soluzioni di ODE con metodi iterativi
 //
 
+static double ode_oscillator_omega = 1.0;
+
+void ode_set_oscillator_omega(
+    double omega);
+
 double ode_scalar_rhs_decay(   
     double t, 
     double y);   // scalare: y' = lambda * y
@@ -129,6 +134,25 @@ void ode_scalar_step_heun(
     double* y,
     double (*f)(double, double)); // Passo di Heun scalare (Eulero migliorato, ordine 2)
 
+void ode_vec2_rhs_oscillator(
+    double t,
+    const double* y,
+    double* dydt, 
+    int n);
+
+void ode_vecN_step_euler(
+    double t, 
+    double h,
+    double* y, 
+    int n,
+    void (*f)(
+        double, 
+        const double*, 
+        double*, 
+        int
+    )
+);
+    
 int ode_scalar_test_euler_decay(); // test di eulero sul decadimento (in R)
 int ode_scalar_test_heun_decay();  // test di heun sul decadimento (in R)
 //
