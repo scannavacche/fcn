@@ -13,7 +13,7 @@
 ## funzioni di gestione interfaccia utente
 
 - `void cin_clear();`
-- `clear_screen()`
+- `void clear_screen()`
 - `string color_bool(const bool val);`
 - `string color_dbl(const double val);`
 - `void color_rst();`
@@ -83,7 +83,7 @@
 - `Mat matrix_completa_ridotta(const Mat& A);`
 - `void matrix_dump(const Mat &A, const std::string &nome);`
 - `Mat matrix_estende_ridotta(const Mat& A, int n, bool bycol);`
-- `Mat matrix_householder_reflector(const Vec& v);
+- `Mat matrix_householder_reflector(const Vec& v);`
 - `Mat matrix_normalize_byrow(Mat& K);`
 - `void matrix_ordina_diagonale(Vec& lambda, Mat& V, double zero_tol = 0.0, SortOrder order = SortOrder::Desc);`
 - `void matrix_ortogonalizza_GSmod(Mat& Q, int j0 = 0);`
@@ -103,7 +103,7 @@
 - `Vec vector_campiona_f(const Vec &x, double (*ft)(double));`
 - `Vec vector_campiona_f_k(int k, const Vec &x, double (*ft)(double));`
 - `void vector_dump(Vec x, int colspan, int totnum, const std::string s);`
-- `Vec vector_householder_reflected(const Vec& v);'
+- `Vec vector_householder_reflected(const Vec& v);`
 - `Vec vector_prodotto_coeff(const Vec& v);`
 - `double vector_prodotto_scalare(const Vec &u, const Vec &v);`
 - `Vec vector_reverse(const Vec& v);`
