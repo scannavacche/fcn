@@ -2893,7 +2893,7 @@ void ode_vecN_step_euler(
     double h,
     double* y,               // equivalente a Vec& y 
     int n,                   // equivalente a Vec& y se n == y.size()
-    void (*f)(
+    void (*rhs)(            // puoi chiamarla anche nando, e' la f a secondo membro
         double, 
         const double*, 
         double*, 
@@ -2901,12 +2901,92 @@ void ode_vecN_step_euler(
     ) 
 {
     std::vector<double> dydt(n);
-    f(t, y, dydt.data(), n);
+    rhs(t, y, dydt.data(), n);
     for (int i = 0; i < n; ++i) {
         y[i] += h * dydt[i];
     }
 }
 
+void ode_vecN_step_heun(
+    double t,
+    double h,
+    double* y,
+    int n,
+    void (*rhs)(
+        double, 
+        const double*, 
+        double*, 
+        int)
+    )
+{
+    std::vector<double> k1(n), k2(n), ytmp(n);
+
+    rhs(t, y, k1.data(), n);                  // k1
+
+    for (int i = 0; i < n; ++i)
+        ytmp[i] = y[i] + h * k1[i];           // predictor
+
+    rhs(t + h, ytmp.data(), k2.data(), n);    // k2
+
+    for (int i = 0; i < n; ++i)
+        y[i] += 0.5 * h * (k1[i] + k2[i]);    // corrector
+}
+void ode_vecN_step_rk2(
+    double t,
+    double h,
+    double* y,
+    int n,
+    void (*rhs)(
+        double, 
+        const double*, 
+        double*, 
+        int)
+    )
+{
+    std::vector<double> k1(n), k2(n), ytmp(n);
+
+    rhs(t, y, k1.data(), n);
+
+    for (int i = 0; i < n; ++i)
+        ytmp[i] = y[i] + 0.5 * h * k1[i];
+
+    rhs(t + 0.5 * h, ytmp.data(), k2.data(), n);
+
+    for (int i = 0; i < n; ++i)
+        y[i] += h * k2[i];
+}
+
+void ode_vecN_step_rk4(
+    double t,
+    double h,
+    double* y,
+    int n,
+    void (*rhs)(
+        double, 
+        const double*, 
+        double*, 
+        int)
+    )
+{
+    std::vector<double> k1(n), k2(n), k3(n), k4(n), ytmp(n);
+
+    rhs(t, y, k1.data(), n);
+
+    for (int i = 0; i < n; ++i)
+        ytmp[i] = y[i] + 0.5 * h * k1[i];
+    rhs(t + 0.5 * h, ytmp.data(), k2.data(), n);
+
+    for (int i = 0; i < n; ++i)
+        ytmp[i] = y[i] + 0.5 * h * k2[i];
+    rhs(t + 0.5 * h, ytmp.data(), k3.data(), n);
+
+    for (int i = 0; i < n; ++i)
+        ytmp[i] = y[i] + h * k3[i];
+    rhs(t + h, ytmp.data(), k4.data(), n);
+
+    for (int i = 0; i < n; ++i)
+        y[i] += (h / 6.0) * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]);
+}
 // test sul decadimento scalare
 int ode_scalar_test_euler_decay() 
 {

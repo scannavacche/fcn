@@ -590,6 +590,45 @@ void ode_vecN_step_euler(
     )
 );
 
+void ode_vecN_step_heun(
+    double t,
+    double h,
+    double* y,
+    int n,
+    void (*rhs)(
+        double, 
+        const double*, 
+        double*, 
+        int
+    )
+);
+
+void ode_vecN_step_rk2(
+    double t,
+    double h,
+    double* y,
+    int n,
+    void (*rhs) (
+        double, 
+        const double*, 
+        double*, 
+        int
+    )
+);
+
+void ode_vecN_step_rk4(
+    double t,
+    double h,
+    double* y,
+    int n,
+    void (*rhs)(
+        double, 
+        const double*, 
+        double*, 
+        int
+    )
+);
+
 // Funzioni di test per iterazioni su ODE gia' accantonati in file fcn_ode_test.cpp
 // I test ormai sono implementati direttamente nel main 
 

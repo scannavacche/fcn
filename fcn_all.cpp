@@ -3006,12 +3006,12 @@ void ErrorPlot_Oscillator(
                             //
                             // Oscillatore libero 
                             //
-                            ode_vecN_step_euler(t, h, y, 2 , ode_vec2_rhs_oscillator);
+                            ode_vecN_step_rk4(t, h, y, 2 , ode_vec2_rhs_oscillator);
                         } else {
                             //
                             // Oscillatore smorzato 
                             //
-                            ode_vecN_step_euler(t, h, y, 2 , ode_vec2_rhs_damped);
+                            ode_vecN_step_rk4(t, h, y, 2 , ode_vec2_rhs_damped);
                         }
                         q_euler_mat[k][i+1] = y[0];
                         p_euler_mat[k][i+1] = y[1]; 
