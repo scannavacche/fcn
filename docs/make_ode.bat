@@ -1,0 +1,1 @@
+pandoc odestack.md -o odestack.pdf --pdf-engine=xelatex -V geometry:"top=1.6cm, bottom=1.6cm, left=2cm, right=2cm"  --from=markdown+tex_math_single_backslash -V header-includes="\usepackage{needspace}"

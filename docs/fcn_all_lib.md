@@ -96,6 +96,7 @@
 - `Mat matrix_prodotto_AtA(const Mat& A, bool A_right = true);`
 - `Mat matrix_prodotto_matrix(const Mat& A, const Mat& B);`
 - `Vec matrix_prodotto_vector(const Mat& A, const Vec& v);`
+- `Mat matrix_swap_cols(const Mat& A, int i, int j)` 
 - `Mat matrix_swap_rows(const Mat& A, int i, int j)` 
 - `void matrix_test_ortogonale(const Mat& A, string s);`
 - `Mat matrix_trasposta(const Mat& A);`
@@ -111,7 +112,7 @@
 - `void vector_dump(Vec x, int colspan, int totnum, const std::string s);`
 - `Vec vector_householder_reflected(const Vec& v);` // passaggio unico solo per prog specifici
 - `Vec vector_householder_apply(const Vec& v, const Vec& w);` // v colonna da lavorare, w generatore di refl
-- `Vec vector_prodotto_coeff(const Vec v,double mu);
+- `Vec vector_prodotto_coeff(const Vec v,double mu);`
 - `double vector_prodotto_scalare(const Vec &u, const Vec &v);`
 - `Vec vector_reverse(const Vec& v);`
 - `Vec vector_shift(const Vec &v, const double shift);`
