@@ -5,10 +5,8 @@
 - `using Vec = std::vector<double>;`
 - `using VecN = std::vector<int>;`
 - `using Mat = std::vector<Vec>;`
-- `using VecStr = std::vector<std::string>;`    <==>
-- `using MatStr = std::vector<VecStr>;`         <==>
-
-
+- `using VecStr = std::vector<std::string>;` <==>
+- `using MatStr = std::vector<VecStr>;`   <==>
 - `using KM = matplot::keyword_manual_type;`
 - `using KA = matplot::keyword_automatic_type;`
 - `const double PI = std::acos(-1.0);`
@@ -134,12 +132,14 @@
 - `void ode_scalar_step_euler(double t,double h,double* y,double (*f)(double, double));`  // Passo Eulero scalare 
 - `void ode_scalar_step_heun(double t,double h,double* y, double (*f)(double, double));` // Passo Heun scalare
 - `void ode_vec2_rhs_oscillator(double t,const double* y,double* dydt,int n);`
-- `void ode_vecN_step_euler(double t,double h,double* y,int n, void (*f)(double,const double*,double*,int) );`  
+- `void ode_vecN_step_euler(double t,double h,double* y,int n,`
+		`void (*f)(double,const double*,double*,int) );`  
 - `int ode_scalar_test_euler_decay(); // test di eulero sul decadimento (in R)`
 - `int ode_scalar_test_heun_decay();  // test di heun sul decadimento (in R)`
 
 ## Funzioni per matplot++
 
+- `enum LeAl : int {Auto= -1,Left=0,HCenter=1,Right=2,Bottom=4,VCenter=8,Top=12};`
 - `void matplot_legend_align(legend_handle lg, int pos_enum, float xscale, float yscale);`
 - `figure_handle matplot_table_init(const bool ahold, const std::string &nome, const std::string &titolo, const int xlab, const int ylab);`
 
