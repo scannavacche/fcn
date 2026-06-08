@@ -61,6 +61,8 @@
 - `double linear_max_autoval_pwr_any_res(const Mat& M, int max_iter, double tol);`
 - `double linear_max_autoval_pwr_any(const Mat& M, int max_iter, double tol);`
 - `double linear_max_autoval_pwr_AtA(const Mat& M, int max_iter, double tol);`
+- `void linear_QR_dec(const Mat &A, Mat &Q, Mat &R);`
+- `void linear_QR_least_squares(const Mat& A,const Vec& b,Vec& x,double& residuo);`
 
 ## Funzioni per la gestione di vettori e matrici
 
@@ -107,8 +109,9 @@
 - `Vec vector_campiona_f(const Vec &x, double (*ft)(double));`
 - `Vec vector_campiona_f_k(int k, const Vec &x, double (*ft)(double));`
 - `void vector_dump(Vec x, int colspan, int totnum, const std::string s);`
-- `Vec vector_householder_reflected(const Vec& v);`
-- `Vec vector_prodotto_coeff(const Vec& v);`
+- `Vec vector_householder_reflected(const Vec& v);` // passaggio unico solo per prog specifici
+- `Vec vector_householder_apply(const Vec& v, const Vec& w);` // v colonna da lavorare, w generatore di refl
+- `Vec vector_prodotto_coeff(const Vec v,double mu);
 - `double vector_prodotto_scalare(const Vec &u, const Vec &v);`
 - `Vec vector_reverse(const Vec& v);`
 - `Vec vector_shift(const Vec &v, const double shift);`
@@ -127,18 +130,65 @@
 
 ## Funzioni per soluzioni di ODE con metodi iterativi                   <==>
 
-- `static double ode_oscillator_omega = 1.0;`    // tipico field
-- `void ode_set_oscillator_omega(double omega);` // tipico setter 
+### Struct, enum, fields, getters and setters di var globali per lo stack ODE 
+
+- `struct ode_LotkaVolterraParams {double alpha;double beta;double gamma;double delta};`
+- `extern ode_LotkaVolterraParams ode_g_lotka_volterra;`
+- `void ode_set_lotka_volterra_params(double alpha,double beta,double gamma,double delta);`
+- `void ode_get_lotka_volterra_params(double& alpha,double& beta,double& gamma,double& delta);`
+- `extern double ode_oscillator_omega;`
+- `extern double ode_oscillator_gamma;`
+- `void ode_set_oscillator_omega(double omega);`
+- `void ode_set_oscillator_gamma(double gamma);`
+- `struct ode_LogisticParams { double r; double K; double y0};`
+- `extern ode_LogisticParams ode_g_logistic;`
+- `void ode_set_logistic_params(double r, double k, double y0);`
+
+### calcoli dei valori esatti per stima dell' errore
+
+- `double ode_scalar_exact_logistic( double t); `
+- `double ode_vec2_exact_damped_q( double t, double q0, double p0);`
+- `double ode_vec2_exact_damped_p( double t, double q0, double p0);`
+- `double ode_vec2_exact_oscillator_q(double t,double q0,double p0);`
+- `double ode_vec2_exact_oscillator_p(double t,double q0,double p0);`
+
+### Scalar RHS membro di destra (L' ODE vera e propria da "cablare" una funct per ogni problema)
+
 - `double ode_scalar_rhs_decay(double t,double y);` // scalare: y' = lambda * y
 - `double ode_scalar_rhs_logistic(double t,double y)` // scalare: y' = (r/K) * y(K-y)
+
+### Scalar Stepper (Il metodo iterativo vero e proprio)
+
 - `void ode_scalar_step_euler(double t,double h,double* y, double (*f)(double, double));`  // Passo Eulero scalare 
 - `void ode_scalar_step_heun(double t,double h,double* y, double (*f)(double, double));` // Passo Heun scalare
 - `void ode_scalar_step_rk4(double t,double h,double* y, double (*rhs)(double, double));` // Passo RK4 scalare
-- `void ode_vec2_rhs_oscillator(double t,const double* y,double* dydt,int n);`
+
+### Vector RHS membro di destra (L' ODE vera e propria da "cablare" una funct per ogni problema)
+
+- `void ode_vec2_rhs_damped(double t, const double* y, double* dydt, int n);`
+- `void ode_vec2_rhs_lotkavolterra(double t, const double* y, double* dydt, int n);`
+- `void ode_vec2_rhs_oscillator(double t,const double* y,double* dydt, int n);`
+
+### Vector Stepper (Il metodo iterativo vero e proprio)
+
 - `void ode_vecN_step_euler(double t,double h,double* y,int n,`
-		`void (*f)(double,const double*,double*,int) );`  
-- `int ode_scalar_test_euler_decay(); // test di eulero sul decadimento (in R)`
-- `int ode_scalar_test_heun_decay();  // test di heun sul decadimento (in R)`
+    `void (*rhs)(double,const double*,double*,int) );`
+- `void ode_vecN_step_heun(double t,double h,double* y,int n,`
+    `void (*rhs)(double,const double*,double*,int) );`
+- `void ode_vecN_step_rk2(double t,double h,double* y,int n,`
+    `void (*rhs) (double,const double*,double*,int) );`
+- `void ode_vecN_step_rk4(double t,double h,double* y,int n,`
+    `void (*rhs)(double,const double*,double*,int) );`
+
+### Motori di test, non utilizzati perche' si lavora subito con step+rhs, proliferano troppo
+ 
+    Gia' copiati in fcn_ode_test.cpp e da qui spariranno
+
+- `int ode_scalar_test_euler_decay();` // test di eulero sul decadimento (in R)
+- `int ode_scalar_test_euler_logistic();`
+- `int ode_scalar_test_heun_decay();`  // test di heun sul decadimento (in R)
+- `int ode_scalar_test_heun_logistic();`
+- `int ode_scalar_test_rungekutta4_decay();` // test di runge-kutta 4th sul decadimento (in R)
 
 ## Funzioni per matplot++
 

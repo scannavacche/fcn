@@ -549,13 +549,13 @@ double ode_scalar_rhs_logistic(
     double t,
     double y);
 
+    // Stepper scalari (Metodi) 
+
 void ode_scalar_step_euler(
     double t, 
     double h, 
     double* y,
     double (*f)(double, double));   // Passo di Eulero scalare 
-
-// Stepper scalari (Metodi) 
 
 void ode_scalar_step_heun(
     double t, 
