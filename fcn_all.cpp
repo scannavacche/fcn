@@ -2899,34 +2899,37 @@ void ErrorPlot_Oscillator(
 
         const double a = 0.0;
         double b = 5.0;
-
+        //
+        // init per oscillatori 
+        //
+        double omega = ode_oscillator_omega;
+        double gamma = ode_oscillator_gamma;
         double q0 = 1.0;     // condizione al bordo q(t0)
         double p0 = 1.0;     // condizione al bordo p(t0)
-        double omega = ode_oscillator_omega;
-
+        bool damped = false;
         bool leave = false;
         bool redo = false;
         MatStr Table_des(4, VecStr(5));
         Table_des[0][0] = "q(t) vs t con ";
-        Table_des[0][1] = "Oscillatore 2D: q(t) = q0 * cos(wt) + p0/w * sin(wt)";
+        Table_des[0][1] = std::string(22, ' ') + "q(t) = q0 * cos(wt) + p0/w * sin(wt)";
         Table_des[0][2] = "Eulero";
         Table_des[0][3] = "Esatta";
         Table_des[0][4] = "green";
 
         Table_des[1][0] = "p(t) vs t con "; 
-        Table_des[1][1] = "Oscillatore 2D: p(t) = -w * q0 sin(wt) + p0 * cos(wt)";
+        Table_des[1][1] = std::string(22, ' ') + "p(t) = -w * q0 sin(wt) + p0 * cos(wt)";
         Table_des[1][2] = "Eulero";
         Table_des[1][3] = "Esatta";
         Table_des[1][4] = "cyan";
 
         Table_des[2][0] = "q(t) vs p(t) con "; 
-        Table_des[2][1] = "Oscillatore 2D: diagramma di fase";
+        Table_des[2][1] = std::string(22, ' ') + "diagramma di fase";
         Table_des[2][2] = "Eulero";
         Table_des[2][3] = "Esatta";
         Table_des[2][4] = "red";
 
         Table_des[3][0] = "Error(t)"; 
-        Table_des[3][1] = "Oscillatore 2D: errore nel tempo";
+        Table_des[3][1] = std::string(22, ' ') + "errore nel tempo";
         Table_des[3][2] = "Errore q(t)";
         Table_des[3][3] = "Errore p(t)";
         Table_des[3][4] = "green";
@@ -2934,7 +2937,198 @@ void ErrorPlot_Oscillator(
         while (!leave) {
             clear_screen();
             redo = false;
-            ode_set_oscillator_omega(omega); // loop successivi, se reimpostato utente
+            for (int istage = 0; istage < 2; istage ++ ) {
+                for (int ipanel = 0; ipanel<4; ipanel++) {
+                    if (istage == 0) {
+                        Table_des[ipanel][1].replace(0, 22, "Oscillatore libero:   ");
+                        damped = false;
+                    } else {
+                        Table_des[ipanel][1].replace(0, 22, "Oscillatore smorzato  ");
+                        damped = true;
+                    }
+                }
+                ode_set_oscillator_omega(omega); // loop successivi, se reimpostato utente
+                ode_set_oscillator_gamma(gamma); // loop successivi, se reimpostato utente
+
+                // vettori di soluzione(matrici con un vettore per nodelist 0..3)
+    
+                Mat q_euler_mat(4);
+                Mat p_euler_mat(4);
+                Mat q_exact_mat(4);
+                Mat p_exact_mat(4);
+                Mat t_nodes_mat(4);
+
+
+
+                for (int k = 0; k < nN; ++k) {
+                    const int N = N_values[k];  
+
+                    if (N <= 0) continue;
+
+                    q_euler_mat[k].resize(N + 1);
+                    p_euler_mat[k].resize(N + 1);
+                    q_exact_mat[k].resize(N + 1);
+                    p_exact_mat[k].resize(N + 1);
+                    t_nodes_mat[k].resize(N + 1);
+
+                    // passo e nodi equidistanti
+                    const double h = h_ticks(a, b, N+1); // n_ticks vuole nodi
+                    t_nodes_mat[k] = nodi_equidistanti(a, b, N+1); // dovrebbe riempire t_nodes con N_values[k]+1 nodi
+
+                    double p0_w = p0 / omega; 
+                    double w_q0 = - omega * q0; 
+                    double y[2];   // stato: y[0] = q, y[1] = p
+                    y[0] = q0;
+                    y[1] = p0;
+
+                    // condizioni iniziali
+                    q_euler_mat[k][0] = y[0];
+                    p_euler_mat[k][0] = y[1];
+                    q_exact_mat[k][0] = y[0];
+                    p_exact_mat[k][0] = y[1];
+
+                    for (int i = 0; i < N; ++i) {
+                        double t = t_nodes_mat[k][i];
+                            // In questo punto il problema è vettoriale:
+                            //   - y è lo stato del sistema: y[0] = q, y[1] = p
+                            //   - 2 è la dimensione logica del sistema (numero di componenti)
+                            // Lo stepper lavora in stile C: (double* y, int n, rhs).
+                            //
+                            // Esempi di chiamata:
+                            //
+                            // double y[2];  // stato corrente
+                            // ode_vecN_step_euler(t, h, y, 2, ode_vec2_rhs_oscillator);
+                            //
+                            // Vec y(2, 0.0);
+                            // ode_vecN_step_euler(t, h, y, y.size(), ode_vec2_rhs_oscillator);
+                            // 
+                        if (istage == 0) {
+                            //
+                            // Oscillatore libero 
+                            //
+                            ode_vecN_step_euler(t, h, y, 2 , ode_vec2_rhs_oscillator);
+                        } else {
+                            //
+                            // Oscillatore smorzato 
+                            //
+                            ode_vecN_step_euler(t, h, y, 2 , ode_vec2_rhs_damped);
+                        }
+                        q_euler_mat[k][i+1] = y[0];
+                        p_euler_mat[k][i+1] = y[1]; 
+                        // std::cout << "omega local  = " << omega << "\n";
+                        // std::cout << "omega global = " << ode_oscillator_omega << "\n";
+
+                        // originale oscillatore libero 
+                        // double wt = omega * t_nodes_mat[k][i+1];  
+                        // q_exact_mat[k][i+1] = q0 * f_cos(wt) + p0_w * f_sin(wt);
+                        // p_exact_mat[k][i+1] = w_q0 * f_sin(wt) + p0 * f_cos(wt);
+                        if (istage == 0) {
+                            //
+                            // Oscillatore libero 
+                            //
+                            // rifatta su param globali oscillatore libero 
+                            q_exact_mat[k][i+1] = ode_vec2_exact_oscillator_q(t_nodes_mat[k][i+1], q0, p0);
+                            p_exact_mat[k][i+1] = ode_vec2_exact_oscillator_p(t_nodes_mat[k][i+1], q0, p0);
+                        } else {
+                            //
+                            // Oscillatore smorzato 
+                            //
+                            // su param globali per oscillatore smorzato 
+                            q_exact_mat[k][i+1] = ode_vec2_exact_damped_q(t_nodes_mat[k][i+1], q0, p0);
+                            p_exact_mat[k][i+1] = ode_vec2_exact_damped_p(t_nodes_mat[k][i+1], q0, p0);
+                        }
+                    }
+                }
+
+                TablePlot_Oscillator(
+                    0,              // qui gli devo passare quale table plottare
+                    q_euler_mat, q_exact_mat, t_nodes_mat,
+                    N_values, Table_des 
+                );
+
+
+                TablePlot_Oscillator(
+                    1,              // qui gli devo passare quale table plottare
+                    p_euler_mat, p_exact_mat, t_nodes_mat,
+                    N_values, Table_des 
+                );
+
+                PhasePlot_Oscillator(
+                    2, 
+                    q_euler_mat, p_euler_mat,
+                    q_exact_mat, p_exact_mat,
+                    N_values, Table_des
+                );
+
+                ErrorPlot_Oscillator(
+                    3,                  
+                    q_euler_mat, q_exact_mat,
+                    p_euler_mat, p_exact_mat,
+                    t_nodes_mat, N_values, Table_des
+                );
+
+                /*
+                            manc`a solo questa tabellina sull' errore globale
+                            
+                max_abs_err_q[k] = max_j |q_euler_mat[k][j] - q_exact_mat[k][j]|,
+
+                max_abs_err_p[k] = max_j |p_euler_mat[k][j] - p_exact_mat[k][j]|           
+                */
+            }   
+
+            redo = false;
+            while (!redo && !leave) {
+                std::cout << "Inserire nuovo max b 0 .. 100 (<q> per uscire) > ";
+
+                cin_clear();
+
+                if (std::cin >> b) { if (b>=0 && b<=100) redo=true;} else {cout << "Key: " << b <<endl; leave=true;} ;
+                if (!leave) {
+                    std::cout << "Inserire nuovo valore iniziale p0=q0 (<q> per uscire) > " ;
+                    if (std::cin >> p0) { if (p0>=a && p0<=b) redo=true;} else {cout << "Key: " << p0 <<endl; leave=true;} ;
+                    if (!leave) {
+                        std::cout << "Inserire nuova frequenza omega > 0 (<q> per uscire) > " ;
+                        if (std::cin >> omega) { if (omega>0 && omega<=10) redo=true;} else {cout << "Key: " << omega <<endl; leave=true;} ;
+                        if (!leave && damped) {
+                            std::cout << "Inserire nuova att gamma > 0 (<q> per uscire) > " ;
+                            if (std::cin >> gamma) { if (gamma>0 && gamma<=10) redo=true;} else {cout << "Key: " << gamma <<endl; leave=true;} ;
+                        };
+                    };
+                };
+                cin_clear();
+            };
+        };
+    };
+
+    void ode_lotkav() {
+        //
+        // confronto Eulero-Heun test runner
+        //
+        int N_values[] = {50, 100, 200, 400}; // numero di intervalli (i nodi sono +1)  su cui iterare 
+        int nN = 4;  // dimensione di N_values
+
+        const double a = 0.0;
+        double b = 10.0;
+
+        double alpha, beta, gamma, delta;
+        ode_get_lotka_volterra_params(alpha, beta, gamma, delta);
+
+        double q0 = 1.2;     // condizione al bordo x(t0)
+        double p0 = 0.8;     // condizione al bordo y(t0)
+
+        bool leave = false;
+        bool redo = false;
+        MatStr Table_des(4, VecStr(5));
+        Table_des[2][0] = "q(t) vs p(t) con "; 
+        Table_des[2][1] = "Oscillatore 2D: diagramma di fase";
+        Table_des[2][2] = "Eulero";
+        Table_des[2][3] = "Esatta";
+        Table_des[2][4] = "red";
+
+        while (!leave) {
+            clear_screen();
+            redo = false;
+            ode_get_lotka_volterra_params(alpha, beta, gamma, delta); // reimpostato da user per next loop
 
             // vettori di soluzione(matrici con un vettore per nodelist 0..3)
  
@@ -2961,8 +3155,6 @@ void ErrorPlot_Oscillator(
                 const double h = h_ticks(a, b, N+1); // n_ticks vuole nodi
                 t_nodes_mat[k] = nodi_equidistanti(a, b, N+1); // dovrebbe riempire t_nodes con N_values[k]+1 nodi
 
-                double p0_w = p0 / omega; 
-                double w_q0 = - omega * q0; 
                 double y[2];   // stato: y[0] = q, y[1] = p
                 y[0] = q0;
                 y[1] = p0;
@@ -2975,27 +3167,33 @@ void ErrorPlot_Oscillator(
 
                 for (int i = 0; i < N; ++i) {
                     double t = t_nodes_mat[k][i];
-                    ode_vecN_step_euler(t, h, y, 2 , ode_vec2_rhs_oscillator);
+                        // In questo punto il problema è vettoriale:
+                        //   - y è lo stato del sistema: y[0] = q, y[1] = p
+                        //   - 2 è la dimensione logica del sistema (numero di componenti)
+                        // Lo stepper lavora in stile C: (double* y, int n, rhs).
+                        //
+                        // Esempi di chiamata:
+                        //
+                        // double y[2];  // stato corrente
+                        // ode_vecN_step_euler(t, h, y, 2, ode_vec2_rhs_oscillator);
+                        //
+                        // Vec y(2, 0.0);
+                        // ode_vecN_step_euler(t, h, y, y.size(), ode_vec2_rhs_oscillator);
+                        // 
+                    //
+                    // Lotka-Volterra
+                    //
+                    ode_vecN_step_euler(t, h, y, 2 , ode_vec2_rhs_lotkavolterra);
+
                     q_euler_mat[k][i+1] = y[0];
                     p_euler_mat[k][i+1] = y[1]; 
-                    double wt = omega * t_nodes_mat[k][i+1];  
-                    q_exact_mat[k][i+1] = q0 * f_cos(wt) + p0_w * f_sin(wt);
-                    p_exact_mat[k][i+1] = w_q0 * f_sin(wt) + p0 * f_cos(wt);  
+
+                    q_exact_mat[k][i+1] = 0; // ci interessa solo il phase diag, niente err
+                    p_exact_mat[k][i+1] = 0; // 
+
                 }
             }
 
-            TablePlot_Oscillator(
-                0,              // qui gli devo passare quale table plottare
-                q_euler_mat, q_exact_mat, t_nodes_mat,
-                N_values, Table_des 
-            );
-
-
-            TablePlot_Oscillator(
-                1,              // qui gli devo passare quale table plottare
-                p_euler_mat, p_exact_mat, t_nodes_mat,
-                N_values, Table_des 
-            );
 
             PhasePlot_Oscillator(
                 2, 
@@ -3004,12 +3202,6 @@ void ErrorPlot_Oscillator(
                 N_values, Table_des
             );
 
-            ErrorPlot_Oscillator(
-                3,                  
-                q_euler_mat, q_exact_mat,
-                p_euler_mat, p_exact_mat,
-                t_nodes_mat, N_values, Table_des
-            );
 
             /*
                         manc`a solo questa tabellina sull' errore globale
@@ -3028,17 +3220,30 @@ void ErrorPlot_Oscillator(
 
                 if (std::cin >> b) { if (b>=0 && b<=100) redo=true;} else {cout << "Key: " << b <<endl; leave=true;} ;
                 if (!leave) {
-                    std::cout << "Inserire nuovo valore iniziale p0=q0 (<q> per uscire) > " ;
+                    std::cout << "Inserire nuovo valore iniziale x0=y0 (<q> per uscire) > " ;
                     if (std::cin >> p0) { if (p0>=a && p0<=b) redo=true;} else {cout << "Key: " << p0 <<endl; leave=true;} ;
                     if (!leave) {
-                        std::cout << "Inserire nuova frequenza w > 0 (<q> per uscire) > " ;
-                        if (std::cin >> omega) { if (omega>0 && omega<=10) redo=true;} else {cout << "Key: " << omega <<endl; leave=true;} ;
+                        std::cout << "Inserire alpha - crescita preda > 0 (<q> per uscire) > " ;
+                        if (std::cin >> alpha) { if (alpha>0 && alpha<=10) redo=true;} else {cout << "Key: " << alpha <<endl; leave=true;} ;
+                        if (!leave) {
+                            std::cout << "Inserire beta - predazione > 0 (<q> per uscire) > " ;
+                            if (std::cin >> beta) { if (beta>0 && beta<=10) redo=true;} else {cout << "Key: " << beta <<endl; leave=true;} ;
+                            if (!leave) {
+                                std::cout << "Inserire gamma - mortalita' predatori > 0 (<q> per uscire) > " ;
+                                if (std::cin >> gamma) { if (gamma>0 && gamma<=10) redo=true;} else {cout << "Key: " << gamma <<endl; leave=true;} ;
+                                if (!leave) {
+                                    std::cout << "Inserire delta - accoppiamento predatori > 0 (<q> per uscire) > " ;
+                                    if (std::cin >> delta) { if (delta>0 && delta<=10) redo=true;} else {cout << "Key: " << delta <<endl; leave=true;} ;
+                                };
+                            };
+                        };
                     };
                 };
                 cin_clear();
             };
         };
     };
+
 
     void sandbox(){
         //

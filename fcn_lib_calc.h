@@ -456,7 +456,39 @@ void trmatrix_test_sv_autoval(
 // Funzioni per soluzioni di ODE con metodi iterativi
 //
 
-static double ode_oscillator_omega = 1.0;
+// predatori-prede Lotka-Volterra 
+
+struct ode_LotkaVolterraParams {
+    double alpha;
+    double beta;
+    double gamma;
+    double delta;
+};
+
+extern ode_LotkaVolterraParams ode_g_lotka_volterra;
+
+void ode_set_lotka_volterra_params(
+    double alpha,
+    double beta,
+    double gamma,
+    double delta);
+void ode_get_lotka_volterra_params(
+    double& alpha,
+    double& beta,
+    double& gamma,
+    double& delta);
+
+// Oscillatore semplice e smorzato
+
+extern double ode_oscillator_omega;
+extern double ode_oscillator_gamma;
+
+void ode_set_oscillator_omega(
+    double omega);
+void ode_set_oscillator_gamma(
+    double gamma);
+
+// Logistica 
 
 struct ode_LogisticParams {
     double r;
@@ -466,16 +498,34 @@ struct ode_LogisticParams {
 
 extern ode_LogisticParams ode_g_logistic;
 
-double ode_scalar_exact_logistic(
-    double t); 
-
-void ode_set_logistic_parms(
+void ode_set_logistic_params(
     double r, 
     double k, 
     double y0);
 
-void ode_set_oscillator_omega(
-    double omega);
+// calcoli dei valori esatti per stima dell' errore
+
+double ode_scalar_exact_logistic(
+    double t); 
+
+double ode_vec2_exact_damped_q(
+    double t, 
+    double q0, 
+    double p0);
+double ode_vec2_exact_damped_p(
+    double t, 
+    double q0, 
+    double p0);
+double ode_vec2_exact_oscillator_q(
+    double t,
+    double q0,
+    double p0);
+double ode_vec2_exact_oscillator_p(
+    double t,
+    double q0,
+    double p0);
+
+//  RHS Scalari (ODE)
 
 double ode_scalar_rhs_decay(   
     double t, 
@@ -491,6 +541,8 @@ void ode_scalar_step_euler(
     double* y,
     double (*f)(double, double));   // Passo di Eulero scalare 
 
+// Stepper scalari (Metodi) 
+
 void ode_scalar_step_heun(
     double t, 
     double h, 
@@ -503,11 +555,27 @@ void ode_scalar_step_rk4(
     double* y,
     double (*rhs)(double, double));
 
+// RHS Vettoriali (ODE) 
+
+void ode_vec2_rhs_damped(
+    double t,
+    const double* y,
+    double* dydt,
+    int n);
+
+void ode_vec2_rhs_lotkavolterra(
+    double t,
+    const double* y,
+    double* dydt,
+    int n);
+
 void ode_vec2_rhs_oscillator(
     double t,
     const double* y,
     double* dydt, 
     int n);
+
+// Stepper vettoriali (Metodi)
 
 void ode_vecN_step_euler(
     double t, 
@@ -521,7 +589,10 @@ void ode_vecN_step_euler(
         int
     )
 );
-    
+
+// Funzioni di test per iterazioni su ODE gia' accantonati in file fcn_ode_test.cpp
+// I test ormai sono implementati direttamente nel main 
+
 int ode_scalar_test_euler_decay(); // test di eulero sul decadimento (in R)
 int ode_scalar_test_euler_logistic();
 int ode_scalar_test_heun_decay();  // test di heun sul decadimento (in R)

@@ -2635,15 +2635,55 @@ void trmatrix_test_sv_autoval(
 // Funzioni per soluzioni di ODE con metodi iterativi
 //
 
+// predatori-prede Lotka-Volterra (vector dim 2)
+
+// ode_LotkaVolterraParams ode_g_lotka_volterra{1.5, 1.0, 3.0, 1.0}; // aggressivi 
+ode_LotkaVolterraParams ode_g_lotka_volterra{1.0, 1.0, 1.0, 1.0};  // soft per collaudo
+
+void ode_set_lotka_volterra_params(
+    double alpha,
+    double beta,
+    double gamma,
+    double delta)
+{
+    ode_g_lotka_volterra.alpha = alpha;
+    ode_g_lotka_volterra.beta  = beta;
+    ode_g_lotka_volterra.gamma = gamma;
+    ode_g_lotka_volterra.delta = delta;
+}
+void ode_get_lotka_volterra_params(
+    double& alpha,
+    double& beta,
+    double& gamma,
+    double& delta)
+    {
+        alpha = ode_g_lotka_volterra.alpha;
+        beta = ode_g_lotka_volterra.beta;
+        gamma = ode_g_lotka_volterra.gamma;
+        delta = ode_g_lotka_volterra.delta;     
+    }
+
+// Oscillatore semplice e smorzato (vector dim 2)
+
+double ode_oscillator_omega = 1.0;
+double ode_oscillator_gamma = 0.2; 
+
 void ode_set_oscillator_omega(  // helper/setter per cambiare frequenza all' osc armonico
     double omega) 
 { 
     ode_oscillator_omega = omega;
 }
+void ode_set_oscillator_gamma(  // helper/setter per cambiare frequenza all' osc armonico smorzato
+    double gamma) 
+{ 
+    ode_oscillator_gamma = gamma;
+}
+
+// Logistic (scalar)
 
 ode_LogisticParams ode_g_logistic {1.0, 10.0, 1.0};
 
-void ode_set_logistic_parms(
+void ode_set_logistic_params(
     double r, 
     double k, 
     double y0) 
@@ -2652,6 +2692,8 @@ void ode_set_logistic_parms(
     ode_g_logistic.K = k;
     ode_g_logistic.y0 = y0;
 }
+
+// calcoli dei valori esatti per stima dell' errore
 
 double ode_scalar_exact_logistic(double t) 
 {
@@ -2663,6 +2705,65 @@ double ode_scalar_exact_logistic(double t)
            ((K - y0) + y0 * std::exp(r * t));
 }
 
+double ode_vec2_exact_damped_q(
+    double t,
+    double q0,
+    double p0)
+{
+    const double omega = ode_oscillator_omega;
+    const double gamma = ode_oscillator_gamma;
+    const double Omega = std::sqrt(omega * omega - gamma * gamma);
+
+    const double A = q0;
+    const double B = (p0 + gamma * q0) / Omega;
+
+    return std::exp(-gamma * t) *
+           (A * std::cos(Omega * t) + B * std::sin(Omega * t));
+}
+
+double ode_vec2_exact_damped_p(
+    double t,
+    double q0,
+    double p0)
+{
+    const double omega = ode_oscillator_omega;
+    const double gamma = ode_oscillator_gamma;
+    const double Omega = std::sqrt(omega * omega - gamma * gamma);
+
+    const double A = q0;
+    const double B = (p0 + gamma * q0) / Omega;
+
+    const double et = std::exp(-gamma * t);
+    const double c  = std::cos(Omega * t);
+    const double s  = std::sin(Omega * t);
+
+    return et * ((-gamma * A + Omega * B) * c
+               + (-gamma * B - Omega * A) * s);
+}
+
+double ode_vec2_exact_oscillator_q(
+    double t,
+    double q0,
+    double p0)
+{
+    const double omega = ode_oscillator_omega;
+    const double wt = omega * t;
+
+    return q0 * std::cos(wt) + (p0 / omega) * std::sin(wt);
+}
+
+double ode_vec2_exact_oscillator_p(
+    double t,
+    double q0,
+    double p0)
+{
+    const double omega = ode_oscillator_omega;
+    const double wt = omega * t;
+
+    return -omega * q0 * std::sin(wt) + p0 * std::cos(wt);
+}
+// RHS Scalari  (exp decay e logistica)
+
 // scalare: y' = lambda * y
 double ode_scalar_rhs_decay(
     double t, 
@@ -2673,6 +2774,7 @@ double ode_scalar_rhs_decay(
     return lambda * y;
 }
 
+// logistica y' = r/k * y (k - y) 
 double ode_scalar_rhs_logistic(
     double t,
     double y)
@@ -2680,8 +2782,9 @@ double ode_scalar_rhs_logistic(
     (void)t;
     return ode_g_logistic.r * y * (1.0 - y / ode_g_logistic.K);}
 
-// Passo di Eulero scalare 
+// Stepper scalari (eulero, heun, runge-kutta 4th)
 
+// Eulero
 void ode_scalar_step_euler(
     double t, 
     double h, 
@@ -2691,7 +2794,7 @@ void ode_scalar_step_euler(
     *y = *y + h * f(t, *y);
 }
 
-// Passo di Heun scalare (Eulero migliorato, ordine 2)
+// Heun (Eulero migliorato, ordine 2)
 void ode_scalar_step_heun(
     double t, 
     double h, 
@@ -2703,6 +2806,7 @@ void ode_scalar_step_heun(
     *y = *y + 0.5 * h * (k1 + k2);
 }
 
+// Runge-Kutta 4th (ordine 4)
 void ode_scalar_step_rk4(
     double t,
     double h,
@@ -2717,7 +2821,52 @@ void ode_scalar_step_rk4(
     *y = *y + (h / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4);
 }
 
-// RHS vettoriale 2D (oscillatore)
+// RHS vettoriale 2D ( predatore-preda e oscillatore)
+
+// Oscillatore smorzato
+void ode_vec2_rhs_damped(
+    double t,
+    const double* y,
+    double* dydt,
+    int n)
+{
+    (void)t;
+    (void)n; // assumiamo n == 2
+
+    const double omega = ode_oscillator_omega;
+    const double gamma = ode_oscillator_gamma;
+
+    dydt[0] = y[1];                                  // q' = p
+    dydt[1] = -2.0 * gamma * y[1] - omega * omega * y[0]; // p' = -2 gamma p - omega^2 q
+}
+
+// predatore-preda
+void ode_vec2_rhs_lotkavolterra(
+    double t,
+    const double* y,
+    double* dydt,
+    int n)
+//
+//  x' =  αx - βxy
+//  y' = -γy + δxy
+//
+{
+    (void)t;
+    (void)n; // assumiamo n == 2
+
+    const double alpha = ode_g_lotka_volterra.alpha; // crescita prede
+    const double beta  = ode_g_lotka_volterra.beta;  // predazione
+    const double gamma = ode_g_lotka_volterra.gamma; // mortalità predatori
+    const double delta = ode_g_lotka_volterra.delta; // crescita predatori per incontro
+
+    const double x = y[0]; // prede
+    const double z = y[1]; // predatori
+
+    dydt[0] = alpha * x - beta * x * z;
+    dydt[1] = delta * x * z - gamma * z;
+}
+
+// Oscillatore armonico libero
 void ode_vec2_rhs_oscillator(
     double t,
     const double* y,
@@ -2736,11 +2885,14 @@ void ode_vec2_rhs_oscillator(
     dydt[1] = -omega * omega * y[0]; // p' = -omega^2 q
 }
 
+// Stepper vettoriali dim N generica
+
+// Eulero dim N
 void ode_vecN_step_euler(
     double t, 
     double h,
-    double* y, 
-    int n,
+    double* y,               // equivalente a Vec& y 
+    int n,                   // equivalente a Vec& y se n == y.size()
     void (*f)(
         double, 
         const double*, 
