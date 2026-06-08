@@ -2943,7 +2943,7 @@ void ErrorPlot_Oscillator(
             );
 
             /*
-                        manca solo questa tabellina sull' errore globale
+                        manc`a solo questa tabellina sull' errore globale
                         
             max_abs_err_q[k] = max_j |q_euler_mat[k][j] - q_exact_mat[k][j]|,
 
@@ -2970,7 +2970,47 @@ void ErrorPlot_Oscillator(
             };
         };
     };
- 
+
+    void sandbox(){
+        //
+        // variabili da personalizzare per gli input finali
+        //
+        double i_min = 0 , i_max = 5 , i_ini = 1, i_val = 0;
+        //
+        // variabili di servizio al loop
+        //
+        bool leave = false;
+        bool redo = false;
+        while (!leave) {
+            clear_screen();
+
+
+
+            //
+            // loop finale con i prompt delle var
+            // se non ci sono variabili da cambiare, basta una wait
+            //
+            // wait_return_to_menu(false); 
+            //
+            redo = false;
+            while (!redo && !leave) {
+                cin_clear();
+                std::cout << "Inserire nuovo inizio [0 .. 100] (<q> per uscire) > ";
+                if (std::cin >> i_ini) { if (i_ini>=0 && i_ini<=100) redo=true;} else {cout << "Key: " << i_ini <<endl; leave=true;} ;
+                if (!leave) {
+                    std::cout << "Inserire nuovo valore finale [ini .. 1000] (<q> per uscire) > " ;
+                    if (std::cin >> i_max) { if (i_max>=i_min && i_max<=1000) redo=true;} else {cout << "Key: " << i_max <<endl; leave=true;} ;
+                    if (!leave) {
+                        std::cout << "Inserire nuovo parametro [0 .. 10] (<q> per uscire) > " ;
+                        if (std::cin >> i_val) { if (i_val>0 && i_val<=10) redo=true;} else {cout << "Key: " << i_val <<endl; leave=true;} ;
+                    };
+                };
+                cin_clear();
+            };
+        };
+
+    }
+
 
     ActionRegistry build_action_registry() 
         {
@@ -2992,7 +3032,8 @@ void ErrorPlot_Oscillator(
             {"sym_cauchy",      sym_cauchy},
             {"sym_hhalpha",     sym_hhalpha},
             {"ode_euler",       ode_euler},
-            {"ode_osc2d",       ode_osc2d}
+            {"ode_osc2d",       ode_osc2d},
+            {"sandbox",         sandbox}
             };
         };
 };  

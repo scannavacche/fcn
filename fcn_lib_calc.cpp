@@ -1636,6 +1636,52 @@ Vec matrix_prodotto_vector(
     return u;
 };  
 
+
+Mat matrix_swap_cols(
+    const Mat& A, 
+    int i, int j) 
+    //
+    // non usare su vettore di vettori che simula jagged arrays ;)
+    // per i, j fuori range, restituisce l'originale senza swap
+    //
+{
+    const int r = A.size();
+    const int c = A[0].size();  // solo per controllo di consistenza, scambio vettori interi
+    Mat Res = A;
+    double temp; 
+    if (r>0 && c>0 && i>=0 && i<r && j>=0 && j<r) 
+    {
+        for (int k = 0; k < r; k++)
+        {
+            temp = Res[k][i];
+            Res[k][i] = Res[k][j];
+            Res[k][j] = temp;
+        }
+    }
+    return Res;
+}
+
+Mat matrix_swap_rows(
+    const Mat& A, 
+    int i, int j) 
+    //
+    // non usare su vettore di vettori che simula jagged arrays ;)
+    // per i, j fuori range, restituisce l'originale senza swap
+    //
+{
+    const int r = A.size();
+    const int c = A[0].size();  // solo per controllo di consistenza, scambio vettori interi
+    Mat Res = A;
+    Vec temp; 
+    if (r>0 && c>0 && i>=0 && i<r && j>=0 && j<r) 
+    {
+        temp = Res[i];
+        Res[i] = Res[j];
+        Res[j] = temp;
+    }
+    return Res;
+}
+
 void matrix_test_ortogonale(
     const Mat& A,
     string s)

@@ -96,6 +96,7 @@
 - `Mat matrix_prodotto_AtA(const Mat& A, bool A_right = true);`
 - `Mat matrix_prodotto_matrix(const Mat& A, const Mat& B);`
 - `Vec matrix_prodotto_vector(const Mat& A, const Vec& v);`
+- `Mat matrix_swap_rows(const Mat& A, int i, int j)` 
 - `void matrix_test_ortogonale(const Mat& A, string s);`
 - `Mat matrix_trasposta(const Mat& A);`
 - `Vec vector_add_noise(Vec& v, double e);`
@@ -1047,6 +1048,26 @@ Vec matrix_prodotto_vector(
 );
 ```
 Calcola il prodotto matrice-vettore `A * v`, con controllo di compatibilità dimensionale
+
+### matrix_swap_cols
+
+```cpp
+Mat matrix_swap_cols(
+    const Mat& A, 
+    int i, int j
+); 
+```
+Scambia le colonne i e j elemento per elemento
+
+### matrix_swap_rows
+
+```cpp
+Mat matrix_swap_rows(
+    const Mat& A, 
+    int i, int j
+); 
+```
+Scambia le righe i e j come interi vettori
 
 ### `matrix_test_ortogonale`
 

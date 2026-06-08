@@ -19,6 +19,7 @@
     { "key": 16, "label": "SYM-E1c Householder",   "action": "sym_hhalpha",   "enabled": true }, 
     { "key": 17, "label": "ODE     Eulero vs Heun exp(-at)",   "action": "ode_euler",   "enabled": true }, 
     { "key": 18, "label": "ODE     Oscillator",   "action": "ode_osc2d",   "enabled": true }, 
+    { "key": 25, "label": "Test    Procedure in sviluppo",   "action": "sandbox",   "enabled": true }, 
     { "key": 0, "label": " Esci",      "action": "exit",      "enabled": true }
   ]
 }

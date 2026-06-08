@@ -318,6 +318,14 @@ Vec matrix_prodotto_vector(
     const Mat& A, 
     const Vec& v);
 
+Mat matrix_swap_cols(
+    const Mat& A, 
+    int i, int j);
+
+Mat matrix_swap_rows(
+    const Mat& A, 
+    int i, int j); 
+
 void matrix_test_ortogonale(
     const Mat& A,
     string s);
