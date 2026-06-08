@@ -2675,135 +2675,204 @@ void ErrorPlot_Oscillator(
         double b = 5.0;
         double y0 = 1.0;     // condizione al bordo x(t0)
 
-        std::cout << "# N h err_euler err_heun\n";
 
         bool leave = false;
         bool redo = false;
         while (!leave) {
             clear_screen();
             redo = false;
+            for (int istage = 0; istage < 2; istage++)
+            {
 
-            Vec h_vals;
-            Vec err_euler_vals;
-            Vec err_heun_vals;
+                Vec h_vals;
+                Vec err_euler_vals;
+                Vec err_heun_vals;
+                Vec err_rk4_vals;
 
-            auto fig = matplot_table_init(true, "Eulero vs Heun", "Metodi iterativi per problema di Cauchy, approssimazione", 2, 2);            
-            matplot::legend();
-
-            for (int k = 0; k < nN; ++k) {
-                const int N = N_values[k];  
-                if (N <= 0) continue;
-
-                // passo e nodi equidistanti
-                const double h = h_ticks(a, b, N+1); // n_ticks vuole nodi
-                Vec t_nodes = nodi_equidistanti(a, b, N+1); // dovrebbe riempire t_nodes con N_values[k]+1 nodi
-                // vettori di soluzione
-                Vec y_euler_vec(N+1);
-                Vec y_heun_vec(N+1);
-                Vec y_exact_vec(N+1);
-
-                // condizioni iniziali
-                double y_euler = y0;
-                double y_heun  = y0;
-
-                y_euler_vec[0] = y_euler;
-                y_heun_vec[0]  = y_heun;
-                y_exact_vec[0] = y0; // esatta in a
-
-                for (int i = 0; i < N; ++i) {
-                    double t = t_nodes[i];
-                    ode_scalar_step_euler(t, h, &y_euler, ode_scalar_rhs_decay);
-                    ode_scalar_step_heun(t, h, &y_heun, ode_scalar_rhs_decay);
-                    // ode_vecN_step_euler(t,h,y,2,ode_vec2_rhs_oscillator);
-                    y_euler_vec[i+1] = y_euler;
-                    y_heun_vec[i+1]  = y_heun;
-                    double y_ex = y0 * std::exp(-1.0 * (t_nodes[i+1] - a));
-                    y_exact_vec[i+1] = y_ex;
-                }
-                double y_exact = y0 * std::exp(-1.0 * (b - a));
-                double err_euler = std::fabs(y_euler - y_exact);
-                double err_heun = std::fabs(y_heun - y_exact);
-                h_vals.push_back(h);
-                err_euler_vals.push_back(err_euler);
-                err_heun_vals.push_back(err_heun);
-
-                std::cout << N << " " << h << " "
-                        << err_euler << " " << err_heun << "\n";
-
-                // Visualizzazione della soluzione numerica x(t)
-                fig->nexttile(k);
-                auto ax=fig->current_axes();
-                ax->title("Confronto per N intervalli "+itostr(N));
-                hold(on);
-
-                // q->use_y2(true);
-                // ax->y2_axis().limits({-1.6, 1.6});  
-
-                auto p = plot(t_nodes, y_euler_vec);
-                p->line_style(" -");
-                p->line_width(6);
-                p->color("green");
-                p->marker("");
-                p->display_name("Euler");
-
-                auto q = plot(t_nodes, y_heun_vec);
-                q->line_width(6);
-                q->color("red");
-                q->line_style("- ");
-                q->marker("");
-                q->display_name("Heun");
-
-                auto r = plot(t_nodes, y_exact_vec);
-                r->color("black");
-                r->line_style("_");
-                r->marker("");
-                r->line_width(2);
-                r->display_name("Exact");
-
-                // p2->marker(".");
-                // p1->marker("+");
-                // pI->marker("r");
-  
-                // pI->color("magenta");
-                // pf->color("cyan");
-                // ptn2->color("blue");
-
-                matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Right, 0,0);
+                auto fig = matplot_table_init(true, "Eulero vs Heun vs RK4", "Metodi iterativi per problema di Cauchy, approssimazione", 2, 2);            
                 matplot::legend();
-                xlabel("t (nodi equidistanti)");
-                ylabel("y approssimata");
 
+                if (istage == 0) {
+                    std::cout << std::string(23, '_')
+                        << "decay (errore in b)" 
+                        << std::string(23, '_')
+                        << "\n";
+                } else {
+                    std::cout << std::string(21, '_')
+                        << "logistica:(errore in b)" 
+                        << std::string(21, '_')
+                        << "\n";
+                }
+                std::cout << std::setw(6)  << "N"
+                        << std::setw(12) << "h"
+                        << std::setw(16) << "Euler"
+                        << std::setw(16) << "Heun"
+                        << std::setw(16) << "RK4"
+                        << "\n";
+                std::cout << std::string(66, '_') << "\n";
+
+                for (int k = 0; k < nN; ++k) {
+                    const int N = N_values[k];  
+                    if (N <= 0) continue;
+
+                    // passo e nodi equidistanti
+                    const double h = h_ticks(a, b, N+1); // n_ticks vuole nodi
+                    Vec t_nodes = nodi_equidistanti(a, b, N+1); // dovrebbe riempire t_nodes con N_values[k]+1 nodi
+                    // vettori di soluzione
+                    Vec y_euler_vec(N+1);
+                    Vec y_heun_vec(N+1);
+                    Vec y_rk4_vec(N+1);
+                    Vec y_exact_vec(N+1);
+
+                    // condizioni iniziali
+                    double y_euler = y0;
+                    double y_heun  = y0;
+                    double y_rk4  = y0;
+
+                    y_euler_vec[0] = y_euler;
+                    y_heun_vec[0]  = y_heun;
+                    y_rk4_vec[0]  = y_rk4;
+                    y_exact_vec[0] = y0; // esatta in a
+                    double y_exact;
+
+                    for (int i = 0; i < N; ++i) {
+                        double t = t_nodes[i];
+                        if (istage == 0) {
+                            ode_scalar_step_euler(t, h, &y_euler, ode_scalar_rhs_decay);
+                            ode_scalar_step_heun(t, h, &y_heun, ode_scalar_rhs_decay);
+                            ode_scalar_step_rk4(t, h, &y_rk4, ode_scalar_rhs_decay);
+                        } else {
+                            ode_scalar_step_euler(t, h, &y_euler, ode_scalar_rhs_logistic);
+                            ode_scalar_step_heun(t, h, &y_heun, ode_scalar_rhs_logistic);
+                            ode_scalar_step_rk4(t, h, &y_rk4, ode_scalar_rhs_logistic);
+                        }
+                        y_euler_vec[i+1] = y_euler;
+                        y_heun_vec[i+1]  = y_heun;
+                        y_rk4_vec[i+1]  = y_rk4;
+                        double y_ex;
+                        if (istage == 0) {
+                            y_ex = y0 * std::exp(-1.0 * (t_nodes[i+1] - a));
+                            y_exact = y0 * std::exp(-1.0 * (b - a));
+                        } else {
+                            y_ex = ode_scalar_exact_logistic(t_nodes[i+1] - a);
+                            y_exact = ode_scalar_exact_logistic(b - a);
+                        }
+                        y_exact_vec[i+1] = y_ex;
+                    }
+                    double err_euler = std::fabs(y_euler - y_exact);
+                    double err_heun = std::fabs(y_heun - y_exact);
+                    double err_rk4 = std::fabs(y_rk4 - y_exact);
+                    h_vals.push_back(h);
+                    err_euler_vals.push_back(err_euler);
+                    err_heun_vals.push_back(err_heun);
+                    err_rk4_vals.push_back(err_rk4);
+
+                    std::cout << std::setw(6)  << N
+                            << std::setw(12) << h
+                            << std::setw(16) << err_euler
+                            << std::setw(16) << err_heun
+                            << std::setw(16) << err_rk4
+                            << "\n";
+
+                    // Visualizzazione della soluzione numerica x(t)
+                    fig->nexttile(k);
+                    auto ax=fig->current_axes();
+                    ax->title("Confronto per N intervalli "+itostr(N));
+                    hold(on);
+
+                    // q->use_y2(true);
+                    // ax->y2_axis().limits({-1.6, 1.6});  
+
+                    auto p_eu = plot(t_nodes, y_euler_vec);
+                    p_eu->line_style("-");
+                    p_eu->line_width(5);
+                    p_eu->color("magenta");
+                    p_eu->marker("");
+                    p_eu->display_name("Euler");
+
+                    auto p_he = plot(t_nodes, y_heun_vec);
+                    p_he->line_width(5);
+                    p_he->color("cyan");
+                    p_he->line_style("--");
+                    p_he->marker("");
+                    p_he->display_name("Heun");
+
+                    auto p_rk = plot(t_nodes, y_rk4_vec);
+                    p_rk->line_width(5);
+                    p_rk->color("yellow");
+                    p_rk->line_style("-");
+                    p_rk->marker("");
+                    p_rk->display_name("Runge-Kutta 4th");
+
+                    auto p_ex = plot(t_nodes, y_exact_vec);
+                    p_ex->color("black");
+                    p_ex->line_style("-");
+                    p_ex->marker("");
+                    p_ex->line_width(2);
+                    p_ex->display_name("Exact");
+
+                    // p2->marker(".");
+                    // p1->marker("+");
+                    // pI->marker("r");
+    
+                    // pI->color("magenta");
+                    // pf->color("cyan");
+                    // ptn2->color("blue");
+
+                    if (istage==0) {
+                        matplot_legend_align(matplot::legend(), LeAl::Top+LeAl::Right, 0,0);
+                    }else{
+                        matplot_legend_align(matplot::legend(), LeAl::Bottom+LeAl::Right, 0,0);
+                    }
+                    matplot::legend();
+                    xlabel("t (nodi equidistanti)");
+                    ylabel("y approssimata");
+
+                }
+
+                std::cout << std::string(66, '_') << "\n\n";
+            
+                fig->draw();
+
+                auto fig_err = matplot_table_init(true, "Eulero vs Heun vs RK4", "Metodi iterativi per problema di Cauchy, O(h) dell' errore globale in b", 1, 1);
+                matplot::hold(on);
+                fig_err->nexttile(0); //  ed unico
+                auto ax=fig_err->current_axes();
+
+                // Eulero
+                auto pe = matplot::loglog(h_vals, err_euler_vals);
+                pe->line_style("--");
+                pe->marker("");
+                pe->line_width(4);
+                pe->color("green");
+                pe->display_name("Euler error");
+
+                // Heun
+                auto ph = matplot::loglog(h_vals, err_heun_vals);
+                ph->line_style("- ");
+                ph->marker("");
+                ph->line_width(4);
+                ph->color("cyan");
+                ph->display_name("Heun error");
+
+                // Heun
+                auto pr = matplot::loglog(h_vals, err_rk4_vals);
+                pr->line_style(" -");
+                pr->marker("");
+                pr->line_width(4);
+                pr->color("magenta");
+                pr->display_name("RK4 error");
+
+                matplot::xlabel("h");
+                if (istage == 0) {
+                    matplot::ylabel("exp decay |y(b) - y_num(b)|");
+                } else { 
+                    matplot::ylabel("logistic |y(b) - y_num(b)|");
+                }
+                matplot_legend_align(matplot::legend(), LeAl::Bottom+LeAl::Right, 0,0);
+                matplot::legend();
+                fig_err->draw();
             }
-
-        
-            fig->draw();
-
-            auto fig_err = matplot_table_init(true, "Eulero vs Heun", "Metodi iterativi per problema di Cauchy, O(h) dell' errore globale in b", 1, 1);
-            matplot::hold(on);
-            fig_err->nexttile(0); //  ed unico
-            auto ax=fig_err->current_axes();
-
-            // Eulero
-            auto pe = matplot::loglog(h_vals, err_euler_vals);
-            pe->line_style("--");
-            pe->marker("");
-            pe->line_width(3);
-            pe->color("green");
-            pe->display_name("Euler error");
-
-            // Heun
-            auto ph = matplot::loglog(h_vals, err_heun_vals);
-            ph->line_style("-.");
-            ph->marker("");
-            ph->line_width(3);
-            ph->color("red");
-            ph->display_name("Heun error");
-
-            matplot::xlabel("h");
-            matplot::ylabel("|y(b) - y_num(b)|");
-            matplot_legend_align(matplot::legend(), LeAl::Bottom+LeAl::Right, 0,0);
-            matplot::legend();
-            fig_err->draw();
 
             redo = false;
             while (!redo && !leave) {
@@ -3008,7 +3077,6 @@ void ErrorPlot_Oscillator(
                 cin_clear();
             };
         };
-
     }
 
 

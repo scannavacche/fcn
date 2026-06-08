@@ -130,8 +130,10 @@
 - `static double ode_oscillator_omega = 1.0;`    // tipico field
 - `void ode_set_oscillator_omega(double omega);` // tipico setter 
 - `double ode_scalar_rhs_decay(double t,double y);` // scalare: y' = lambda * y
-- `void ode_scalar_step_euler(double t,double h,double* y,double (*f)(double, double));`  // Passo Eulero scalare 
+- `double ode_scalar_rhs_logistic(double t,double y)` // scalare: y' = (r/K) * y(K-y)
+- `void ode_scalar_step_euler(double t,double h,double* y, double (*f)(double, double));`  // Passo Eulero scalare 
 - `void ode_scalar_step_heun(double t,double h,double* y, double (*f)(double, double));` // Passo Heun scalare
+- `void ode_scalar_step_rk4(double t,double h,double* y, double (*rhs)(double, double));` // Passo RK4 scalare
 - `void ode_vec2_rhs_oscillator(double t,const double* y,double* dydt,int n);`
 - `void ode_vecN_step_euler(double t,double h,double* y,int n,`
 		`void (*f)(double,const double*,double*,int) );`  

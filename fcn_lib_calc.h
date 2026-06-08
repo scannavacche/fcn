@@ -458,6 +458,22 @@ void trmatrix_test_sv_autoval(
 
 static double ode_oscillator_omega = 1.0;
 
+struct ode_LogisticParams {
+    double r;
+    double K;
+    double y0;
+};
+
+extern ode_LogisticParams ode_g_logistic;
+
+double ode_scalar_exact_logistic(
+    double t); 
+
+void ode_set_logistic_parms(
+    double r, 
+    double k, 
+    double y0);
+
 void ode_set_oscillator_omega(
     double omega);
 
@@ -465,6 +481,9 @@ double ode_scalar_rhs_decay(
     double t, 
     double y);   // scalare: y' = lambda * y
 
+double ode_scalar_rhs_logistic(
+    double t,
+    double y);
 
 void ode_scalar_step_euler(
     double t, 
@@ -477,6 +496,12 @@ void ode_scalar_step_heun(
     double h, 
     double* y,
     double (*f)(double, double)); // Passo di Heun scalare (Eulero migliorato, ordine 2)
+
+void ode_scalar_step_rk4(
+    double t,
+    double h,
+    double* y,
+    double (*rhs)(double, double));
 
 void ode_vec2_rhs_oscillator(
     double t,
@@ -498,7 +523,10 @@ void ode_vecN_step_euler(
 );
     
 int ode_scalar_test_euler_decay(); // test di eulero sul decadimento (in R)
+int ode_scalar_test_euler_logistic();
 int ode_scalar_test_heun_decay();  // test di heun sul decadimento (in R)
+int ode_scalar_test_heun_logistic();
+int ode_scalar_test_rungekutta4_decay(); // test di runge-kutta 4th sul decadimento (in R)
 
 // 
 // Funzioni per matplot++
