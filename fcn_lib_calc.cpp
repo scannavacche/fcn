@@ -651,6 +651,112 @@ double linear_max_autoval_pwr_AtA(
     return lambda;
 }
 
+void linear_QR_dec(
+    const Mat &A,
+    Mat &Q,
+    Mat &R)
+{
+    int m = A.size();
+    int n = (m > 0) ? A[0].size() : 0;
+    int kmax = std::min(m, n);
+
+    assert(m > 0);
+    assert(n > 0);
+
+    R = A;
+    Q = matrix_build_Id(m);
+
+    for (int k = 0; k < kmax; ++k)
+    {
+        // =========================================================
+        // 1) Estrai la sottocolonna pivot x = R(k:m-1, k)
+        // =========================================================
+        Vec x(m - k);
+        for (int i = k; i < m; ++i)
+            x[i - k] = R[i][k];
+
+        // =========================================================
+        // 2) Costruisci il vettore Householder del passo
+        // =========================================================
+        Vec w = vector_build_householder_bycol(x);
+
+        // =========================================================
+        // 3) Aggiorna R = H_k * R
+        //    Applica H_k a tutte le colonne attive j = k..n-1
+        // =========================================================
+        for (int j = k; j < n; ++j)
+        {
+            Vec col(m - k);
+            for (int i = k; i < m; ++i)
+                col[i - k] = R[i][j];
+
+            Vec col_new = vector_householder_apply(col, w);
+
+            for (int i = k; i < m; ++i)
+                R[i][j] = col_new[i - k];
+        }
+
+        // =========================================================
+        // 4) Aggiorna Q = Q * H_k
+        //    Quindi H_k agisce sui segmenti di riga Q(i, k:m-1)
+        // =========================================================
+        for (int i = 0; i < m; ++i)
+        {
+            Vec row(m - k);
+            for (int j = k; j < m; ++j)
+                row[j - k] = Q[i][j];
+
+            Vec row_new = vector_householder_apply(row, w);
+
+            for (int j = k; j < m; ++j)
+                Q[i][j] = row_new[j - k];
+        }
+    }
+}
+
+void linear_QR_least_squares(
+    const Mat& A,
+    const Vec& b,
+    Vec& x,
+    double& residuo)
+{
+    int m = A.size();
+    int n = (m > 0) ? A[0].size() : 0;
+
+    assert(m > 0);
+    assert(n > 0);
+    assert((int)b.size() == m);
+    assert(m >= n);
+
+    Mat Q, R;
+    linear_QR_dec(A, Q, R);
+
+    // y = Q^T b
+    Mat Qt = matrix_trasposta(Q);
+    Vec y = matrix_prodotto_vector(Qt, b);
+
+    // Estrai y1 = y[0:n-1]
+    Vec y1(n);
+    for (int i = 0; i < n; ++i)
+        y1[i] = y[i];
+
+    // Estrai R1 = R[0:n-1][0:n-1]
+    Mat R1 = matrix_build_zero(n, n);
+    for (int i = 0; i < n; ++i)
+        for (int j = i; j < n; ++j)
+            R1[i][j] = R[i][j];
+
+    // Risolvi R1 x = y1
+    x = linear_subst_BW(R1, y1);
+
+    // residuo = ||Ax - b||_2
+    Vec Ax = matrix_prodotto_vector(A, x);
+    Vec r(m);
+    for (int i = 0; i < m; ++i)
+        r[i] = Ax[i] - b[i];
+
+    residuo = vector_calcola_norma(2, r);
+}
 
 //
 // funzioni per la manipolazione di matrici
@@ -1583,7 +1689,7 @@ Vec vector_add_noise(
     Vec& v, 
     double e)
 {   
-    // v e' il vettore da perturbare, e l'aliquota in millesimi rispetto alla norma_inf del vettore 
+    // v e' il vettore da perturbare, e l'aliquota in millesimi rispetto alla norma_2 del vettore 
     int N = v.size();
     Vec r(N,0.0);
     double fscala = vector_calcola_norma(2, v);
@@ -1773,12 +1879,24 @@ void vector_dump (
 }
 
 Vec vector_householder_reflected(
-    const Vec v) 
+    const Vec& v) 
 {
-    int n = v.size();
+    return vector_householder_apply(
+        v,  
+        vector_build_householder_bycol(v));
+}
+
+Vec vector_householder_apply(
+    const Vec& v,    // vettore da riflettere
+    const Vec& w)    // vettore di householder gia' creato dalla col sub diag
+{
+    int nv = v.size();
+    int nw = w.size();
+    assert(nv == nw);
+
     // if (n<5) cout << endl;
     // if (n<5) vector_dump(v, 10, n, "Vettore da riflettere");
-    Vec w = vector_build_householder_bycol(v);
+    // Vec w = vector_build_householder_bycol(v);
     // if (n<5) vector_dump(w, 10, n, "Vettore hh a n = " + itostr(n));
     double wt = vector_prodotto_scalare(w, v);
     // if (n<5) cout << "coefficiente della proiezione di v su w = " << wt << endl << endl;
@@ -1789,6 +1907,7 @@ Vec vector_householder_reflected(
 
     return x;
 }
+
 
 
 Vec vector_prodotto_coeff(

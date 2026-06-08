@@ -20,6 +20,7 @@
     { "key": 17, "label": "ODE     Scalar - Eulero vs Heun vs RK4",   "action": "ode_euler",   "enabled": true }, 
     { "key": 18, "label": "ODE     Vector - Oscillatori RK4",   "action": "ode_osc2d",   "enabled": true }, 
     { "key": 19, "label": "ODE     Vector - Lotka-Volterra",   "action": "ode_lotkav",   "enabled": true }, 
+    { "key": 20, "label": "Test    QR Dec e Least Squares",   "action": "al_qr",   "enabled": true },
     { "key": 25, "label": "Test    Procedure in sviluppo",   "action": "sandbox",   "enabled": true }, 
     { "key": 0, "label": " Esci",      "action": "exit",      "enabled": true }
   ]

@@ -3244,6 +3244,151 @@ void ErrorPlot_Oscillator(
         };
     };
 
+    void al_qr(){
+        bool leave = false;
+        clear_screen();
+        int n = 12,  d = 4;
+
+        while (!leave) 
+        {
+            clear_screen();
+
+            Vec v = {3.0, 1.0, -2.0};
+            Vec w = vector_build_householder_bycol(v);
+
+            // Calcola H*v esplicitamente per verifica
+            // H*v = v - 2*w*(w^T*v)
+            double wtv = 0; for (int i = 0; i < 3; ++i) wtv += w[i]*v[i];
+            Vec Hv(3);
+            for (int i = 0; i < 3; ++i) Hv[i] = v[i] - 2*w[i]*wtv;
+
+            printf("Verifica Householder colonna:\n");
+            printf("  v = [%.3f, %.3f, %.3f]\n", v[0], v[1], v[2]);
+            printf("  H*v = [%.6f, %.6f, %.6f]\n", Hv[0], Hv[1], Hv[2]);
+            printf("  atteso: [%.6f, 0, 0]\n\n", -std::sqrt(14.0));
+            cout << std::string(80, '_') << endl;
+
+        // ── Verifica TODO 3: bidiagonalizzazione su matrice piccola ──────────────
+            // Matrice 4x5 casuale
+            std::mt19937 rng(42);
+            std::normal_distribution<double> g(0.0, 1.0);
+            Mat A = matrix_build_zero(n, d);
+            for (auto& r : A) 
+                for (double& v : r) 
+                    v = g(rng);
+            
+            Mat Q, R; 
+            linear_QR_dec(A, Q, R);
+            // matrix_dump(Q, "Matrice Q unitaria");
+            // matrix_dump(R, "Matrice R upper");
+            // matrix_test_ortogonale(Q, "matrice Q");
+            Mat A_r = matrix_prodotto_matrix(Q,R);
+            // matrix_dump(A, "Matrice originale");
+              matrix_dump(A_r, "Ar = Q * R (Ricostruita)");
+            Mat E = matrix_calcola_diff(A,A_r);
+            printf(" Error_F_lab         ||A - Q*R||_F = %.2e\n", matrix_calcola_errore_Fr(A, A_r));
+            printf(" Error_F_mia         ||A - Q*R||_F = %.2e\n", matrix_calcola_norma(-1, E));
+            printf(" Norma spettrale mia ||A - Q*R||_2 = %.2e\n\n", matrix_calcola_norma(2, E));
+
+            Vec b(n);
+            for (double& v : b)
+                v = g(rng);
+            Vec x;
+            double residuo = 0.0;
+
+            // 2) Genera x_true (d)
+            Vec x_true(d);
+            for (double& v : x_true)
+                v = g(rng);
+
+            linear_QR_least_squares(A_r, b, x, residuo);
+            vector_dump(b, 10, b.size(), "Termine noto b");
+            vector_dump(x, 10, x.size(), "Risultato");
+            cout << endl << "Residuo: " << residuo << endl << endl;
+
+            Vec Ax = matrix_prodotto_vector(A, x);
+            vector_dump(Ax, 10, Ax.size(), "Verifica Ax=b");
+
+            Vec r(n);
+            for (int i = 0; i < n; ++i) r[i] = Ax[i] - b[i];
+
+            printf("||Ax - b||_2 (LS) = %.2e\n", vector_calcola_norma(2, r));
+
+            cout << endl << "Ed ora proviamo al contrario b = A x_true + rumore" << endl <<endl;
+
+            // 3) b = A*x_true + rumore controllato
+            Vec b_clean = matrix_prodotto_vector(A, x_true);
+            b       = vector_add_noise(b_clean, 1.0); // ad esempio 1 millesimo
+
+            linear_QR_least_squares(A, b, x, residuo);
+
+            Vec rn(n);
+            for (int i = 0; i < n; ++i) rn[i] = Ax[i] - b[i];
+            vector_dump(x_true, 10, x.size(), "x_true Imposto");
+            vector_dump(x, 10, x.size(), "x Ricalcolato");
+            printf("||Ax - b||_2 (LS) = %.2e\n", vector_calcola_norma(2, rn));
+
+            Vec dx(n);
+            for (int i = 0; i < n; ++i)
+                dx[i] = x[i] - x_true[i];
+
+            double rel_x = vector_calcola_norma(2, dx) / vector_calcola_norma(2, x_true);
+            printf("Errore relativo su x: ||x - x_true||_2 / ||x_true||_2 = %.2e\n", rel_x);
+
+            double nb  = vector_calcola_norma(2, b);
+            double rel_r = residuo / nb;
+            printf("Errore relativo su b: ||Ax - b||_2 / ||b||_2 = %.2e\n", rel_r);
+ 
+ 
+            cout << endl << endl << "Verifica condizionamento" <<endl;
+
+            Mat AtA = matrix_prodotto_AtA(A, true);
+
+            Vec lambda;
+            Mat V;
+            linear_jacobi_autoval_simmetrica(AtA, lambda, V);
+
+            // ordina in senso discendente
+            matrix_ordina_diagonale(lambda, V, 1e-14, SortOrder::Desc);
+
+            double lam_max = std::max(0.0, lambda.front());
+            double lam_min = std::max(0.0, lambda.back());
+
+            double sigma_max = std::sqrt(lam_max);
+            double sigma_min = std::sqrt(lam_min);
+
+            printf("\nAutovalori di A^T A ordinati:\n");
+            for (int i = 0; i < (int)lambda.size(); ++i)
+                printf(" lambda[%d] = %.8e\n", i, lambda[i]);
+
+            printf("\nValori singolari stimati:\n");
+            printf(" sigma_max = %.8e\n", sigma_max);
+            printf(" sigma_min = %.8e\n", sigma_min);
+
+            if (sigma_min > 1e-14)
+            {
+                double kappa2 = sigma_max / sigma_min;
+                printf(" cond_2(A) stimata = %.8e\n", kappa2);
+            }
+            else
+            {
+                printf(" cond_2(A) stimata = inf (sigma_min ~ 0)\n");
+            }
+// ...
+            bool redo = false;
+            while (!redo && !leave) {
+
+                std::cout << "Numero di righe della matrice di test = n [3..20] (<q> per uscire) > " ;
+                if (std::cin >> n) { if (n>=3 && n<=20) redo=true;} else {cout << "Key: " << n <<endl; leave=true;} ;
+                if (redo) {
+                    std::cout << " numero di colonne = d da n a "<< 30 <<" (<q> per uscire) > " ;
+                    if (std::cin >> d) { if (d >=n && d<=30) redo=true;} else {cout << "Key: " << d <<endl; leave=true;} ;
+                }
+                cin_clear();
+            };
+       }
+    }
+    
 
     void sandbox(){
         //
@@ -3306,6 +3451,7 @@ void ErrorPlot_Oscillator(
             {"sym_hhalpha",     sym_hhalpha},
             {"ode_euler",       ode_euler},
             {"ode_osc2d",       ode_osc2d},
+            {"al_qr",           al_qr},
             {"sandbox",         sandbox}
             };
         };

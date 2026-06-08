@@ -168,6 +168,16 @@ double linear_max_autoval_pwr_AtA(
     int max_iter, 
     double tol);
 
+void linear_QR_dec(
+    const Mat &A,
+    Mat &Q,
+    Mat &R);
+
+void linear_QR_least_squares(
+    const Mat& A,
+    const Vec& b,
+    Vec& x,
+    double& residuo);
 //
 // funzioni per la gestione di vettori e matrici
 //
@@ -375,8 +385,12 @@ void vector_dump (
     int totnum, 
     const std::string s);
 
-Vec vector_householder_reflected(
-    const Vec v);
+Vec vector_householder_reflected( // passaggio unico per la prima colonna
+    const Vec& v);
+
+Vec vector_householder_apply(
+    const Vec& v,    // vettore da riflettere
+    const Vec& w);    // vettore di householder gia' creato dalla col sub diag
 
 Vec vector_prodotto_coeff(
     const Vec v, 
