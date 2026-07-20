@@ -3279,8 +3279,8 @@ void ErrorPlot_Oscillator(
             
             Mat Q, R; 
             linear_QR_dec(A, Q, R);
-            // matrix_dump(Q, "Matrice Q unitaria");
-            // matrix_dump(R, "Matrice R upper");
+            matrix_dump(Q, "Matrice Q unitaria");
+            matrix_dump(R, "Matrice R upper");
             // matrix_test_ortogonale(Q, "matrice Q");
             Mat A_r = matrix_prodotto_matrix(Q,R);
             // matrix_dump(A, "Matrice originale");
