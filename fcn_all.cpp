@@ -3451,6 +3451,7 @@ void ErrorPlot_Oscillator(
             {"sym_hhalpha",     sym_hhalpha},
             {"ode_euler",       ode_euler},
             {"ode_osc2d",       ode_osc2d},
+            {"ode_lotkav",      ode_lotkav},
             {"al_qr",           al_qr},
             {"sandbox",         sandbox}
             };
