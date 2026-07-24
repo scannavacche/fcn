@@ -6,7 +6,8 @@
 #include <limits>   // per std::numeric_limits
 #include <matplot/matplot.h>
 #include "fcn_lib_calc.h"
-#include "json.hpp"
+#include <cassert>
+
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -22,8 +23,6 @@ using Mat = std::vector<Vec>;
 using VecStr = std::vector<std::string>;
 using MatStr = std::vector<VecStr>;
 using namespace matplot;
-
-using json = nlohmann::json;
 
 // 
 // gestione interfaccia utente 
@@ -3296,58 +3295,7 @@ figure_handle matplot_table_init (
     return fig;
 }
 
-//
-// funzioni di gestione del menu principale e dei suoi item
-//  
-
-MenuConfig load_menu_config(const std::string& filename) {
-    // int dummy = system("clear"); 
-
-    std::cout << "Working directory: " << std::filesystem::current_path() << '\n';
-    std::cout << "Provo ad aprire: " << filename << '\n';
-
-    std::ifstream f(filename);
-    if (!f) {
-        throw std::runtime_error("Impossibile aprire il file di menu: " + filename);
-    }
-
-    // per debug: controlla se c'è contenuto
-    f.seekg(0, std::ios::end);
-    std::streampos size = f.tellg();
-    std::cout << "Dimensione file: " << size << " byte\n";
-    f.seekg(0, std::ios::beg);
-
-    nlohmann::json j;
-    f >> j;
-    // ... 
-
-    MenuConfig cfg;
-    cfg.title = j.value("title", "Menu");
-
-    if (!j.contains("items") || !j["items"].is_array()) {
-        throw std::runtime_error("Il file JSON non contiene un array 'items' valido.");
-    }
-
-    for (const auto& item : j["items"]) {
-        MenuItem m;
-        m.key     = item.at("key").get<int>();
-        m.label   = item.at("label").get<std::string>();
-        m.action  = item.at("action").get<std::string>();
-        m.enabled = item.value("enabled", true);
-        cfg.items.push_back(m);
-    }
-
-    return cfg;
-}
-
-const MenuItem* find_menu_item(const MenuConfig& menu, int key) {
-    for (const auto& item : menu.items) {
-        if (item.key == key) {
-            return &item;
-        }
-    }
-    return nullptr;
-}
+// questa la teniamo sino ad implementazione di entry per i form delle procedure
 
 void wait_return_to_menu(bool bypass_waitakey) {
     if (!bypass_waitakey) {

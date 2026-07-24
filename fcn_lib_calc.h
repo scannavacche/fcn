@@ -690,18 +690,6 @@ struct MenuItem {
     bool enabled;
 };
 
-struct MenuConfig {
-    std::string title;
-    std::vector<MenuItem> items;
-};
-
-MenuConfig load_menu_config(
-    const std::string& filename);
-
-const MenuItem* find_menu_item(
-    const MenuConfig& menu, 
-    int key);
-
 void wait_return_to_menu(bool bypass_waitakey); 
 
 

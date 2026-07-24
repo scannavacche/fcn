@@ -3483,9 +3483,6 @@ int main()
         // fig->draw();
     }
 
-    /*
-     * Registry delle procedure FCN.
-     */
     ActionRegistry actions;
 
     try {
@@ -3500,9 +3497,6 @@ int main()
         return 1;
     }
 
-    /*
-     * Caricamento del menu piatto dal JSON nel modello GNPORT.
-     */
     GnMenuRepository repository;
     GnIoError menu_error;
 
@@ -3519,15 +3513,6 @@ int main()
         return 1;
     }
 
-    /*
-     * Ciclo principale:
-     *
-     * menu GNPORT
-     *     → action_id
-     *     → ActionRegistry
-     *     → procedura FCN
-     *     → ritorno al menu
-     */
     for (;;) {
         const GnMenuResult result =
             gn_menu_run_session(&repository);
@@ -3561,19 +3546,9 @@ int main()
                 << result.action_id
                 << '\n';
 
-            return 1;
+            continue;
         }
 
-        /*
-         * gn_menu_run_session() ha già:
-         *
-         * - chiuso l'alternate screen;
-         * - ripristinato il terminale canonico;
-         * - ripristinato il cursore.
-         *
-         * La procedura FCN può quindi usare normalmente
-         * std::cin e std::cout.
-         */
         action_it->second();
     }
 
