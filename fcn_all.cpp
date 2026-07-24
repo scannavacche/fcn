@@ -3469,244 +3469,114 @@ void ErrorPlot_Oscillator(
 //
 
 
-int main() {
+int main()
+{
     {
-        figure_handle fig = matplot_table_init(true, "Figure vuota per inizializzare matplot++", "Figure vuota per inizializzare matplot++", 2, 2);
+        figure_handle fig = matplot_table_init(
+            true,
+            "Figure vuota per inizializzare matplot++",
+            "Figure vuota per inizializzare matplot++",
+            2,
+            2
+        );
+
         // fig->draw();
     }
 
-enum TestMenuAction {
-    TEST_MENU_EXIT = 0,
-    TEST_MENU_F1_PREC = 1,
-    TEST_MENU_F2_DERIV = 2
-};
-
-const GnMenuItem test_items[] = {
-    {
-        "Precisione di calcolo",
-        'P',
-        TEST_MENU_F1_PREC,
-        GN_MENU_ACTION,
-        nullptr,
-        1
-    },
-    {
-        "Derivata discreta",
-        'D',
-        TEST_MENU_F2_DERIV,
-        GN_MENU_ACTION,
-        nullptr,
-        1
-    },
-
-    {
-        "Esci",
-        'E',
-        TEST_MENU_EXIT,
-        GN_MENU_ACTION,
-        nullptr,
-        1
-    }
-};
-
-const GnMenuDefinition test_menu = {
-    "FCN - Test integrazione GNPORT",
-    GN_MENU_PROGRAM_LIST,
-    8,  // righe
-    1,  // colonne
-    test_items,
-    sizeof(test_items) / sizeof(test_items[0])
-};
-
-    MenuConfig menu;
-                    
+    /*
+     * Registry delle procedure FCN.
+     */
     ActionRegistry actions;
 
     try {
-        menu = load_menu_config("menu.json");
         actions = build_action_registry();
-    } catch (const std::exception& e) {
-        std::cerr << "Errore inizializzazione menu: " << e.what() << '\n';
-        return 1;
     }
-
-bool test_finished = false;
-
-GnMenuRepository repository;
-GnIoError menu_error;
-
-if (!gn_menu_load_flat_json(
-        "menu.json",
-        &repository,
-        &menu_error)) {
-
-    std::cerr
-        << "Errore caricamento menu: "
-        << menu_error.message
-        << '\n';
-
-    return 1;
-}
-
-std::cout
-    << "Root menu: "
-    << repository.root_id
-    << '\n';
-
-std::cout
-    << "Numero menu: "
-    << repository.menus.size()
-    << '\n';
-
-if (!repository.menus.empty()) {
-    const GnMenuConfig& root =
-        repository.menus.front();
-
-    std::cout
-        << "Titolo: "
-        << root.title
-        << '\n'
-        << "Voci: "
-        << root.items.size()
-        << '\n'
-        << "Layout: "
-        << root.rows
-        << " righe x "
-        << root.columns
-        << " colonne\n";
-
-    for (const GnMenuItemConfig& item : root.items) {
-        std::cout
-            << item.key
-            << " | "
-            << item.action
-            << " | "
-            << (item.enabled ? "enabled" : "disabled")
-            << " | "
-            << item.label
-            << '\n';
-    }
-}
-
-while (!test_finished) {
-    const GnMenuResult result =
-        gn_menu_run_session(&test_menu);
-
-    if (result.reason == GN_MENU_ERROR) {
+    catch (const std::exception& e) {
         std::cerr
-            << "Errore durante l'esecuzione del menu GNPORT.\n";
+            << "Errore inizializzazione registry: "
+            << e.what()
+            << '\n';
+
         return 1;
     }
 
-    if (result.reason == GN_MENU_CANCEL) {
-        break;
+    /*
+     * Caricamento del menu piatto dal JSON nel modello GNPORT.
+     */
+    GnMenuRepository repository;
+    GnIoError menu_error;
+
+    if (!gn_menu_load_flat_json(
+            "menu.json",
+            &repository,
+            &menu_error)) {
+
+        std::cerr
+            << "Errore caricamento menu: "
+            << menu_error.message
+            << '\n';
+
+        return 1;
     }
 
-    switch (result.action) {
-        case TEST_MENU_F1_PREC: {
-            const auto it = actions.find("f1_prec");
-
-            if (it == actions.end()) {
-                std::cerr
-                    << "Azione f1_prec non registrata.\n";
-                return 1;
-            }
-
-            it->second();
-            break;
-        }
-        case TEST_MENU_F2_DERIV: {
-            const auto it = actions.find("f2_deriv");
-
-            if (it == actions.end()) {
-                std::cerr
-                    << "Azione f2_prec non registrata.\n";
-                return 1;
-            }
-
-            it->second();
-            break;
-        }
-
-        case TEST_MENU_EXIT:
-            test_finished = true;
-            break;
-
-        default:
-            std::cerr
-                << "Azione numerica sconosciuta: "
-                << result.action
-                << '\n';
-            break;
-    }
-}
-
-std::cout
-    << "\x1b[0m"     // attributi normali
-    << "\x1b[?25h"   // cursore visibile
-    << "\x1b[2 q"    // cursore a blocco normale
-    << "\r\n"
-    << std::flush;
-  
-return 0;
-
-    #if 0
+    /*
+     * Ciclo principale:
+     *
+     * menu GNPORT
+     *     → action_id
+     *     → ActionRegistry
+     *     → procedura FCN
+     *     → ritorno al menu
+     */
     for (;;) {
+        const GnMenuResult result =
+            gn_menu_run_session(&repository);
 
-        std::cout << "\n" << menu.title << '\n';
-        std::cout << "--------------------------------------------------\n";
+        if (result.reason == GN_MENU_ERROR) {
+            std::cerr
+                << "Errore durante l'esecuzione "
+                   "del menu GNPORT.\n";
 
-        for (const auto& item : menu.items) {
-            std::cout << item.key << " - " << item.label;
-            if (!item.enabled) {
-                std::cout << " [disabilitata]";
-            }
-            std::cout << '\n';
+            return 1;
         }
 
-        std::cout << "\nScelta: ";
-        int choice;
-
-        if (!(std::cin >> choice)) {
-            std::cout << "Input non valido.\n";
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            continue;
-        }
-
-
-        const MenuItem* item = find_menu_item(menu, choice);
-        if (!item) {
-            std::cout << "Voce inesistente.\n";
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            continue;
-        }
-
-        if (!item->enabled) {
-            std::cout << "Voce presente ma attualmente disabilitata.\n";
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            continue;
-        }
-
-        if (item->action == "exit") {
+        if (result.reason == GN_MENU_CANCEL) {
             break;
         }
 
-        auto it = actions.find(item->action);
-        if (it == actions.end()) {
-            std::cout << "Azione non registrata nel programma: " << item->action << '\n';
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        if (result.reason != GN_MENU_SELECTED) {
             continue;
         }
 
-        cin_clear();
-        it->second();
-        wait_return_to_menu(true);
-        
-        clear_screen(); 
+        if (result.action_id == "exit") {
+            break;
+        }
 
+        const auto action_it =
+            actions.find(result.action_id);
+
+        if (action_it == actions.end()) {
+            std::cerr
+                << "Azione non registrata: "
+                << result.action_id
+                << '\n';
+
+            return 1;
+        }
+
+        /*
+         * gn_menu_run_session() ha già:
+         *
+         * - chiuso l'alternate screen;
+         * - ripristinato il terminale canonico;
+         * - ripristinato il cursore.
+         *
+         * La procedura FCN può quindi usare normalmente
+         * std::cin e std::cout.
+         */
+        action_it->second();
     }
-    #endif 
+
     std::cout << "\nUscita dal programma.\n";
     return 0;
 }
