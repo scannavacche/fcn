@@ -3500,7 +3500,7 @@ int main()
     GnMenuRepository repository;
     GnIoError menu_error;
 
-    if (!gn_menu_load_flat_json(
+    if (!gn_menu_load_json(
             "menu.json",
             &repository,
             &menu_error)) {
