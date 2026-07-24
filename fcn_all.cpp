@@ -17,6 +17,11 @@
 #include "dataset.hpp"
 #include "svd_qr.cpp" // magari basta solo un header visto che e' compilato nella lib statica
 
+// inclusione nuovo menu e data entry grimm-style migrato da VBDOS
+
+#include "gn_menu.h"
+#include "gn_entry.h"
+
 using std::cout;
 using std::endl;
 using Vec = std::vector<double>;
@@ -3438,13 +3443,13 @@ void ErrorPlot_Oscillator(
             {"f1_taylor_cos",  f1_taylor_cos},
             {"f1_prec",        f1_prec},
             {"f2_deriv",       f2_deriv},
+            {"f3_svd",          f3_svd},
             {"f2_cauchy",      f2_cauchy},
             {"f2_bordo",       f2_bordo},
             {"f2_integral",    f2_integral},
             {"f2_norme",       f2_norme},
             {"f2_deconv",       f2_deconv},
             {"f3_svd_test",     f3_svd_test},
-            {"f3_svd",          f3_svd},
             {"f3_svd_pca",      f3_svd_pca},
             {"f3_svd_an",       f3_svd_an}, 
             {"sym_cauchy",      sym_cauchy},
