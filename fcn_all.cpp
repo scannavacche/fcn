@@ -3472,7 +3472,9 @@ int main() {
         figure_handle fig = matplot_table_init(true, "Figure vuota per inizializzare matplot++", "Figure vuota per inizializzare matplot++", 2, 2);
         // fig->draw();
     }
+
     MenuConfig menu;
+                    
     ActionRegistry actions;
 
     try {

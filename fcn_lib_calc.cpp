@@ -12,6 +12,9 @@
 #include <stdexcept>
 #include <algorithm>
 
+#include "gn_menu.h"
+#include "gn_entry.h"
+
 using namespace std;
 using Vec = std::vector<double>;
 using VecN = std::vector<int>;
