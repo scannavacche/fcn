@@ -4,7 +4,9 @@ GNPORT_DIR="../VBD2Cpp"
 
 CXX="g++"
 CXXFLAGS="-std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-unused-local-typedefs -Wpedantic -Wno-sign-compare -Wno-unused-function"
-HDFLAGS="-I ./alglib -I ${GNPORT_DIR}/include"
+
+HDFLAGS="-I . -I ./alglib -I ${GNPORT_DIR}/include"
+
 LDFLAGS="-L/usr/local/lib -L. -L/usr/local/lib/Matplot++"
 #  
 # versione wsl notebook
@@ -22,7 +24,10 @@ ${GNPORT_DIR}/src/gn_terminal_posix.cpp \
 ${GNPORT_DIR}/src/gn_idle.cpp \
 ${GNPORT_DIR}/src/gn_string.cpp \
 ${GNPORT_DIR}/src/gn_menu.cpp \
-${GNPORT_DIR}/src/gn_entry.cpp"
+${GNPORT_DIR}/src/gn_entry.cpp \
+${GNPORT_DIR}/src/gn_fs.cpp \
+${GNPORT_DIR}/src/gn_menu_io.cpp"
+
 
 HEADERS="fcn_lib_calc.h menu_config.h json.hpp"
 TARGET="fcn_all"

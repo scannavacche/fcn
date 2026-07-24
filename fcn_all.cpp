@@ -21,6 +21,8 @@
 
 #include "gn_menu.h"
 #include "gn_entry.h"
+#include "gn_menu_config.h"
+#include "gn_menu_io.h"
 
 using std::cout;
 using std::endl;
@@ -3529,6 +3531,62 @@ const GnMenuDefinition test_menu = {
     }
 
 bool test_finished = false;
+
+GnMenuRepository repository;
+GnIoError menu_error;
+
+if (!gn_menu_load_flat_json(
+        "menu.json",
+        &repository,
+        &menu_error)) {
+
+    std::cerr
+        << "Errore caricamento menu: "
+        << menu_error.message
+        << '\n';
+
+    return 1;
+}
+
+std::cout
+    << "Root menu: "
+    << repository.root_id
+    << '\n';
+
+std::cout
+    << "Numero menu: "
+    << repository.menus.size()
+    << '\n';
+
+if (!repository.menus.empty()) {
+    const GnMenuConfig& root =
+        repository.menus.front();
+
+    std::cout
+        << "Titolo: "
+        << root.title
+        << '\n'
+        << "Voci: "
+        << root.items.size()
+        << '\n'
+        << "Layout: "
+        << root.rows
+        << " righe x "
+        << root.columns
+        << " colonne\n";
+
+    for (const GnMenuItemConfig& item : root.items) {
+        std::cout
+            << item.key
+            << " | "
+            << item.action
+            << " | "
+            << (item.enabled ? "enabled" : "disabled")
+            << " | "
+            << item.label
+            << '\n';
+    }
+}
 
 while (!test_finished) {
     const GnMenuResult result =
