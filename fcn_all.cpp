@@ -3473,6 +3473,49 @@ int main() {
         // fig->draw();
     }
 
+enum TestMenuAction {
+    TEST_MENU_EXIT = 0,
+    TEST_MENU_F1_PREC = 1,
+    TEST_MENU_F2_DERIV = 2
+};
+
+const GnMenuItem test_items[] = {
+    {
+        "Precisione di calcolo",
+        'P',
+        TEST_MENU_F1_PREC,
+        GN_MENU_ACTION,
+        nullptr,
+        1
+    },
+    {
+        "Derivata discreta",
+        'D',
+        TEST_MENU_F2_DERIV,
+        GN_MENU_ACTION,
+        nullptr,
+        1
+    },
+
+    {
+        "Esci",
+        'E',
+        TEST_MENU_EXIT,
+        GN_MENU_ACTION,
+        nullptr,
+        1
+    }
+};
+
+const GnMenuDefinition test_menu = {
+    "FCN - Test integrazione GNPORT",
+    GN_MENU_PROGRAM_LIST,
+    8,  // righe
+    1,  // colonne
+    test_items,
+    sizeof(test_items) / sizeof(test_items[0])
+};
+
     MenuConfig menu;
                     
     ActionRegistry actions;
@@ -3485,6 +3528,71 @@ int main() {
         return 1;
     }
 
+bool test_finished = false;
+
+while (!test_finished) {
+    const GnMenuResult result =
+        gn_menu_run_session(&test_menu);
+
+    if (result.reason == GN_MENU_ERROR) {
+        std::cerr
+            << "Errore durante l'esecuzione del menu GNPORT.\n";
+        return 1;
+    }
+
+    if (result.reason == GN_MENU_CANCEL) {
+        break;
+    }
+
+    switch (result.action) {
+        case TEST_MENU_F1_PREC: {
+            const auto it = actions.find("f1_prec");
+
+            if (it == actions.end()) {
+                std::cerr
+                    << "Azione f1_prec non registrata.\n";
+                return 1;
+            }
+
+            it->second();
+            break;
+        }
+        case TEST_MENU_F2_DERIV: {
+            const auto it = actions.find("f2_deriv");
+
+            if (it == actions.end()) {
+                std::cerr
+                    << "Azione f2_prec non registrata.\n";
+                return 1;
+            }
+
+            it->second();
+            break;
+        }
+
+        case TEST_MENU_EXIT:
+            test_finished = true;
+            break;
+
+        default:
+            std::cerr
+                << "Azione numerica sconosciuta: "
+                << result.action
+                << '\n';
+            break;
+    }
+}
+
+std::cout
+    << "\x1b[0m"     // attributi normali
+    << "\x1b[?25h"   // cursore visibile
+    << "\x1b[2 q"    // cursore a blocco normale
+    << "\r\n"
+    << std::flush;
+  
+return 0;
+
+    #if 0
     for (;;) {
 
         std::cout << "\n" << menu.title << '\n';
@@ -3540,7 +3648,7 @@ int main() {
         clear_screen(); 
 
     }
-
+    #endif 
     std::cout << "\nUscita dal programma.\n";
     return 0;
 }
