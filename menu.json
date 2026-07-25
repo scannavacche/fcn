@@ -112,10 +112,33 @@
           "enabled": true
         },
         {
+          "key": 18,
+          "kind": "empty"
+        },
+        {
+          "key": 19,
+          "kind": "empty"
+        },        {
           "key": 20,
           "label": "Test - QR e minimi quadrati",
           "action": "al_qr",
           "enabled": true
+        },
+        {
+          "key": 21,
+          "kind": "empty"
+        },
+        {
+          "key": 22,
+          "kind": "empty"
+        },
+        {
+          "key": 23,
+          "kind": "empty"
+        },
+        {
+          "key": 24,
+          "kind": "empty"
         },
         {
           "key": 25,
@@ -124,10 +147,32 @@
           "enabled": true
         },
         {
-          "key": 0,
-          "label": "Esci",
-          "action": "exit",
-          "enabled": true
+          "key": 26,
+          "kind": "empty"
+        },
+        {
+          "key": 27,
+          "kind": "empty"
+        },
+        {
+          "key": 28,
+          "kind": "empty"
+        },
+        {
+          "key": 29,
+          "kind": "empty"
+        },
+        {
+          "key": 30,
+          "kind": "empty"
+        },
+        {
+          "key": 31,
+          "kind": "empty"
+        },
+        {
+          "key": 32,
+          "kind": "empty"
         }
       ]
     },
