@@ -27,6 +27,7 @@ ${GNPORT_DIR}/src/gn_menu.cpp \
 ${GNPORT_DIR}/src/gn_entry.cpp \
 ${GNPORT_DIR}/src/gn_fs.cpp \
 ${GNPORT_DIR}/src/gn_menu_io.cpp \
+${GNPORT_DIR}/src/gn_menu_runner.cpp \
 ${GNPORT_DIR}/src/gn_menu_repository.cpp"
 
 

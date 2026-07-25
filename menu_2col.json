@@ -11,85 +11,85 @@
       "items": [
         {
           "key": 1,
-          "label": "F1-E1  Campionamento di funzione coseno",
+          "label": "F1-E1    Campionamento di funzione coseno",
           "action": "f1_sample",
           "enabled": true
         },
         {
           "key": 2,
-          "label": "F1-E2a  Esponenziale approssimata con Taylor",
+          "label": "F1-E2a   Esponenziale approssimata con Taylor",
           "action": "f1_taylor_exp",
           "enabled": true
         },
         {
           "key": 3,
-          "label": "F1-E2b  Coseno approssimato con Taylor",
+          "label": "F1-E2b   Coseno approssimato con Taylor",
           "action": "f1_taylor_cos",
           "enabled": true
         },
         {
           "key": 4,
-          "label": "F1-E3  Precisione di calcolo",
+          "label": "F1-E3    Precisione di calcolo",
           "action": "f1_prec",
           "enabled": true
         },
         {
           "key": 5,
-          "label": "F2-E1  Derivata discreta",
+          "label": "F2-E1    Derivata discreta",
           "action": "f2_deriv",
           "enabled": true
         },
         {
           "key": 6,
-          "label": "F2-E1a  Problema di Cauchy",
+          "label": "F2-E1a   Problema di Cauchy",
           "action": "f2_cauchy",
           "enabled": true
         },
         {
           "key": 7,
-          "label": "F2-E1b  Problema differenziale al bordo",
+          "label": "F2-E1b   Problema differenziale al bordo",
           "action": "f2_bordo",
           "enabled": true
         },
         {
           "key": 8,
-          "label": "F2-E2  Integrazione numerica",
+          "label": "F2-E2    Integrazione numerica",
           "action": "f2_integral",
           "enabled": true
         },
         {
           "key": 9,
-          "label": "F2-E2a  Confronto norme",
+          "label": "F2-E2a   Confronto norme",
           "action": "f2_norme",
           "enabled": true
         },
         {
           "key": 10,
-          "label": "F2-E3  Deconvoluzione",
+          "label": "F2-E3    Deconvoluzione",
           "action": "f2_deconv",
           "enabled": true
         },
         {
           "key": 11,
-          "label": "F3-E1  SVD - test",
+          "label": "F3-E1    SVD - test",
           "action": "f3_svd_test",
           "enabled": true
         },
         {
           "key": 12,
-          "label": "F3-E1a  SVD QR con ALGLIB",
+          "label": "F3-E1a   SVD QR con ALGLIB",
           "action": "f3_svd",
           "enabled": true
         },
         {
           "key": 13,
-          "label": "F3-E1b  SVD e PCA",
+          "label": "F3-E1b   SVD e PCA",
           "action": "f3_svd_pca",
           "enabled": true
         },
         {
           "key": 14,
-          "label": "F3-E1c  Analisi SVD/PCA",
+          "label": "F3-E1c   Analisi SVD/PCA",
           "action": "f3_svd_an",
           "enabled": true
         },
@@ -112,10 +112,33 @@
           "enabled": true
         },
         {
+          "key": 18,
+          "kind": "empty"
+        },
+        {
+          "key": 19,
+          "kind": "empty"
+        },        {
           "key": 20,
           "label": "Test - QR e minimi quadrati",
           "action": "al_qr",
           "enabled": true
+        },
+        {
+          "key": 21,
+          "kind": "empty"
+        },
+        {
+          "key": 22,
+          "kind": "empty"
+        },
+        {
+          "key": 23,
+          "kind": "empty"
+        },
+        {
+          "key": 24,
+          "kind": "empty"
         },
         {
           "key": 25,
@@ -124,10 +147,32 @@
           "enabled": true
         },
         {
-          "key": 0,
-          "label": "Esci",
-          "action": "exit",
-          "enabled": true
+          "key": 26,
+          "kind": "empty"
+        },
+        {
+          "key": 27,
+          "kind": "empty"
+        },
+        {
+          "key": 28,
+          "kind": "empty"
+        },
+        {
+          "key": 29,
+          "kind": "empty"
+        },
+        {
+          "key": 30,
+          "kind": "empty"
+        },
+        {
+          "key": 31,
+          "kind": "empty"
+        },
+        {
+          "key": 32,
+          "kind": "empty"
         }
       ]
     },

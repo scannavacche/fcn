@@ -19,10 +19,8 @@
 
 // inclusione nuovo menu e data entry grimm-style migrato da VBDOS
 
-#include "gn_menu.h"
 #include "gn_entry.h"
-#include "gn_menu_config.h"
-#include "gn_menu_io.h"
+#include "gn_menu_runner.h"
 
 using std::cout;
 using std::endl;
@@ -44,8 +42,6 @@ namespace {
     // namespace anonimo per funzioni di utilità locali al file, non visibili all'esterno
     //
 
-    using Action = std::function<void()>;
-    using ActionRegistry = std::unordered_map<std::string, Action>;
 
     template <typename T>
     T taylor0_exp(
@@ -3436,6 +3432,17 @@ void ErrorPlot_Oscillator(
         };
     }
 
+    /*
+    * ============================================================
+    * INTEGRAZIONE MENU GNPORT — AZIONI DEL PROGRAMMA
+    * ============================================================
+    *
+    * Ogni action_id presente in menu.json deve corrispondere
+    * a una funzione registrata qui.
+    */
+
+    using Action = std::function<void()>;
+    using ActionRegistry = std::unordered_map<std::string, Action>;
 
     ActionRegistry build_action_registry() 
         {
@@ -3462,8 +3469,30 @@ void ErrorPlot_Oscillator(
             {"al_qr",           al_qr},
             {"sandbox",         sandbox}
             };
-        };
+        }
+
+        /*
+        * Avvia il menu FCN usando il runner generico GNPORT.
+        */
+
+        GnMenuRunnerResult run_fcn_menu()
+        {
+            const ActionRegistry actions =
+                build_action_registry();
+
+            return gn_menu_run_registry(
+                "menu.json",
+                actions
+            );
+        }
+    /*
+    * ============================================================
+    * INTEGRAZIONE MENU GNPORT — FINE DICHIARAZIONI
+    * ============================================================
+    */
+
 };  
+
 // 
 // fine namespace anonimo
 //
@@ -3483,74 +3512,58 @@ int main()
         // fig->draw();
     }
 
-    ActionRegistry actions;
+    /*
+    * ============================================================
+    * INTEGRAZIONE MENU GNPORT — ESECUZIONE
+    * ============================================================
+    */
+
+/*
+* 
+* versione liscia
+*
+const GnMenuRunnerResult result =
+    run_fcn_menu();
+
+if (result.status != GN_MENU_RUNNER_OK) {
+    std::cerr << result.message << '\n';
+    return 1;
+}
+*
+* e versione con Exception handling
+*
+*/
 
     try {
-        actions = build_action_registry();
+        const GnMenuRunnerResult menu_result =
+            run_fcn_menu();
+
+        if (menu_result.status !=
+            GN_MENU_RUNNER_OK) {
+
+            std::cerr
+                << "Errore menu: "
+                << menu_result.message
+                << '\n';
+
+            return 1;
+        }
     }
     catch (const std::exception& e) {
         std::cerr
-            << "Errore inizializzazione registry: "
+            << "Errore inizializzazione o "
+            "esecuzione delle azioni: "
             << e.what()
             << '\n';
 
         return 1;
     }
 
-    GnMenuRepository repository;
-    GnIoError menu_error;
-
-    if (!gn_menu_load_json(
-            "menu.json",
-            &repository,
-            &menu_error)) {
-
-        std::cerr
-            << "Errore caricamento menu: "
-            << menu_error.message
-            << '\n';
-
-        return 1;
-    }
-
-    for (;;) {
-        const GnMenuResult result =
-            gn_menu_run_session(&repository);
-
-        if (result.reason == GN_MENU_ERROR) {
-            std::cerr
-                << "Errore durante l'esecuzione "
-                   "del menu GNPORT.\n";
-
-            return 1;
-        }
-
-        if (result.reason == GN_MENU_CANCEL) {
-            break;
-        }
-
-        if (result.reason != GN_MENU_SELECTED) {
-            continue;
-        }
-
-        if (result.action_id == "exit") {
-            break;
-        }
-
-        const auto action_it =
-            actions.find(result.action_id);
-
-        if (action_it == actions.end()) {
-            std::cerr
-                << "Azione non registrata: "
-                << result.action_id
-                << '\n';
-
-            continue;
-        }
-
-        action_it->second();
-    }
+    /*
+    * ============================================================
+    * INTEGRAZIONE MENU GNPORT — FINE ESECUZIONE
+    * ============================================================
+    */
 
     std::cout << "\nUscita dal programma.\n";
     return 0;

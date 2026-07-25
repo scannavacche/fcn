@@ -5,174 +5,183 @@
     {
       "id": "main",
       "title": "FCN - Funzioni di Calcolo Numerico",
-      "layout": "paged_columns",
+      "layout": "program_list",
       "rows": 8,
-      "columns": 2,
+      "columns": 1,
       "items": [
         {
           "key": 1,
-          "label": "F1-E1  Campionamento di funzione coseno",
+          "label": "Foglio di esercitazione 1",
+          "submenu_id": "foglio1",
+          "enabled": true
+        },
+        {
+          "key": 2,
+          "label": "Foglio di esercitazione 2",
+          "submenu_id": "foglio2",
+          "enabled": true
+        },
+        {
+          "key": 3,
+          "label": "Foglio di esercitazione 3",
+          "submenu_id": "foglio3",
+          "enabled": true
+        },
+        {
+          "key": 4,
+          "label": "Simulazione prova d'esame",
+          "submenu_id": "simulazione",
+          "enabled": true
+        },
+        {
+          "key": 5,
+          "label": "Equazioni differenziali",
+          "submenu_id": "ode",
+          "enabled": true
+        },
+        {
+          "key": 6,
+          "label": "Algebra lineare",
+          "submenu_id": "algebra_lineare",
+          "enabled": true
+        },
+        {
+          "key": 7,
+          "label": "Sandbox",
+          "submenu_id": "sandbox",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "foglio1",
+      "title": "FCN - Foglio di esercitazione 1",
+      "layout": "program_list",
+      "rows": 8,
+      "columns": 1,
+      "items": [
+        {
+          "key": 1,
+          "label": "E1    Campionamento di funzione coseno",
           "action": "f1_sample",
           "enabled": true
         },
         {
           "key": 2,
-          "label": "F1-E2a  Esponenziale approssimata con Taylor",
+          "label": "E2a   Esponenziale approssimata con Taylor",
           "action": "f1_taylor_exp",
           "enabled": true
         },
         {
           "key": 3,
-          "label": "F1-E2b  Coseno approssimato con Taylor",
+          "label": "E2b   Coseno approssimato con Taylor",
           "action": "f1_taylor_cos",
           "enabled": true
         },
         {
           "key": 4,
-          "label": "F1-E3  Precisione di calcolo",
+          "label": "E3    Precisione di calcolo",
           "action": "f1_prec",
           "enabled": true
-        },
+        }
+      ]
+    },
+    {
+      "id": "foglio2",
+      "title": "FCN - Foglio di esercitazione 2",
+      "layout": "program_list",
+      "rows": 8,
+      "columns": 1,
+      "items": [
         {
-          "key": 5,
-          "label": "F2-E1  Derivata discreta",
+          "key": 1,
+          "label": "E1    Derivata discreta",
           "action": "f2_deriv",
           "enabled": true
         },
         {
-          "key": 6,
-          "label": "F2-E1a  Problema di Cauchy",
+          "key": 2,
+          "label": "E1a   Problema di Cauchy",
           "action": "f2_cauchy",
           "enabled": true
         },
         {
-          "key": 7,
-          "label": "F2-E1b  Problema differenziale al bordo",
+          "key": 3,
+          "label": "E1b   Problema differenziale al bordo",
           "action": "f2_bordo",
           "enabled": true
         },
         {
-          "key": 8,
-          "label": "F2-E2  Integrazione numerica",
+          "key": 4,
+          "label": "E2    Integrazione numerica",
           "action": "f2_integral",
           "enabled": true
         },
         {
-          "key": 9,
-          "label": "F2-E2a  Confronto norme",
+          "key": 5,
+          "label": "E2a   Confronto norme",
           "action": "f2_norme",
           "enabled": true
         },
         {
-          "key": 10,
-          "label": "F2-E3  Deconvoluzione",
+          "key": 6,
+          "label": "E3    Deconvoluzione",
           "action": "f2_deconv",
           "enabled": true
-        },
+        }
+      ]
+    },
+    {
+      "id": "foglio3",
+      "title": "FCN - Foglio di esercitazione 3",
+      "layout": "program_list",
+      "rows": 8,
+      "columns": 1,
+      "items": [
         {
-          "key": 11,
-          "label": "F3-E1  SVD - test",
+          "key": 1,
+          "label": "E1    SVD - test",
           "action": "f3_svd_test",
           "enabled": true
         },
         {
-          "key": 12,
-          "label": "F3-E1a  SVD QR con ALGLIB",
+          "key": 2,
+          "label": "E1a   SVD QR con ALGLIB",
           "action": "f3_svd",
           "enabled": true
         },
         {
-          "key": 13,
-          "label": "F3-E1b  SVD e PCA",
+          "key": 3,
+          "label": "E1b   SVD e PCA",
           "action": "f3_svd_pca",
           "enabled": true
         },
         {
-          "key": 14,
-          "label": "F3-E1c  Analisi SVD/PCA",
+          "key": 4,
+          "label": "E1c   Analisi SVD/PCA",
           "action": "f3_svd_an",
           "enabled": true
-        },
+        }
+      ]
+    },
+    {
+      "id": "simulazione",
+      "title": "FCN - Simulazione prova d'esame",
+      "layout": "program_list",
+      "rows": 8,
+      "columns": 1,
+      "items": [
         {
-          "key": 15,
-          "label": "SYM-E1b  Cauchy z'(t)=a(t)z(t)+f(t)",
+          "key": 1,
+          "label": "E1b   Cauchy z'(t)=a(t)z(t)+f(t)",
           "action": "sym_cauchy",
           "enabled": true
         },
         {
-          "key": 16,
-          "label": "SYM-E1c  Householder",
+          "key": 2,
+          "label": "E1c   Householder",
           "action": "sym_hhalpha",
           "enabled": true
-        },
-        {
-          "key": 17,
-          "label": "ODE - Equazioni differenziali",
-          "submenu_id": "ode",
-          "enabled": true
-        },
-        {
-          "key": 18,
-          "kind": "empty"
-        },
-        {
-          "key": 19,
-          "kind": "empty"
-        },        {
-          "key": 20,
-          "label": "Test - QR e minimi quadrati",
-          "action": "al_qr",
-          "enabled": true
-        },
-        {
-          "key": 21,
-          "kind": "empty"
-        },
-        {
-          "key": 22,
-          "kind": "empty"
-        },
-        {
-          "key": 23,
-          "kind": "empty"
-        },
-        {
-          "key": 24,
-          "kind": "empty"
-        },
-        {
-          "key": 25,
-          "label": "Test - Procedure in sviluppo",
-          "action": "sandbox",
-          "enabled": true
-        },
-        {
-          "key": 26,
-          "kind": "empty"
-        },
-        {
-          "key": 27,
-          "kind": "empty"
-        },
-        {
-          "key": 28,
-          "kind": "empty"
-        },
-        {
-          "key": 29,
-          "kind": "empty"
-        },
-        {
-          "key": 30,
-          "kind": "empty"
-        },
-        {
-          "key": 31,
-          "kind": "empty"
-        },
-        {
-          "key": 32,
-          "kind": "empty"
         }
       ]
     },
@@ -199,6 +208,36 @@
           "key": 3,
           "label": "Vettoriale - Lotka-Volterra",
           "action": "ode_lotkav",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "algebra_lineare",
+      "title": "FCN - Algebra lineare",
+      "layout": "program_list",
+      "rows": 8,
+      "columns": 1,
+      "items": [
+        {
+          "key": 1,
+          "label": "QR e minimi quadrati",
+          "action": "al_qr",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "sandbox",
+      "title": "FCN - Sandbox",
+      "layout": "program_list",
+      "rows": 8,
+      "columns": 1,
+      "items": [
+        {
+          "key": 1,
+          "label": "Procedure in sviluppo",
+          "action": "sandbox",
           "enabled": true
         }
       ]
