@@ -20,7 +20,10 @@
 // inclusione nuovo menu e data entry grimm-style migrato da VBDOS
 
 #include "gn_entry.h"
+#include "gn_form.h"
+#include "gn_idle.h"
 #include "gn_menu_runner.h"
+#include "gn_terminal.h"
 
 using std::cout;
 using std::endl;
@@ -2016,23 +2019,497 @@ void ErrorPlot_Oscillator(
         }
     }
 
-    void f3_svd_test(){
-        bool leave = false;
-        clear_screen();
-        int n = 6, d = 5;
+    enum class FcnExperimentFormResult {
+        Start,
+        Cancel,
+        Error
+    };
 
-        while (!leave) 
+    class FcnFormTerminalSession {
+    public:
+        FcnFormTerminalSession()
+            : active_(gn_terminal_open() == 0)
         {
+            if (!active_) return;
+
+            gn_screen_write(
+                "\x1b[?1049h"  // schermo alternativo: il report stdio resta nel buffer principale
+                "\x1b[?7l"     // niente ritorno automatico durante il disegno posizionale
+            );
+            gn_screen_clear();
+            gn_screen_cursor_visible(0);
+            gn_screen_flush();
+        }
+
+        ~FcnFormTerminalSession()
+        {
+            if (!active_) return;
+
+            gn_screen_set_role(GN_SCREEN_NORMAL);
+            gn_screen_cursor_shape(GN_CURSOR_DEFAULT);
+            gn_screen_cursor_visible(1);
+            gn_screen_write(
+                "\x1b[?7h"
+                "\x1b[?1049l"
+            );
+            gn_screen_flush();
+            gn_terminal_close();
+        }
+
+        bool active() const
+        {
+            return active_;
+        }
+
+    private:
+        bool active_ = false;
+    };
+
+    void fcn_form_write(
+        int row,
+        int column,
+        const std::string& text,
+        int available_columns,
+        GnScreenRole role = GN_SCREEN_NORMAL)
+    {
+        if (row < 1 || column < 1 || available_columns < 1) return;
+
+        const std::size_t maximum =
+            static_cast<std::size_t>(available_columns);
+        const std::string shown =
+            text.size() <= maximum ? text : text.substr(0, maximum);
+
+        gn_screen_move(row, column);
+        gn_screen_set_role(role);
+        gn_screen_write(shown.c_str());
+        gn_screen_set_role(GN_SCREEN_NORMAL);
+    }
+
+    void fcn_form_separator(int row, int columns)
+    {
+        if (row <= 0 || columns < 2) return;
+        fcn_form_write(row, 1, std::string(columns - 1, '-'), columns - 1);
+    }
+
+    std::string fcn_form_field_value(
+        const std::string& value,
+        std::size_t width)
+    {
+        if (value.size() >= width) return value.substr(0, width);
+        return std::string(width - value.size(), ' ') + value;
+    }
+
+    int fcn_form_move_lab(int lab, int step, int maxlab)
+    {
+        // maxlab e' il numero dei campi: gli indici validi sono 0..maxlab-1.
+        if (maxlab <= 0) return 0;
+
+        int routed = (lab + step) % maxlab;
+        if (routed < 0) routed += maxlab;
+        return routed;
+    }
+
+
+    bool f3_svd_test_layout(GnFormLayout* layout)
+    {
+        GnFormLayoutOptions options;
+        options.header_rows = 2;
+        options.top_separator = true;
+        options.bottom_separator = true;
+        options.hint_line = true;
+        options.echo_line = true;
+        options.status_rows = 2;
+        options.min_viewport_rows = 10;
+        options.min_viewport_columns = 68;
+
+        return gn_form_layout(&options, layout);
+    }
+
+    void f3_svd_test_mask(
+        const GnFormLayout& layout,
+        const std::string values[2],
+        int lab,
+        const std::string& message)
+    {
+        const int width = std::max(1, layout.terminal_columns - 1);
+        const int field_column = std::min(39, std::max(31, width - 10));
+        const int first_field_row = layout.viewport.top + 6;
+
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+
+        fcn_form_write(
+            layout.header_top,
+            1,
+            " SVD - collaudo della bidiagonalizzazione ",
+            width,
+            GN_SCREEN_TITLE);
+
+        fcn_form_write(
+            layout.header_top + 1,
+            3,
+            "Parametri della matrice casuale usata dal test",
+            width - 3);
+
+        fcn_form_separator(layout.top_separator_row, layout.terminal_columns);
+
+        int row = layout.viewport.top;
+        fcn_form_write(row++, 3,
+            "Il test costruisce una matrice casuale X di dimensione n x d.",
+            width - 3);
+        fcn_form_write(row++, 3,
+            "La riduce a forma bidiagonale e verifica ortogonalita',",
+            width - 3);
+        fcn_form_write(row++, 3,
+            "ricostruzione di X e norme del residuo numerico.",
+            width - 3);
+        ++row;
+        fcn_form_write(row++, 3,
+            "Righe e colonne sono indipendenti: la matrice puo' essere",
+            width - 3);
+        fcn_form_write(row++, 3,
+            "alta, quadrata oppure larga.",
+            width - 3);
+
+        fcn_form_write(first_field_row, 5,
+            lab == 0 ? "> Numero di righe n" : "  Numero di righe n",
+            field_column - 6);
+        fcn_form_write(first_field_row, field_column,
+            fcn_form_field_value(values[0], 4),
+            4,
+            GN_SCREEN_FIELD);
+
+        fcn_form_write(first_field_row + 2, 5,
+            lab == 1 ? "> Numero di colonne d" : "  Numero di colonne d",
+            field_column - 6);
+        fcn_form_write(first_field_row + 2, field_column,
+            fcn_form_field_value(values[1], 4),
+            4,
+            GN_SCREEN_FIELD);
+
+        fcn_form_separator(layout.bottom_separator_row, layout.terminal_columns);
+
+        fcn_form_write(
+            layout.hint_row,
+            2,
+            lab == 0
+                ? "n: numero di righe, intero positivo"
+                : "d: numero di colonne, intero positivo",
+            width - 2,
+            GN_SCREEN_MESSAGE);
+
+        gn_screen_clear_line(layout.echo_row);
+        if (!message.empty()) {
+            fcn_form_write(
+                layout.echo_row,
+                2,
+                message,
+                width - 2,
+                GN_SCREEN_ERROR);
+        }
+
+        fcn_form_separator(layout.status_separator_row, layout.terminal_columns);
+        fcn_form_write(
+            layout.status_top,
+            2,
+            "ENTER campo successivo   F1 Help   F10 Start   ESC Menu",
+            width - 2,
+            GN_SCREEN_STATUS);
+        fcn_form_write(
+            layout.status_top + 1,
+            2,
+            "Frecce/TAB cambiano campo; SPACE modifica; digitazione diretta sostituisce",
+            std::max(1, width - 8),
+            GN_SCREEN_STATUS);
+
+        gn_screen_flush();
+    }
+
+    void f3_svd_test_help(const GnFormLayout& layout)
+    {
+        const int width = std::max(1, layout.terminal_columns - 1);
+        const std::vector<std::string> lines = {
+            "F1 HELP - SVD / test di bidiagonalizzazione",
+            "",
+            "Obiettivo",
+            "  Verificare la riduzione X = U0 B V0^T ottenuta con",
+            "  trasformazioni di Householder e Golub-Kahan.",
+            "",
+            "Parametri",
+            "  n  numero di righe della matrice casuale X",
+            "  d  numero di colonne della matrice casuale X",
+            "",
+            "Navigazione",
+            "  ENTER, TAB, freccia giu/destra: campo successivo",
+            "  Shift-TAB, freccia su/sinistra: campo precedente",
+            "",
+            "Cosa osservare nel rapporto",
+            "  - B deve risultare bidiagonale;",
+            "  - U0 e V0 devono essere ortogonali;",
+            "  - il residuo X - U0 B V0^T deve essere prossimo a zero;",
+            "  - le diverse stime della norma spettrale devono concordare.",
+            "",
+            "Dopo F10 il rapporto usa lo stdio normale: la scrollbar del",
+            "terminale consente di rileggere anche l'output oltre lo schermo.",
+            "",
+            "F1, ENTER oppure ESC: ritorno ai parametri"
+        };
+
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+
+        int row = 1;
+        for (const std::string& line : lines) {
+            if (row > layout.terminal_rows) break;
+            fcn_form_write(
+                row,
+                line.empty() ? 1 : 2,
+                line,
+                line.empty() ? width : width - 2,
+                row == 1 ? GN_SCREEN_TITLE : GN_SCREEN_NORMAL);
+            ++row;
+        }
+        gn_screen_flush();
+
+        for (;;) {
+            GnKeyEvent event{};
+            const GnPollResult result = gn_pump_once(&event);
+
+            if (result == GN_POLL_EMPTY) {
+                gn_cooperative_pause();
+                continue;
+            }
+            if (result == GN_POLL_ERROR) return;
+
+            if (event.code == GN_KEY_F1 ||
+                event.code == GN_KEY_ENTER ||
+                event.code == GN_KEY_ESCAPE) {
+                return;
+            }
+
+            gn_screen_beep();
+        }
+    }
+
+    bool f3_svd_test_parse_dimension(
+        const std::string& text,
+        int* value)
+    {
+        if (value == nullptr || text.empty()) return false;
+
+        try {
+            std::size_t consumed = 0;
+            const long long parsed = std::stoll(text, &consumed, 10);
+
+            if (consumed != text.size() ||
+                parsed <= 0 ||
+                parsed > std::numeric_limits<int>::max()) {
+                return false;
+            }
+
+            *value = static_cast<int>(parsed);
+            return true;
+        }
+        catch (...) {
+            return false;
+        }
+    }
+
+    FcnExperimentFormResult f3_svd_test_entry(int* n, int* d)
+    {
+        if (n == nullptr || d == nullptr) {
+            return FcnExperimentFormResult::Error;
+        }
+
+        FcnFormTerminalSession session;
+        if (!session.active()) {
+            return FcnExperimentFormResult::Error;
+        }
+
+        GnFormLayout layout;
+        if (!f3_svd_test_layout(&layout)) {
+            gn_screen_clear();
+            fcn_form_write(
+                1,
+                1,
+                "Terminale troppo piccolo per il form SVD (minimo 68 colonne).",
+                78,
+                GN_SCREEN_ERROR);
+            gn_screen_flush();
+
+            for (;;) {
+                GnKeyEvent event{};
+                const GnPollResult result = gn_pump_once(&event);
+                if (result == GN_POLL_EMPTY) {
+                    gn_cooperative_pause();
+                    continue;
+                }
+                return FcnExperimentFormResult::Cancel;
+            }
+        }
+
+        constexpr int maxlab = 2;
+
+        std::string values[maxlab] = {
+            std::to_string(*n),
+            std::to_string(*d)
+        };
+
+        const char* field_names[maxlab] = {"n", "d"};
+        int lab = 0;
+        std::string message;
+
+        for (;;) {
+            f3_svd_test_mask(
+                layout,
+                values,
+                lab,
+                message);
+            message.clear();
+
+            const int field_column =
+                std::min(39, std::max(31, layout.terminal_columns - 11));
+            const int first_field_row = layout.viewport.top + 6;
+
+            const GnEntrySpec specs[maxlab] = {
+                GnEntrySpec{
+                    first_field_row,
+                    field_column,
+                    GN_FIELD_NATURAL,
+                    4,
+                    0.0,
+                    0.0,
+                    1,
+                    layout.echo_row
+                },
+                GnEntrySpec{
+                    first_field_row + 2,
+                    field_column,
+                    GN_FIELD_NATURAL,
+                    4,
+                    0.0,
+                    0.0,
+                    1,
+                    layout.echo_row
+                }
+            };
+
+            const GnEntryCommand command =
+                gn_entry_field(&specs[lab], &values[lab]);
+
+            switch (command) {
+                case GN_ENTRY_ENTER:
+                case GN_ENTRY_CTRL_ENTER:
+                case GN_ENTRY_TAB:
+                case GN_ENTRY_DOWN:
+                case GN_ENTRY_RIGHT:
+                case GN_ENTRY_PAGE_DOWN:
+                case GN_ENTRY_CTRL_DOWN:
+                case GN_ENTRY_CTRL_RIGHT:
+                case GN_ENTRY_CTRL_PAGE_DOWN:
+                    lab = fcn_form_move_lab(lab, +1, maxlab);
+                    break;
+
+                case GN_ENTRY_SHIFT_TAB:
+                case GN_ENTRY_UP:
+                case GN_ENTRY_LEFT:
+                case GN_ENTRY_PAGE_UP:
+                case GN_ENTRY_CTRL_UP:
+                case GN_ENTRY_CTRL_LEFT:
+                case GN_ENTRY_CTRL_PAGE_UP:
+                    lab = fcn_form_move_lab(lab, -1, maxlab);
+                    break;
+
+                case GN_ENTRY_HOME:
+                case GN_ENTRY_CTRL_HOME:
+                    lab = 0;
+                    break;
+
+                case GN_ENTRY_END:
+                case GN_ENTRY_CTRL_END:
+                    lab = maxlab - 1;
+                    break;
+
+                case GN_ENTRY_F1:
+                    f3_svd_test_help(layout);
+                    break;
+
+                case GN_ENTRY_F10: {
+                    int parsed[maxlab] = {};
+                    bool valid = true;
+
+                    for (int i = 0; i < maxlab; ++i) {
+                        if (!f3_svd_test_parse_dimension(
+                                values[i],
+                                &parsed[i])) {
+
+                            lab = i;
+                            message =
+                                std::string(field_names[i]) +
+                                " deve essere un intero positivo";
+
+                            gn_screen_beep();
+                            valid = false;
+                            break;
+                        }
+                    }
+
+                    if (!valid) {
+                        break;
+                    }
+
+                    *n = parsed[0];
+                    *d = parsed[1];
+
+                    return FcnExperimentFormResult::Start;
+                }
+                case GN_ENTRY_ESCAPE:
+                    return FcnExperimentFormResult::Cancel;
+
+                default:
+                    gn_screen_beep();
+                    break;
+            }
+        }
+    }
+
+    void f3_svd_test_wait_for_form()
+    {
+        std::cout << "\nPremi INVIO per tornare ai parametri...";
+        cin_clear();
+        std::cin.get();
+        cin_clear();
+    }
+
+    void f3_svd_test(){
+        int n = 6;
+        int d = 5;
+
+        for (;;) {
+            const FcnExperimentFormResult form_result =
+                f3_svd_test_entry(&n, &d);
+
+            if (form_result == FcnExperimentFormResult::Cancel) {
+                return;
+            }
+            if (form_result == FcnExperimentFormResult::Error) {
+                std::cerr << "Impossibile aprire il form SVD.\n";
+                return;
+            }
+
+            // Da qui il terminale e' tornato canonico: il rapporto resta stdio puro.
             clear_screen();
+
             {
                 Vec v = {3.0, 1.0, -2.0};
                 Vec w = vector_build_householder_bycol(v);
 
                 // Calcola H*v esplicitamente per verifica
                 // H*v = v - 2*w*(w^T*v)
-                double wtv = 0; for (int i = 0; i < 3; ++i) wtv += w[i]*v[i];
+                double wtv = 0;
+                for (int i = 0; i < 3; ++i) wtv += w[i] * v[i];
                 Vec Hv(3);
-                for (int i = 0; i < 3; ++i) Hv[i] = v[i] - 2*w[i]*wtv;
+                for (int i = 0; i < 3; ++i) Hv[i] = v[i] - 2 * w[i] * wtv;
 
                 printf("Verifica Householder colonna:\n");
                 printf("  v = [%.3f, %.3f, %.3f]\n", v[0], v[1], v[2]);
@@ -2041,13 +2518,14 @@ void ErrorPlot_Oscillator(
                 cout << std::string(80, '_') << endl;
             }
 
-            // ── Verifica TODO 3: bidiagonalizzazione su matrice piccola ──────────────
+            // Verifica della bidiagonalizzazione su matrice n x d.
             {
-                // Matrice 4x5 casuale
                 std::mt19937 rng(42);
                 std::normal_distribution<double> g(0.0, 1.0);
                 Mat X = matrix_build_zero(n, d);
-                for (auto& r : X) for (double& v : r) v = g(rng);
+                for (auto& r : X) {
+                    for (double& v : r) v = g(rng);
+                }
 
                 Mat U0, B, V0;
                 trmatrix_bidiagonalizza(X, U0, B, V0, bidiag_mode, false);
@@ -2062,45 +2540,28 @@ void ErrorPlot_Oscillator(
                 matrix_dump(V0, "V0 - Ortogonale?");
                 matrix_dump(V0_t, "V0_t - Ortogonale trasposta");
                 matrix_test_ortogonale(V0_V0t, "V0 * V0_t - test ortogonalita'");
-                //
-                // Verifiche
-                //
 
-                // TODO 4: verifica ||X - U0*B*V0^T||_F
                 Mat X0 = matrix_prodotto_matrix(U0, matrix_prodotto_matrix(B, V0_t));
                 matrix_dump(X, "X - Originale");
                 matrix_dump(X0, "X - Ricostruita U0 * (B * V0^T)");
-                Mat R = matrix_calcola_diff(X,X0);
+                Mat R = matrix_calcola_diff(X, X0);
                 matrix_dump(R, "R - Differenza X - U0 * B * V0^T");
 
                 printf(" Error_F_lab ||X - U0*B*V0^T||_F = %.2e\n", matrix_calcola_errore_Fr(X, X0));
                 printf(" Error_F_mia ||X - U0*B*V0^T||_F = %.2e\n\n", matrix_calcola_norma(-1, R));
                 printf(" Error_F_lab ||In - U0*U0^T ||_F = %.2e\n", matrix_calcola_errore_Fr(In, U0_U0t));
                 printf(" Error_F_lab ||Id - V0*V0^T ||_F = %.2e\n\n", matrix_calcola_errore_Fr(Id, V0_V0t));
-           
-            // ── TODO 5: norma spettrale dell'errore di bidiagonalizzazione ───────────
-            
-                // Dopo aver implementato norma_spettrale e matmat:
-                printf(" Norma spettrale PM econ ||R||_2 = %.2e\n",  matrix_calcola_norma(2,R));
-                printf(" Norma spettrale PM lab. ||R||_2 = %.2e\n",  matrix_calcola_norma(12,R));
-                printf(" Norma spettrale PM rayl ||R||_2 = %.2e\n\n",  matrix_calcola_norma(22,R));
-                //  test condizione di errore: Mat E = matrix_calcola_diff(U0, V0);
-           }
- 
-            bool redo = false;
-            while (!redo && !leave) {
 
-                std::cout << "Numero di righe della matrice di test = n [3..20] (<q> per uscire) > " ;
-                if (std::cin >> n) { if (n>=3 && n<=20) redo=true;} else {cout << "Key: " << n <<endl; leave=true;} ;
-                if (redo) {
-                    std::cout << " numero di colonne = d da n a "<< 30 <<" (<q> per uscire) > " ;
-                    if (std::cin >> d) { if (d >=n && d<=30) redo=true;} else {cout << "Key: " << d <<endl; leave=true;} ;
-                }
-                cin_clear();
-            };
-       }
+                printf(" Norma spettrale PM econ ||R||_2 = %.2e\n", matrix_calcola_norma(2, R));
+                printf(" Norma spettrale PM lab. ||R||_2 = %.2e\n", matrix_calcola_norma(12, R));
+                printf(" Norma spettrale PM rayl ||R||_2 = %.2e\n\n", matrix_calcola_norma(22, R));
+            }
+
+            f3_svd_test_wait_for_form();
+            clear_screen();
+        }
     }
-    
+
     void f3_svd(){
         bool leave = false;
         int n = 6, d = 6;
