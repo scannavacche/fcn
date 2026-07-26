@@ -42,6 +42,10 @@ namespace {
     // namespace anonimo per funzioni di utilità locali al file, non visibili all'esterno
     //
 
+    using fcn_form::wait_report;
+    using f3_svd_test_form::prompt;
+    using f3_svd_form::prompt;
+    using f3_svd_pca_form::prompt;
 
     template <typename T>
     T taylor0_exp(
@@ -2020,7 +2024,7 @@ void ErrorPlot_Oscillator(
         int n = 6;
         int d = 5;
 
-        while (f3_svd_test_prompt(n, d)) {
+        while (f3_svd_test_form::prompt(n, d)) {
             // Da qui il terminale e' tornato canonico: il rapporto resta stdio puro.
             clear_screen();
 
@@ -2081,7 +2085,7 @@ void ErrorPlot_Oscillator(
                 printf(" Norma spettrale PM rayl ||R||_2 = %.2e\n\n", matrix_calcola_norma(22, R));
             }
 
-            fcn_form_wait_report();
+            fcn_form::wait_report();
             clear_screen();
         }
     }
@@ -2089,7 +2093,7 @@ void ErrorPlot_Oscillator(
     void f3_svd(){
         int n = 6, d = 6;
 
-        while (f3_svd_prompt(n, d)) 
+        while (f3_svd_form::prompt(n, d)) 
         {
             clear_screen();
             // ── TODO 6: SVD completa ─────────────────────────────────────────────────
@@ -2253,7 +2257,7 @@ void ErrorPlot_Oscillator(
 
         
 
-            fcn_form_wait_report();
+            fcn_form::wait_report();
             clear_screen();
        }
     }
@@ -2261,35 +2265,51 @@ void ErrorPlot_Oscillator(
     void f3_svd_pca(){
         F3SvdPcaParams params{100, 10, 2.0f, 2.0f};
 
-        while (f3_svd_pca_prompt(params))
+        while (f3_svd_pca_form::prompt(params))
         {
             const int n = params.n;
             const int d = params.d;
+            const float nmul = params.factor_n;
+            const float dmul = params.factor_d;
 
             // ── TODO 7: PCA e scatter plot ────────────────────────────────────────────
             clear_screen();
+            // cout << "Parametri di ritorno da form " << n << "\t" << d << "\t" << nmul << "\t" << dmul << endl ;
             // primo giro prende n come base ed a pari d plotta 4 scatter nx1, nx2, nx4, nx8
             // secondo giro prende d come base ed a pari n plotta 4 scatter dx1, dx2, dx4, dx8
             // params.factor_n e params.factor_d sono ora disponibili alla business logic;
             // i due fattori 2 cablati qui sotto restano volutamente invariati in questo refactoring.
-            bool first_run = true;
-            for (int itab = 0; itab < 2; itab++)
+            // bool first_run = true;
+            for (int itab = 0; itab < 3; itab++)
             {
-                auto fig = matplot_table_init(true, "PCA", "PCA — prime due componenti principali", 2, 2 );
+                if (itab == 0 && nmul <= 1.0f) continue;
+                if (itab == 1 && dmul <= 1.0f) continue;
+
+                std::string pca_title = "PCA — prime 2 componenti principali ";
+                if (itab == 0) pca_title += "- progress su n righe (prove)"; 
+                if (itab == 1) pca_title += "- progress su d colonne (features)"; 
+                if (itab == 2) pca_title += "- progress sia su n che su d"; 
+                auto fig = matplot_table_init(true, "PCA", pca_title, 2, 2 );
+ 
+                int npoints = n;
+                int ncols = d;
+
 
                 for (int ik = 0; ik < 4; ik++)
                 {
-                    int npoints;
-                    int ncols;
-
-                    if (first_run) {
-                        npoints = n * pow(2, ik);
+                    // if (first_run) {
+                    if (itab == 0 && ik > 0 ) {
+                        npoints = (int) (npoints * nmul);
                         ncols = d ;
-                    } else{
+                    } else if (itab == 1 && ik > 0) {
                         npoints = n;
-                        ncols = d  * pow(2, ik);
+                        ncols = (int) (ncols * dmul);
+                    } else if (itab == 2 && ik > 0){
+                        npoints = (int) (npoints * nmul);
+                        ncols = (int) (ncols * dmul);
                     }
-                    cout << "in generazione cluster da " << npoints << " X " << ncols << " punti\n";
+
+                    cout << endl << "in generazione cluster da " << npoints << " X " << ncols << " punti\n";
 
                     auto [X, label] = genera_cluster(npoints, ncols, /*seed=*/42);
                     // a) Centrare X: sottrai la media di ogni colonna
@@ -2355,12 +2375,12 @@ void ErrorPlot_Oscillator(
 
                 }
                 fig->draw();
-                first_run = !first_run;
+                // first_run = !first_run;   // proviamo ad usare itab == 0 per n e itab == 1 per d
             }
             // e) Prova con d variabile: {2, 5, 20, 50}
             // f) Stampa sigma[0], sigma[1] vs il resto: cosa noti?
 
-            fcn_form_wait_report();
+            fcn_form::wait_report();
             clear_screen();
        }
     }
@@ -2376,7 +2396,7 @@ void ErrorPlot_Oscillator(
             // ── TODO 7: PCA e scatter plot ────────────────────────────────────────────
             
             clear_screen();
-            bool first_run = true;
+
 			auto fig = matplot_table_init(true, "PCA", "PCA — prime due componenti principali", 2, 2 );
 
 			for (int ik = 0; ik < 4; ik++) 

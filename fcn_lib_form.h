@@ -8,8 +8,15 @@
  * applicativa: true = parametri confermati, false = prompt abbandonato.
  * I dettagli GnFormRunResult restano confinati nell'implementazione.
  */
-bool f3_svd_test_prompt(int& n, int& d);
-bool f3_svd_prompt(int& n, int& d);
+namespace f3_svd_test_form
+{
+    bool prompt(int& n, int& d);
+};
+
+namespace f3_svd_form
+{
+    bool prompt(int& n, int& d);
+};
 
 struct F3SvdPcaParams {
     int n;
@@ -18,9 +25,14 @@ struct F3SvdPcaParams {
     float factor_d;
 };
 
-bool f3_svd_pca_prompt(F3SvdPcaParams& params);
+namespace f3_svd_pca_form
+{
+    bool prompt(F3SvdPcaParams& params);
+};
 
 // Ritorno dal rapporto stdio alla form dei parametri.
-void fcn_form_wait_report();
-
+namespace fcn_form
+{
+    void wait_report();
+}
 #endif
