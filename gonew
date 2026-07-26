@@ -20,19 +20,25 @@ LDLIBS="-Wl,--start-group -lmatplot -lsvdqr -lnodesoup -lpng -ltiff -lz -ljpeg -
 SOURCES="\
 fcn_all.cpp \
 fcn_lib_calc.cpp \
+fcn_lib_form.cpp \
 ${GNPORT_DIR}/src/gn_terminal_posix.cpp \
 ${GNPORT_DIR}/src/gn_idle.cpp \
 ${GNPORT_DIR}/src/gn_string.cpp \
 ${GNPORT_DIR}/src/gn_menu.cpp \
 ${GNPORT_DIR}/src/gn_entry.cpp \
 ${GNPORT_DIR}/src/gn_form.cpp \
+${GNPORT_DIR}/src/gn_form_runner.cpp \
 ${GNPORT_DIR}/src/gn_fs.cpp \
 ${GNPORT_DIR}/src/gn_menu_io.cpp \
 ${GNPORT_DIR}/src/gn_menu_runner.cpp \
 ${GNPORT_DIR}/src/gn_menu_repository.cpp"
 
 
-HEADERS="fcn_lib_calc.h menu_config.h json.hpp"
+HEADERS="fcn_lib_calc.h fcn_lib_form.h menu_config.h json.hpp"
+
+# HEADERS non viene usata nel comando di compilazione né verificata nel loop. 
+# allo stato attuale questa variabile è puramente documentativa/residuale.
+
 TARGET="fcn_all"
 
 # Verifica che i sorgenti esistano
