@@ -2259,21 +2259,25 @@ void ErrorPlot_Oscillator(
     }
 
     void f3_svd_pca(){
-        bool leave = false;
-        int n = 100, d = 10; 
+        F3SvdPcaParams params{100, 10, 2.0f, 2.0f};
 
-        while (!leave) 
+        while (f3_svd_pca_prompt(params))
         {
+            const int n = params.n;
+            const int d = params.d;
+
             // ── TODO 7: PCA e scatter plot ────────────────────────────────────────────
             clear_screen();
-            // primo giro prende n come base ed a pari d plotta 4 scatter nx1, nx2, nx4, nx8 
-            // secondo giro prende d come base ed a pari n plotta 4 scatter dx1, dx2, dx4, dx8 
+            // primo giro prende n come base ed a pari d plotta 4 scatter nx1, nx2, nx4, nx8
+            // secondo giro prende d come base ed a pari n plotta 4 scatter dx1, dx2, dx4, dx8
+            // params.factor_n e params.factor_d sono ora disponibili alla business logic;
+            // i due fattori 2 cablati qui sotto restano volutamente invariati in questo refactoring.
             bool first_run = true;
-            for (int itab = 0; itab < 2; itab++) 
+            for (int itab = 0; itab < 2; itab++)
             {
                 auto fig = matplot_table_init(true, "PCA", "PCA — prime due componenti principali", 2, 2 );
 
-                for (int ik = 0; ik < 4; ik++) 
+                for (int ik = 0; ik < 4; ik++)
                 {
                     int npoints;
                     int ncols;
@@ -2327,7 +2331,7 @@ void ErrorPlot_Oscillator(
                     for (int i =0; i < npoints; i++) {
                         pc1[i] += U[i][1] * sigma[1];
                         pc2[i] += U[i][2] * sigma[2];
-    
+
                     }
                     //    (equivalente a U[i][k] * sigma[k]) // ok X_v_i = sigma_i_u_i
 
@@ -2352,24 +2356,12 @@ void ErrorPlot_Oscillator(
                 }
                 fig->draw();
                 first_run = !first_run;
-            }   
+            }
             // e) Prova con d variabile: {2, 5, 20, 50}
             // f) Stampa sigma[0], sigma[1] vs il resto: cosa noti?
 
-
-        
-
-            bool redo = false;
-            while (!redo && !leave) {
-
-                std::cout << "Numero di righe della matrice per PCA = n [3..500] (<q> per uscire) > " ;
-                if (std::cin >> n) { if (n>=3 && n<=500) redo=true;} else {cout << "Key: " << n <<endl; leave=true;} ;
-                if (redo) {
-                    std::cout << " numero di colonne = d da n a "<< 500 <<" (<q> per uscire) > " ;
-                    if (std::cin >> d) { if (d >=n && d<=500) redo=true;} else {cout << "Key: " << d <<endl; leave=true;} ;
-                }
-                cin_clear();
-            };
+            fcn_form_wait_report();
+            clear_screen();
        }
     }
 
