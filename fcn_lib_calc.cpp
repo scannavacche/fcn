@@ -569,6 +569,7 @@ double linear_max_autoval_pwr_any_res(
 
     // double mu = 0.0;
     // double mu_old = 0.0;
+    double nz_old = 0.0;
     //
     //iterazione su AtA senza calcolarla esplicitamente
     //
@@ -583,7 +584,6 @@ double linear_max_autoval_pwr_any_res(
         for (int j=0;j<N;j++) q[j]=z[j]/nz; // q = z normalizzato
         //
         // uscita anticipata con controllo su norma2(z) invece di mu
-        static double nz_old = 0.0;
         if (iter > 0) {
             double rel = std::abs(nz - nz_old) / std::max(1.0, std::abs(nz));
             if (rel < tol) break;

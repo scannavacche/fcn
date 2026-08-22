@@ -1470,29 +1470,32 @@ void ErrorPlot_Oscillator(
         clear_screen();
         while (!leave) {
             bool redo = false;
-
-            std::cout << "\n=== Norma 2 e numero di condizionamento spettrale ===\n";
-            
+           
             const int N_values[] = {10, 20, 40, 80, 160, 320, 640};
-            const int n_tests = 7;
-            
+            const int n_tests = std::size(N_values);
+
             std::vector<double> x_vals, cond_2_vals, cond_12_vals, cond_22_vals, cond_f_vals, cond_1_vals, cond_I_vals;
             
-            std::cout << std::setfill(' ')            
-                << std::setw(6) << "N" 
-                << std::setw(12) << "norm2(A)"
-                << std::setw(12) << "t2(A) 1R"
-                << std::setw(12) << "norm12(A)"
-                << std::setw(12) << "t12(A) AllR"
-                << std::setw(12) << "norm22(AtA)"
-                << std::setw(12) << "t22(AtA)"
-                << std::setw(12) << "norm2(A^-1)"
-                << std::setw(12) << "kappa2"
-                << std::setw(12) << "kappa2/N^2"
-                << std::setw(12) << "kappaF"
-                << std::setw(12) << "kappa1"
-                << std::setw(12) << "kappaI\n";
-            
+            std::cout
+                << "\n=== Norma 2 e numero di condizionamento spettrale ===\n\n"
+                << std::setfill(' ')
+                << std::setw(6)  << "N"
+                << std::setw(13) << "||A||2 1R"
+                << std::setw(12) << "t1R [us]"
+                << std::setw(14) << "||A||2 AllR"
+                << std::setw(12) << "tAllR [us]"
+                << std::setw(14) << "||A||2 AtA"
+                << std::setw(12) << "tAtA [us]"
+                << std::setw(11) << "AllR/1R"
+                << std::setw(11) << "AtA/1R"
+                << std::setw(13) << "||A^-1||2"
+                << std::setw(13) << "kappa2"
+                << std::setw(14) << "kappa2/N^2"
+                << std::setw(13) << "kappaF"
+                << std::setw(13) << "kappa1"
+                << std::setw(13) << "kappaInf"
+                << '\n';    
+
             for (int n = 0; n < n_tests; ++n) {
                 int N = N_values[n];
                 double h = h_ticks(a,b,N); // passo di campionamento
@@ -1527,7 +1530,14 @@ void ErrorPlot_Oscillator(
                 double norm22_Ainv = matrix_calcola_norma(22, A_inv);
                 double kappa22 = norm22_A * norm22_Ainv;
 
-              
+                double ratio12 =
+                    static_cast<double>(time12_A) /
+                    std::max<long long>(1, time2_A);
+
+                double ratio22 =
+                    static_cast<double>(time22_A) /
+                    std::max<long long>(1, time2_A);
+                            
                 // Norma Frobenius
                 double normF_A = matrix_calcola_norma(-1, A);
                 double normF_Ainv = matrix_calcola_norma(-1, A_inv);
@@ -1543,20 +1553,41 @@ void ErrorPlot_Oscillator(
                 double normI_Ainv = matrix_calcola_norma(0, A_inv);
                 double kappaI = normI_A * normI_Ainv;
                 
-                std::cout << std::setw(6) << N
-                        << std::setw(12) << std::fixed << std::setprecision(2) << norm2_A
-                        << std::setw(12) << time2_A
-                        << std::setw(12) << norm12_A
-                        << std::setw(12) << time12_A
-                        << std::setw(12) << norm22_A
-                        << std::setw(12) << time22_A
-                        << std::setw(12) << norm2_Ainv
-                        << std::setw(12) << kappa2
-                        << std::setw(12) << kappa2 / (N*N)
-                        << std::setw(12) << kappaF
-                        << std::setw(12) << kappa1
-                        << std::setw(12) << kappaI << "\n";  
+                std::cout
+                    << std::setw(6) << N
 
+                    << std::fixed << std::setprecision(2)
+                    << std::setw(13) << norm2_A
+
+                    << std::setw(12) << time2_A
+
+                    << std::fixed << std::setprecision(2)
+                    << std::setw(14) << norm12_A
+
+                    << std::setw(12) << time12_A
+
+                    << std::fixed << std::setprecision(2)
+                    << std::setw(14) << norm22_A
+
+                    << std::setw(12) << time22_A
+
+                    << std::fixed << std::setprecision(2)
+                    << std::setw(11) << ratio12
+                    << std::setw(11) << ratio22
+
+                    << std::setw(13) << norm2_Ainv
+                    << std::setw(13) << kappa2
+
+                    << std::scientific << std::setprecision(3)
+                    << std::setw(14)
+                    << kappa2 / (static_cast<double>(N) * N)
+
+                    << std::fixed << std::setprecision(2)
+                    << std::setw(13) << kappaF
+                    << std::setw(13) << kappa1
+                    << std::setw(13) << kappaI
+
+                    << '\n';
                 x_vals.push_back(N);
                 cond_2_vals.push_back(kappa2);
                 cond_12_vals.push_back(kappa12);
@@ -1571,7 +1602,7 @@ void ErrorPlot_Oscillator(
             figure_handle f = matplot_table_init(true, "Confronto Norme", title, 1,1);
             f->nexttile(0);
             auto ax = f->current_axes();
-            ax->title(title);
+            // ax->title(title);
 
             xlabel("N");
             ylabel("kappa");
