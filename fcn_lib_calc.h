@@ -117,6 +117,38 @@ double fcallb(
     double (*f)(double));   
 
 //
+// Gershgorin in fase di sviluppo
+//
+
+enum class GershgorinDirection {
+    Rows,
+    Columns
+};
+  
+struct GershgorinDisk {
+    int index;          // riga i
+    double center;      // a_ii
+    double radius;      // somma_{j != i} |a_ij|
+};
+
+struct GershgorinCluster {
+    VecN disks;         // indici dei dischi della componente
+};
+
+std::vector<GershgorinDisk> linear_gershgorin_disks(
+    const Mat& A,
+    GershgorinDirection direction);
+
+std::vector<GershgorinDisk> linear_gershgorin_disks_rows(const Mat& A);
+
+std::vector<GershgorinDisk> linear_gershgorin_disks_columns(const Mat& A);
+
+
+std::vector<GershgorinCluster> linear_gershgorin_clusters(
+    const std::vector<GershgorinDisk>& disks);
+
+
+//
 // funzioni macro algebra lineare
 // 
 
@@ -327,6 +359,22 @@ Mat matrix_prodotto_matrix(
 Vec matrix_prodotto_vector(
     const Mat& A, 
     const Vec& v);
+
+Mat matrix_random(
+    int N,
+    unsigned seed = 42);
+
+Mat matrix_random_diagonally_dominant(
+    int N,
+    double margin = 1.0);
+
+Mat matrix_random_symmetric_diagonally_dominant(
+    int N,
+    double margin = 1.0);
+
+Mat matrix_random_symmetric(
+    int N,
+    unsigned seed = 42);
 
 Mat matrix_swap_cols(
     const Mat& A, 

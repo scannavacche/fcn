@@ -1,0 +1,19 @@
+digraph G {
+  graph [rankdir=LR, bgcolor="transparent", margin=0.05, nodesep=0.45, ranksep=0.8];
+  node [shape=ellipse, fontname="DejaVu Sans", fontsize=11];
+  edge [fontname="DejaVu Sans", fontsize=10];
+  x [shape=circle, label="x"];
+  two [shape=circle, label="2"];
+  one [shape=circle, label="1"];
+  x2 [label="x²\nε₂"];
+  twox [label="2x\nε₁"];
+  sum [label="x²+2x\nε₃"];
+  out [label="x²+2x+1\nε₄"];
+  x -> x2;
+  x -> twox;
+  two -> twox;
+  x2 -> sum [label="x²/(x²+2x)"];
+  twox -> sum [label="2x/(x²+2x)"];
+  sum -> out [label="(x²+2x)/(x²+2x+1)"];
+  one -> out;
+}

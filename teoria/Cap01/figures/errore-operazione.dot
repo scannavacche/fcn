@@ -1,0 +1,10 @@
+digraph G {
+  graph [rankdir=LR, bgcolor="transparent", margin=0.05];
+  node [shape=ellipse, fontname="DejaVu Sans", fontsize=12];
+  edge [fontname="DejaVu Sans", fontsize=11];
+  z1 [label="z₁\nε₁(tot)"];
+  z2 [label="z₂\nε₂(tot)"];
+  z3 [label="z₃\nε₃(tot)"];
+  z1 -> z3 [label="c₁"];
+  z2 -> z3 [label="c₂"];
+}

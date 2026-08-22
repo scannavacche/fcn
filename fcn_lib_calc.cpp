@@ -281,6 +281,51 @@ double fcallb(
 }
 
 //
+// Gershgorin in sviluppo
+//
+
+std::vector<GershgorinDisk> linear_gershgorin_disks(
+    const Mat& A,
+    GershgorinDirection direction)
+    {
+        const int N = static_cast<int>(A.size());
+        
+        std::vector<GershgorinDisk> R(N);
+        
+        for (int i = 0; i<N; i++){
+            R[i].index = i;
+            R[i].center=A[i][i];
+        
+            double sum = 0;
+            for (int j = 0; j < N; j++) {
+                if (j != i) {
+                    if (direction == GershgorinDirection::Rows)
+                        sum += std::abs(A[i][j]);
+                    else
+                        sum += std::abs(A[j][i]);
+                }
+            }
+        
+            R[i].radius = sum;
+        }
+        
+        return R;
+    }
+
+std::vector<GershgorinDisk> linear_gershgorin_disks_rows(const Mat& A){
+    return linear_gershgorin_disks(
+        A, GershgorinDirection::Rows);
+}
+
+std::vector<GershgorinDisk> linear_gershgorin_disks_columns(const Mat& A){
+    return linear_gershgorin_disks(
+        A, GershgorinDirection::Columns);
+}
+
+std::vector<GershgorinCluster> linear_gershgorin_clusters(
+    const std::vector<GershgorinDisk>& disks);
+
+//
 // funzioni macro di algebra lineare
 //
 
@@ -1616,6 +1661,81 @@ Vec matrix_prodotto_vector(
     return u;
 };  
 
+Mat matrix_random(
+    int N,
+    unsigned seed)
+{
+    std::mt19937 rng(seed);
+    std::normal_distribution<double> g(0.0, 1.0);
+
+    Mat A = matrix_build_zero(N, N);
+
+    for (auto& row : A)
+        for (double& v : row)
+            v = g(rng);
+
+    return A;
+}
+
+Mat matrix_random_diagonally_dominant(
+    int N,
+    double margin)
+{
+    Mat A = matrix_random(N);
+
+    for (int i = 0; i < N; i++) {
+        double sum = 0.0;
+
+        for (int j = 0; j < N; j++) {
+            if (j != i)
+                sum += std::abs(A[i][j]);
+        }
+
+        A[i][i] = sum + margin;
+    }
+
+    return A;
+}
+
+Mat matrix_random_symmetric_diagonally_dominant(
+    int N,
+    double margin)
+{
+    Mat A = matrix_random_symmetric(N);
+
+    for (int i = 0; i < N; i++) {
+        double sum = 0.0;
+
+        for (int j = 0; j < N; j++) {
+            if (j != i)
+                sum += std::abs(A[i][j]);
+        }
+
+        A[i][i] = sum + margin;
+    }
+
+    return A;
+}
+
+Mat matrix_random_symmetric(
+    int N,
+    unsigned seed)
+{
+    std::mt19937 rng(seed);
+    std::normal_distribution<double> g(0.0, 1.0);
+
+    Mat A = matrix_build_zero(N, N);
+
+    for (int i = 0; i < N; i++) {
+        for (int j = i; j < N; j++) {
+            const double v = g(rng);
+            A[i][j] = v;
+            A[j][i] = v;
+        }
+    }
+
+    return A;
+}
 
 Mat matrix_swap_cols(
     const Mat& A, 

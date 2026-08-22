@@ -556,6 +556,35 @@ void ErrorPlot_Oscillator(
     fig->draw();
 }
 
+    void Gershgorin_execute(Mat& A){
+
+        auto rows = linear_gershgorin_disks_rows(A);
+        auto cols = linear_gershgorin_disks_columns(A);
+
+        std::cout << "\n=== Gershgorin - dischi per righe ===\n";
+
+        for (const auto& d : rows) {
+            std::cout
+                << "D" << d.index + 1
+                << ": centro = " << d.center
+                << ", raggio = " << d.radius
+                << "\n";
+        }
+
+        std::cout << "\n=== Gershgorin - dischi per colonne ===\n";
+
+        for (const auto& d : cols) {
+            std::cout
+                << "D" << d.index + 1
+                << ": centro = " << d.center
+                << ", raggio = " << d.radius
+                << "\n";
+
+        }  
+        
+        std::cout << std::endl;
+    }
+
     void preriscaldamento_anti_overhead(Mat& A) {
         //
         // gia' una volta bastava ma proviamo con tre giri 
@@ -3290,7 +3319,38 @@ void ErrorPlot_Oscillator(
                 cin_clear();
             };
         };
-    };
+    }
+
+    void gg1() {
+
+        Mat A = matrix_random(10);
+        matrix_dump(A, "Full random");
+        Gershgorin_execute(A);
+
+        A = matrix_random_symmetric(10);
+        matrix_dump(A, "Symmetric random");
+        Gershgorin_execute(A);
+
+        A = matrix_random_diagonally_dominant(10);
+        matrix_dump(A, "Diag dominant");
+        Gershgorin_execute(A);
+
+        A = matrix_random_symmetric_diagonally_dominant(10);
+        matrix_dump(A, "Symmetric Diag  dominant");
+        Gershgorin_execute(A);
+
+      
+        fcn_form::wait_report();
+        clear_screen();
+    }
+    void gg2(){
+
+        fcn_form::wait_report();
+
+        clear_screen();
+
+
+    }
 
     void al_qr(){
         bool leave = false;
@@ -3511,6 +3571,8 @@ void ErrorPlot_Oscillator(
             {"ode_euler",       ode_euler},
             {"ode_osc2d",       ode_osc2d},
             {"ode_lotkav",      ode_lotkav},
+            {"gg1",             gg1},
+            {"gg2",             gg2},
             {"al_qr",           al_qr},
             {"sandbox",         sandbox}
             };

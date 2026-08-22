@@ -1,185 +1,185 @@
 {
   "version": 1,
-  "root_id": "main",
+  "root": "main",
   "menus": [
     {
       "id": "main",
-      "title": "FCN - Funzioni di Calcolo Numerico",
-      "layout": "program_list",
-      "rows": 8,
-      "columns": 1,
+      "title": "FCN - Funzioni Calcolo Numerico - Menu Principale",
+      "layout": "paged_columns",
+      "rows": 4,
+      "columns": 2,
       "items": [
         {
           "key": 1,
-          "label": "Foglio di esercitazione 1",
-          "submenu_id": "foglio1",
+          "label": "F1 - Campionamento, Taylor e precisione",
+          "submenu": "f1",
           "enabled": true
         },
         {
           "key": 2,
-          "label": "Foglio di esercitazione 2",
-          "submenu_id": "foglio2",
+          "label": "F2 - Derivate, problemi e integrazione",
+          "submenu": "f2",
           "enabled": true
         },
         {
           "key": 3,
-          "label": "Foglio di esercitazione 3",
-          "submenu_id": "foglio3",
+          "label": "F3 - SVD e PCA",
+          "submenu": "f3",
           "enabled": true
         },
         {
           "key": 4,
-          "label": "Simulazione prova d'esame",
-          "submenu_id": "simulazione",
+          "label": "SYM - Calcolo simbolico",
+          "submenu": "sym",
           "enabled": true
         },
         {
           "key": 5,
-          "label": "Equazioni differenziali",
-          "submenu_id": "ode",
+          "label": "ODE - Equazioni differenziali",
+          "submenu": "ode",
           "enabled": true
         },
         {
           "key": 6,
-          "label": "Algebra lineare",
-          "submenu_id": "algebra_lineare",
+          "label": "Test, algebra lineare e sviluppo",
+          "submenu": "test",
           "enabled": true
         },
         {
-          "key": 12,
-          "label": "Sandbox",
-          "submenu_id": "sandbox",
+          "key": 0,
+          "label": "Esci",
+          "action": "exit",
           "enabled": true
         }
       ]
     },
     {
-      "id": "foglio1",
-      "title": "FCN - Foglio di esercitazione 1",
+      "id": "f1",
+      "title": "FCN - Laboratorio F1",
       "layout": "program_list",
       "rows": 8,
       "columns": 1,
       "items": [
         {
           "key": 1,
-          "label": "E1    Campionamento di funzione coseno",
+          "label": " F1-E1   Campionamento di funzione Cos",
           "action": "f1_sample",
           "enabled": true
         },
         {
           "key": 2,
-          "label": "E2a   Esponenziale approssimata con Taylor",
+          "label": " F1-E2a  F Esponenziale approssimata con Taylor",
           "action": "f1_taylor_exp",
           "enabled": true
         },
         {
           "key": 3,
-          "label": "E2b   Coseno approssimato con Taylor",
+          "label": " F1-E2b  F Coseno approssimata con Taylor",
           "action": "f1_taylor_cos",
           "enabled": true
         },
         {
           "key": 4,
-          "label": "E3    Precisione di calcolo",
+          "label": " F1-E3   Precisione di calcolo",
           "action": "f1_prec",
           "enabled": true
         }
       ]
     },
     {
-      "id": "foglio2",
-      "title": "FCN - Foglio di esercitazione 2",
+      "id": "f2",
+      "title": "FCN - Laboratorio F2",
       "layout": "program_list",
       "rows": 8,
       "columns": 1,
       "items": [
         {
-          "key": 1,
-          "label": "E1    Derivata discreta",
+          "key": 5,
+          "label": " F2-E1   Derivata discreta",
           "action": "f2_deriv",
           "enabled": true
         },
         {
-          "key": 2,
-          "label": "E1a   Problema di Cauchy",
+          "key": 6,
+          "label": " F2-E1a  Problema di Cauchy",
           "action": "f2_cauchy",
           "enabled": true
         },
         {
-          "key": 3,
-          "label": "E1b   Problema differenziale al bordo",
+          "key": 7,
+          "label": " F2-E1b  Problema Differenziale con condizioni al bordo",
           "action": "f2_bordo",
           "enabled": true
         },
         {
-          "key": 4,
-          "label": "E2    Integrazione numerica",
+          "key": 8,
+          "label": " F2-E2   Integrazione numerica",
           "action": "f2_integral",
           "enabled": true
         },
         {
-          "key": 5,
-          "label": "E2a   Confronto norme",
+          "key": 9,
+          "label": " F2-E2a  Confronto Norme",
           "action": "f2_norme",
           "enabled": true
         },
         {
-          "key": 6,
-          "label": "E3    Deconvoluzione",
+          "key": 10,
+          "label": "F2-E3   Deconvoluzione",
           "action": "f2_deconv",
           "enabled": true
         }
       ]
     },
     {
-      "id": "foglio3",
-      "title": "FCN - Foglio di esercitazione 3",
+      "id": "f3",
+      "title": "FCN - Laboratorio F3 / SVD e PCA",
       "layout": "program_list",
       "rows": 8,
       "columns": 1,
       "items": [
         {
-          "key": 1,
-          "label": "E1    SVD - test",
+          "key": 11,
+          "label": "F3-E1   SVD Test Only",
           "action": "f3_svd_test",
           "enabled": true
         },
         {
-          "key": 2,
-          "label": "E1a   SVD QR con ALGLIB",
+          "key": 12,
+          "label": "F3-E1a  SVD_QR (con alglib)",
           "action": "f3_svd",
           "enabled": true
         },
         {
-          "key": 3,
-          "label": "E1b   SVD e PCA",
+          "key": 13,
+          "label": "F3-E1b  SVD PCA",
           "action": "f3_svd_pca",
           "enabled": true
         },
         {
-          "key": 4,
-          "label": "E1c   Analisi SVD/PCA",
+          "key": 14,
+          "label": "F3-E1c  SVD PCA analysis",
           "action": "f3_svd_an",
           "enabled": true
         }
       ]
     },
     {
-      "id": "simulazione",
-      "title": "FCN - Simulazione prova d'esame",
+      "id": "sym",
+      "title": "FCN - Calcolo simbolico",
       "layout": "program_list",
       "rows": 8,
       "columns": 1,
       "items": [
         {
-          "key": 1,
-          "label": "E1b   Cauchy z'(t)=a(t)z(t)+f(t)",
+          "key": 15,
+          "label": "SYM-E1b Cauchy z'(t)=a(t)z(t)+f(t)",
           "action": "sym_cauchy",
           "enabled": true
         },
         {
-          "key": 2,
-          "label": "E1c   Householder",
+          "key": 16,
+          "label": "SYM-E1c Householder",
           "action": "sym_hhalpha",
           "enabled": true
         }
@@ -193,62 +193,41 @@
       "columns": 1,
       "items": [
         {
-          "key": 1,
-          "label": "Scalare - Eulero, Heun e RK4",
+          "key": 17,
+          "label": "ODE     Scalar - Eulero vs Heun vs RK4",
           "action": "ode_euler",
           "enabled": true
         },
         {
-          "key": 2,
-          "label": "Vettoriale - Oscillatori con RK4",
+          "key": 18,
+          "label": "ODE     Vector - Oscillatori RK4",
           "action": "ode_osc2d",
           "enabled": true
         },
         {
-          "key": 3,
-          "label": "Vettoriale - Lotka-Volterra",
+          "key": 19,
+          "label": "ODE     Vector - Lotka-Volterra",
           "action": "ode_lotkav",
           "enabled": true
         }
       ]
     },
     {
-      "id": "algebra_lineare",
-      "title": "FCN - Algebra lineare",
+      "id": "test",
+      "title": "FCN - Test e sviluppo",
       "layout": "program_list",
       "rows": 8,
       "columns": 1,
       "items": [
         {
-          "key": 1,
-          "label": "Gershgorin Disks",
-          "action": "gg1",
-          "enabled": true
-        },
-        {
-          "key": 2,
-          "label": "Gershgorin Clusters",
-          "action": "gg2",
-          "enabled": true
-        },
-        {
-          "key": 3,
-          "label": "QR e minimi quadrati",
+          "key": 20,
+          "label": "Test    QR Dec e Least Squares",
           "action": "al_qr",
           "enabled": true
-        }
-      ]
-    },
-    {
-      "id": "sandbox",
-      "title": "FCN - Sandbox",
-      "layout": "program_list",
-      "rows": 8,
-      "columns": 1,
-      "items": [
+        },
         {
-          "key": 1,
-          "label": "Procedure in sviluppo",
+          "key": 25,
+          "label": "Test    Procedure in sviluppo",
           "action": "sandbox",
           "enabled": true
         }
