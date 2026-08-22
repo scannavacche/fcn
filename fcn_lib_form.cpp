@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+constexpr std::size_t F2_NORME_FIELD_COUNT = 2;
 constexpr std::size_t F3_SVD_TEST_FIELD_COUNT = 2;
 constexpr std::size_t F3_SVD_FIELD_COUNT = 2;
 constexpr std::size_t F3_SVD_PCA_FIELD_COUNT = 4;
@@ -134,6 +135,391 @@ namespace fcn_form
 
 } // namespace fcn_form
 
+namespace f2_norme_form
+{
+    using fcn_form::write;
+    using fcn_form::separator;
+    using fcn_form::field_value;
+    using fcn_form::change_linear;
+
+
+    void f2_norme_mask(const GnFormContext& context)
+    {
+        const GnFormLayout& layout = context.layout;
+        const int width = std::max(1, layout.terminal_columns - 1);
+        const int field_column =
+            std::min(45, std::max(35, width - 10));
+        const int first_field_row = layout.viewport.top + 5;
+
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+
+        write(
+            layout.header_top,
+            1,
+            " Norme matriciali - confronto numerico ",
+            width,
+            GN_SCREEN_TITLE);
+
+        write(
+            layout.header_top + 1,
+            3,
+            "Confronto fra norme e numeri di condizionamento",
+            width - 3);
+
+        separator(
+            layout.top_separator_row,
+            layout.terminal_columns);
+
+        int row = layout.viewport.top;
+
+        write(
+            row++,
+            3,
+            "Confronta diverse norme della matrice triangolare di test",
+            width - 3);
+
+        write(
+            row++,
+            3,
+            "al crescere della dimensione N.",
+            width - 3);
+
+        write(
+            row++,
+            3,
+            "Le dimensioni usate sono 10, 20, 40, ... fino a N max.",
+            width - 3);
+
+        write(
+            first_field_row,
+            5,
+            "  Dimensione massima N",
+            field_column - 6);
+
+        write(
+            first_field_row + 2,
+            5,
+            "  Ripetizioni timing",
+            field_column - 6);
+
+        separator(
+            layout.bottom_separator_row,
+            layout.terminal_columns);
+
+        separator(
+            layout.status_separator_row,
+            layout.terminal_columns);
+    }
+
+
+    void f2_norme_show(const GnFormContext& context)
+    {
+        static const char* labels[F2_NORME_FIELD_COUNT] = {
+            "Dimensione massima N",
+            "Ripetizioni timing"
+        };
+
+        for (std::size_t i = 0; i < context.field_count; ++i) {
+
+            write(
+                context.fields[i].row,
+                5,
+                std::string(i == context.lab ? "> " : "  ") + labels[i],
+                context.fields[i].column - 6);
+
+            write(
+                context.fields[i].row,
+                context.fields[i].column,
+                field_value(
+                    context.values[i],
+                    context.fields[i].length),
+                static_cast<int>(context.fields[i].length),
+                GN_SCREEN_FIELD);
+        }
+
+        gn_screen_clear_line(context.layout.echo_row);
+    }
+
+
+    void f2_norme_dispdid(const GnFormContext& context)
+    {
+        static const char* hints[F2_NORME_FIELD_COUNT] = {
+            "N max: ultima dimensione della progressione 10,20,40,... [10..640]",
+            "timing: numero di misure da mediare per ciascun metodo [1..20]"
+        };
+
+        const int width =
+            std::max(1, context.layout.terminal_columns - 1);
+
+        write(
+            context.layout.hint_row,
+            2,
+            hints[context.lab],
+            width - 2,
+            GN_SCREEN_MESSAGE);
+    }
+
+
+    void f2_norme_keyvalid(const GnFormContext& context)
+    {
+        const int width =
+            std::max(1, context.layout.terminal_columns - 1);
+
+        write(
+            context.layout.status_top,
+            2,
+            "ESC Menu        F1 Help        F10 Esegui",
+            width - 2,
+            GN_SCREEN_STATUS);
+    }
+
+
+    void f2_norme_message(const GnFormContext& context)
+    {
+        if (context.message.empty()) return;
+
+        const int width =
+            std::max(1, context.layout.terminal_columns - 1);
+
+        write(
+            context.layout.echo_row,
+            2,
+            context.message,
+            width - 2,
+            GN_SCREEN_ERROR);
+    }
+
+
+    bool f2_norme_prepare(
+        GnFormContext& context,
+        void*)
+    {
+        if (context.fields == nullptr ||
+            context.values == nullptr ||
+            context.field_count != F2_NORME_FIELD_COUNT)
+        {
+            return false;
+        }
+
+        const int field_column =
+            std::min(
+                45,
+                std::max(
+                    35,
+                    context.layout.terminal_columns - 11));
+
+        const int first_field_row =
+            context.layout.viewport.top + 5;
+
+
+        context.fields[0] = GnEntrySpec{
+            first_field_row,
+            field_column,
+            GN_FIELD_BOUNDED_NATURAL,
+            3,
+            10.0,
+            640.0,
+            1,
+            context.layout.echo_row
+        };
+
+
+        context.fields[1] = GnEntrySpec{
+            first_field_row + 2,
+            field_column,
+            GN_FIELD_BOUNDED_NATURAL,
+            2,
+            1.0,
+            20.0,
+            1,
+            context.layout.echo_row
+        };
+
+
+        return true;
+    }
+
+
+    void f2_norme_render(
+        const GnFormContext& context,
+        void*)
+    {
+        if (context.fields == nullptr ||
+            context.values == nullptr ||
+            context.field_count != F2_NORME_FIELD_COUNT ||
+            context.lab >= context.field_count)
+        {
+            return;
+        }
+
+        f2_norme_mask(context);
+        f2_norme_show(context);
+        f2_norme_dispdid(context);
+        f2_norme_keyvalid(context);
+        f2_norme_message(context);
+
+        gn_screen_flush();
+    }
+
+
+    GnFormChangeResult f2_norme_change(
+        GnEntryCommand command,
+        GnFormContext& context,
+        void*)
+    {
+        // Due campi lineari: adotta la policy condivisa FCN.
+        return change_linear(command, context);
+    }
+
+
+    void f2_norme_help(
+        const GnFormContext& context,
+        void*)
+    {
+        const int width =
+            std::max(1, context.layout.terminal_columns - 1);
+
+        const std::vector<std::string> lines = {
+
+            "F1 HELP - Norme matriciali e condizionamento",
+            "",
+            "Norme disponibili in matrix_calcola_norma:",
+            "  1   norma 1 indotta: massima somma assoluta per colonna",
+            "  0   norma infinito indotta: massima somma assoluta per riga",
+            " -1   norma di Frobenius: radice della somma dei quadrati",
+            "",
+            "Norma 2 spettrale, quattro implementazioni sperimentate:",
+            "  2 (1R)   A^T A implicita; Rayleigh calcolato solo alla fine",
+            " 12 (AllR) A^T A implicita; Rayleigh ad ogni iterazione",
+            " 22 (AtA)  costruisce esplicitamente A^T A, poi usa le potenze",
+            "  3        tentativo storico mediante fattorizzazione LU di A^T A",
+            "",
+            "Costo computazionale:",
+            "  1R evita il ricalcolo di A^T(Aq) per il quoziente di Rayleigh;",
+            "  AllR paga quindi due prodotti matrice-vettore aggiuntivi per iterazione.",
+            "  AtA evita questi prodotti iterativi ma costruisce A^T A: costo O(n^3).",
+            "",
+            "I codici 2, 12, 22 e 3 cercano tutti la stessa norma spettrale.",
+            "La variante LU e' una bozza sperimentale, non un metodo affidabile.",
+            "",
+            "Parametri:",
+            "  N max   progressione 10, 20, 40, ... fino al limite indicato",
+            "  timing  ripetizioni usate per stabilizzare le misure dei tempi",
+            "",
+            "F10 esegue il confronto; ESC torna al menu.",
+            "F1, ENTER oppure ESC: ritorno ai parametri"
+        };
+
+
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+
+        int row = 1;
+
+        for (const std::string& line : lines) {
+
+            if (row > context.layout.terminal_rows)
+                break;
+
+            write(
+                row,
+                line.empty() ? 1 : 2,
+                line,
+                line.empty() ? width : width - 2,
+                row == 1
+                    ? GN_SCREEN_TITLE
+                    : GN_SCREEN_NORMAL);
+
+            ++row;
+        }
+
+        gn_screen_flush();
+
+
+        for (;;) {
+
+            GnKeyEvent event{};
+
+            const GnPollResult result =
+                gn_pump_once(&event);
+
+            if (result == GN_POLL_EMPTY) {
+                gn_cooperative_pause();
+                continue;
+            }
+
+            if (result == GN_POLL_ERROR)
+                return;
+
+            if (event.code == GN_KEY_F1 ||
+                event.code == GN_KEY_ENTER ||
+                event.code == GN_KEY_ESCAPE)
+            {
+                return;
+            }
+
+            gn_screen_beep();
+        }
+    }
+
+
+    bool prompt(F2NormeParams& params)
+    {
+        std::string values[F2_NORME_FIELD_COUNT] = {
+            std::to_string(params.n_max),
+            std::to_string(params.timing_reps)
+        };
+
+
+        GnFormRunSpec spec;
+
+        spec.layout_options.header_rows = 2;
+        spec.layout_options.top_separator = true;
+        spec.layout_options.bottom_separator = true;
+        spec.layout_options.hint_line = true;
+        spec.layout_options.echo_line = true;
+        spec.layout_options.status_rows = 1;
+
+        spec.layout_options.min_viewport_rows = 10;
+        spec.layout_options.min_viewport_columns = 72;
+
+        spec.values = values;
+        spec.field_count = F2_NORME_FIELD_COUNT;
+
+        spec.prepare = f2_norme_prepare;
+        spec.render = f2_norme_render;
+        spec.change = f2_norme_change;
+        spec.help = f2_norme_help;
+
+
+        const GnFormRunResult result =
+            gn_form_run_session(spec);
+
+
+        if (result == GN_FORM_RUN_ACCEPT) {
+
+            // Tipo e bounds sono gia' validati da ENTRY.
+            params.n_max =
+                std::stoi(values[0]);
+
+            params.timing_reps =
+                std::stoi(values[1]);
+
+            return true;
+        }
+
+
+        if (result == GN_FORM_RUN_ERROR) {
+            std::cerr
+                << "Impossibile aprire il form Norme.\n";
+        }
+
+
+        return false;
+    }
+
+} // namespace f2_norme_form
 
     namespace f3_svd_test_form
 {

@@ -8,7 +8,19 @@
  * applicativa: true = parametri confermati, false = prompt abbandonato.
  * I dettagli GnFormRunResult restano confinati nell'implementazione.
  */
-namespace f3_svd_test_form
+
+struct F2NormeParams {
+    int n_max;          // default 640
+    int timing_reps;    // default 1
+};
+
+
+namespace f2_norme_form
+{
+    bool prompt(F2NormeParams& params);
+};
+
+ namespace f3_svd_test_form
 {
     bool prompt(int& n, int& d);
 };

@@ -1464,21 +1464,37 @@ void ErrorPlot_Oscillator(
     };
 
     void f2_norme() {
-        bool leave = false; 
-        double a=-7,b=7; // intervallo di integrazione
 
-        clear_screen();
-        while (!leave) {
-            bool redo = false;
-           
-            const int N_values[] = {10, 20, 40, 80, 160, 320, 640};
-            const int n_tests = std::size(N_values);
+        F2NormeParams params{640, 1};
 
-            std::vector<double> x_vals, cond_2_vals, cond_12_vals, cond_22_vals, cond_f_vals, cond_1_vals, cond_I_vals;
-            
-            std::cout
-                << "\n=== Norma 2 e numero di condizionamento spettrale ===\n\n"
-                << std::setfill(' ')
+        // Mantiene esattamente la scalatura dell'esperimento consolidato.
+        const double a = -7.0;
+        const double b =  7.0;
+
+        while (f2_norme_form::prompt(params)) {
+
+            clear_screen();
+
+            std::vector<int> N_values;
+            for (int N = 10; N <= params.n_max; N *= 2) {
+                N_values.push_back(N);
+            }
+
+            std::vector<double>
+                x_vals,
+                cond_2_vals,
+                cond_12_vals,
+                cond_22_vals,
+                cond_f_vals,
+                cond_1_vals,
+                cond_I_vals;
+
+            std::cout << "\n=== Norma 2 e numero di condizionamento spettrale ===\n";
+            std::cout << "Timing: media su " << params.timing_reps
+                      << (params.timing_reps == 1
+                        ? " esecuzione per metodo\n\n"
+                        : " esecuzioni per metodo\n\n");
+            std::cout << std::setfill(' ')
                 << std::setw(6)  << "N"
                 << std::setw(13) << "||A||2 1R"
                 << std::setw(12) << "t1R [us]"
@@ -1490,14 +1506,13 @@ void ErrorPlot_Oscillator(
                 << std::setw(11) << "AtA/1R"
                 << std::setw(13) << "||A^-1||2"
                 << std::setw(13) << "kappa2"
-                << std::setw(14) << "kappa2/N^2"
+                << std::setw(14) << "kappa2/N"
                 << std::setw(13) << "kappaF"
                 << std::setw(13) << "kappa1"
                 << std::setw(13) << "kappaInf"
                 << '\n';    
 
-            for (int n = 0; n < n_tests; ++n) {
-                int N = N_values[n];
+            for (int N : N_values) {
                 double h = h_ticks(a,b,N); // passo di campionamento
             
                 Mat A = matrix_build_triang(N);
@@ -1507,26 +1522,47 @@ void ErrorPlot_Oscillator(
                 preriscaldamento_anti_overhead(A); // warm-up per taratura cronometrica a strutture fatte
                 
                 // Norma 2 spettrale power con economia
-                auto t_start = std::chrono::steady_clock::now();
-                double norm2_A = matrix_calcola_norma(2, A);
-                auto t_end = std::chrono::steady_clock::now();
-                auto time2_A = std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
+                double norm2_A = 0.0;
+                double time2_A = 0.0;
+                for (int rep = 0; rep < params.timing_reps; ++rep) {
+                    auto t_start = std::chrono::steady_clock::now();
+                    norm2_A = matrix_calcola_norma(2, A);
+                    auto t_end = std::chrono::steady_clock::now();
+                    time2_A +=
+                        std::chrono::duration<double, std::micro>(
+                            t_end - t_start).count();
+                }
+                time2_A /= params.timing_reps;
                 double norm2_Ainv = matrix_calcola_norma(2, A_inv);
                 double kappa2 = norm2_A * norm2_Ainv;
                 
                 // Norma 2 spettrale power senza economia
-                t_start = std::chrono::steady_clock::now();
-                double norm12_A = matrix_calcola_norma(12, A);
-                t_end = std::chrono::steady_clock::now();
-                auto time12_A = std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
+                double norm12_A = 0.0;
+                double time12_A = 0.0;
+                for (int rep = 0; rep < params.timing_reps; ++rep) {
+                    auto t_start = std::chrono::steady_clock::now();
+                    norm12_A = matrix_calcola_norma(12, A);
+                    auto t_end = std::chrono::steady_clock::now();
+                    time12_A +=
+                        std::chrono::duration<double, std::micro>(
+                            t_end - t_start).count();
+                }
+                time12_A /= params.timing_reps;                
                 double norm12_Ainv = matrix_calcola_norma(12, A_inv);
                 double kappa12 = norm12_A * norm12_Ainv;
 
                 // Norma 2 spettrale power + Rayleigh
-                t_start = std::chrono::steady_clock::now();
-                double norm22_A = matrix_calcola_norma(22, A);
-                t_end = std::chrono::steady_clock::now();
-                auto time22_A = std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
+                double norm22_A = 0.0;
+                double time22_A = 0.0;
+                for (int rep = 0; rep < params.timing_reps; ++rep) {
+                    auto t_start = std::chrono::steady_clock::now();
+                    norm22_A = matrix_calcola_norma(22, A);
+                    auto t_end = std::chrono::steady_clock::now();
+                    time22_A +=
+                        std::chrono::duration<double, std::micro>(
+                            t_end - t_start).count();
+                }
+                time22_A /= params.timing_reps;
                 double norm22_Ainv = matrix_calcola_norma(22, A_inv);
                 double kappa22 = norm22_A * norm22_Ainv;
 
@@ -1580,7 +1616,7 @@ void ErrorPlot_Oscillator(
 
                     << std::scientific << std::setprecision(3)
                     << std::setw(14)
-                    << kappa2 / (static_cast<double>(N) * N)
+                    << kappa2 / (static_cast<double>(N))
 
                     << std::fixed << std::setprecision(2)
                     << std::setw(13) << kappaF
@@ -1608,10 +1644,10 @@ void ErrorPlot_Oscillator(
             ylabel("kappa");
 
             // Confronto con curva teorica N^2
-            Vec Ns, theory_N2, theory_N;
-            for (double N = 10; N < 1000; N *=2) {
+            Vec Ns, theory_kappa2, theory_N;
+            for (double N = 10; N <= params.n_max; N *= 2) {
                 Ns.push_back(N);
-                theory_N2.push_back((4.0/M_PI/M_PI) * N * N);
+                theory_kappa2.push_back((4.0 / M_PI) * N);
                 theory_N.push_back(2.0 * N);
             }
             hold(on);
@@ -1648,8 +1684,8 @@ void ErrorPlot_Oscillator(
             pf->marker("+");
             
            
-            auto ptn2 = semilogy(Ns, theory_N2);
-            ptn2->display_name("4N^2/pi^2 (teorico)");
+            auto ptn2 = semilogy(Ns, theory_kappa2);
+            ptn2->display_name("4N/pi (teorico)");
             ptn2->color("blue");
             ptn2->line_style("-");
             ptn2->marker("");
@@ -1666,18 +1702,9 @@ void ErrorPlot_Oscillator(
 
             
 
-            while (!redo && !leave) {
-                std::cout << "Inserire inizio intervallo di integrazione -10..10 (<q> per uscire) > " ;
-                if (std::cin >> a) { if (a>-10 && a<=10) redo=true;} else {cout << "Key: " << a <<endl; leave=true;} ;
-                if (redo) {
-                    std::cout << "Inserire nuova fine intervallo di integrazione "<< a <<"..10 (<q> per uscire) > " ;
-                    if (std::cin >> b) { if (b>a && b<=10) redo=true;} else {cout << "Key: " << b <<endl; leave=true;} ;
-                }
-                cin_clear();
-            };
+            wait_report();
 
-
-       };
+        };
         
 
 
