@@ -165,9 +165,6 @@ void linear_jacobi_autoval_simmetrica(
     Vec& lambda, 
     Mat& V);
 
-Vec linear_LU_calcola_autovalori (
-    const Mat& A);
-
 void linear_LU_dec(
     const Mat &A, 
     Mat &L, 

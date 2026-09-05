@@ -445,23 +445,6 @@ void linear_jacobi_autoval_simmetrica(
         lambda[i] = A[i][i];
 }
 
-
-Vec linear_LU_calcola_autovalori (
-    const Mat& A) 
-{
-    // Calcola gli autovalori di A usando la fattorizzazione LU
-    // Non e' detto che funzioni perche' A potrebbe essere singolare ma proviamoci lo stesso
-    // da usare solo su matrici simmetriche e positive semidefinite come Tt*T,
-    // altrimenti la LU potrebbe essere instabile o non definita.
-    Mat L, U;
-    linear_LU_dec(A, L, U);
-    Vec autovalori(U.size(), 0.0);
-    for (std::size_t i=0;i<U.size();i++) {
-        autovalori[i] = U[i][i]; // gli autovalori di A sono approssimativamente i valori diagonali di U
-    };
-    return autovalori;
-};  
-
 void linear_LU_dec(
     const Mat &A, 
     Mat &L, 
@@ -1228,29 +1211,6 @@ double matrix_calcola_norma(
     const Mat& A) 
 {
     switch (norma) {
-        case 3: 
-            // norma 2: versione limitata LU
-            {
-                    //  vediamo se funziona con la LU di Tt * T, 
-                    // ma non e' detto che funzioni perche' Tt*T e' simmetrica e positiva semidefinita, 
-                    // quindi la sua LU potrebbe essere instabile o non definita. 
-                    // nel frattempo sono implementati altri 3 metodi delle potenze per calcolare la norma 2 in modo piu' robusto,
-                    //  questo e' solo un test e la risposta e' dentro di te...ma e' sbagliata!
-                Mat At = matrix_trasposta(A);
-                Mat AtA = matrix_prodotto_matrix(At, A);
-                Vec AutoAtA = linear_LU_calcola_autovalori(AtA); // ci riesce.... se non e' singolare ;)  
-                    // fosse SVD avremmo gia' il massimo valore singolare come primo autovalore di AtA, 
-                    // ma con la LU non e' detto che sia ordinato o che sia stabile, 
-                    // quindi cerchiamo il massimo tra tutti gli autovalori di AtA.
-                double max_autovalore = 0.0;
-                for (double val : AutoAtA) {
-                    if (std::abs(val) > max_autovalore) {
-                        max_autovalore = std::abs(val);
-                    }
-                }   
-                // vector_dump(AutoAtA, 10, AutoAtA.size(), "Autovalori");
-                return std::sqrt(max_autovalore); // la norma 2 è la radice quadrata del massimo autovalore di A^T A    
-            }
         case 2: // versione metodo delle potenze per A con uscita a res (non calcola AtA esplicita)
             {
                 return std::sqrt(linear_max_autoval_pwr_any_res(A, 1000, 1e-12));
