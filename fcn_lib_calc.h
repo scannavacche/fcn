@@ -614,6 +614,12 @@ void ode_scalar_step_rk4(
     double* y,
     double (*rhs)(double, double));
 
+void ode_scalar_step_rk4_38(
+    double t,
+    double h,
+    double* y,
+    double (*rhs)(double, double));
+
 // RHS Vettoriali (ODE) 
 
 void ode_vec2_rhs_damped(

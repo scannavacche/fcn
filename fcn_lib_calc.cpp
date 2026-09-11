@@ -3007,19 +3007,53 @@ void ode_scalar_step_heun(
     *y = *y + 0.5 * h * (k1 + k2);
 }
 
-// Runge-Kutta 4th (ordine 4)
+// Runge-Kutta 4th (ordine 4 - classical)
+
 void ode_scalar_step_rk4(
     double t,
     double h,
     double* y,
     double (*rhs)(double, double))
 {
-    double k1 = rhs(t, *y);
+// A = [ 0    0    0    0
+//       1/2  0    0    0
+//       0    1/2  0    0
+//       0    0    1    0 ]
+//
+// c = [ 0, 1/2, 1/2, 1 ]
+// b = [ 1/6, 1/3, 1/3, 1/6 ]
+
+double k1 = rhs(t, *y);
     double k2 = rhs(t + 0.5 * h, *y + 0.5 * h * k1);
     double k3 = rhs(t + 0.5 * h, *y + 0.5 * h * k2);
     double k4 = rhs(t + h, *y + h * k3);
 
-    *y = *y + (h / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4);
+    *y += (h / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4);
+}
+
+// Runge-Kutta 4th (ordine 4 - 3/8)
+
+void ode_scalar_step_rk4_38(
+    double t,
+    double h,
+    double* y,
+    double (*rhs)(double, double))
+{
+// A = [ 0    0    0    0
+//       1/3  0    0    0
+//      -1/3  1    0    0
+//       1   -1    1    0 ]
+//
+// c = [ 0, 1/3, 2/3, 1 ]
+// b = [ 1/8, 3/8, 3/8, 1/8 ]
+
+    double h3 = h / 3.;
+    double k1 = rhs(t, *y);
+    double k2 = rhs(t + h3, *y + h3 * k1);
+    double k3 = rhs(t + 2.0 * h3, *y - h3 * k1 + h * k2 );
+    double k4 = rhs(t + h, *y + h * (k1 - k2 + k3));
+
+    *y += (h / 8.0) * (k1 + 3.0 * k2 + 3.0 * k3 + k4);
 }
 
 // RHS vettoriale 2D ( predatore-preda e oscillatore)
