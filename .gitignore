@@ -3,3 +3,5 @@
 /fcn.zip
 /fcn_avanzi.cpp
 /teoria
+*.o
+*.a
