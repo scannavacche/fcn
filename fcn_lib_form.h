@@ -9,6 +9,17 @@
  * I dettagli GnFormRunResult restano confinati nell'implementazione.
  */
 
+struct F2DerivParams {
+    int n = 100;
+    double domain_span = 1.0;
+
+};
+
+namespace f2_deriv_form
+{
+    bool prompt(F2DerivParams& params);
+}
+
 struct F2NormeParams {
     int n_max;          // default 640
     int timing_reps;    // default 1

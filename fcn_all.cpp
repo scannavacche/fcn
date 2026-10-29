@@ -1020,20 +1020,16 @@ void ErrorPlot_Oscillator(
     }
 
     void f2_deriv() {
-        int n = 100;          // numero di punti di campionamento
-        double domain_span = 1;
-        double a;      // estremi dell'intervallo per arctan(t)
-        double b;
-        int curr_tile = 0;
-        bool leave = false;
-        bool redo = false;
-        while (!leave) {
-            clear_screen();
-            redo = false;
-            a = -domain_span;      // estremi dell'intervallo per arctan(t)
-            b =  domain_span;
 
-        
+        F2DerivParams params{};
+
+        while (f2_deriv_form::prompt(params)) {
+            const int n = params.n;
+            const double a = -params.domain_span;
+            const double b = params.domain_span;
+            int curr_tile = 0;
+            clear_screen();
+
             figure_handle f = matplot_table_init(true, "Derivate", "Calcolo della derivata discreta", 1,2);
             
             // 1) Costruzione della matrice D
@@ -1112,24 +1108,7 @@ void ErrorPlot_Oscillator(
             f->draw();
 
             curr_tile = 0; // riparte dalla tile di sinistra
-
-            redo = false;
-            while (!redo && !leave) {
-                cout << "Inserire nuova semiampiezza di dominio di arctg(x) 1 .. 10 rad (<q> per uscire) > ";
-
-                cin_clear();
-
-                if (cin >> domain_span) { 
-                    if (domain_span >= 1 && domain_span <= 10) {
-                        redo=true;
-                        // domain_update(domain_span, a, b);
-                    };
-                } else {
-                    cout << "Key: " << domain_span <<endl; 
-                    leave=true;
-                } ; 
-                cin_clear();
-            };
+            fcn_form::wait_report();
         };
     };
 

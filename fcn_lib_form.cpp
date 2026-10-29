@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+constexpr std::size_t F2_DERIV_FIELD_COUNT = 2;
 constexpr std::size_t F2_NORME_FIELD_COUNT = 2;
 constexpr std::size_t F3_SVD_TEST_FIELD_COUNT = 2;
 constexpr std::size_t F3_SVD_FIELD_COUNT = 2;
@@ -134,6 +135,247 @@ namespace fcn_form
     }
 
 } // namespace fcn_form
+
+namespace f2_deriv_form
+{
+    void mask(const GnFormContext& context, void*)
+    {
+        const auto& layout = context.layout;
+        const int width = std::max(1, layout.terminal_columns - 1);
+
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+
+        fcn_form::write(
+            layout.header_top, 1,
+            " Derivata discreta - differenze finite ",
+            width, GN_SCREEN_TITLE);
+
+        fcn_form::write(
+            layout.header_top + 1, 3,
+            "Confronto fra derivazione matriciale, iterativa e analitica",
+            width - 3);
+
+        fcn_form::separator(
+            layout.top_separator_row, layout.terminal_columns);
+
+        fcn_form::write(
+            layout.viewport.top, 3,
+            "Funzione: arctan(t). Intervallo simmetrico [-s, s].",
+            width - 3);
+
+        fcn_form::separator(
+            layout.bottom_separator_row, layout.terminal_columns);
+
+        fcn_form::separator(
+            layout.status_separator_row, layout.terminal_columns);
+    }
+
+    bool prepare(GnFormContext& context, void*)
+    {
+        if (!context.fields || !context.values ||
+            context.field_count != F2_DERIV_FIELD_COUNT)
+            return false;
+
+        const int col = std::min(
+            45, std::max(35, context.layout.terminal_columns - 11));
+        
+        const int right_col = col + 6 - 1;
+        
+        const int row = context.layout.viewport.top + 4;
+
+        context.fields[0] = GnEntrySpec{
+            row, right_col - 3 + 1, //campo n lunghezza 3
+            GN_FIELD_BOUNDED_NATURAL,
+            3, 2.0, 500.0, 1,
+            context.layout.echo_row
+        };
+
+        context.fields[1] = GnEntrySpec{
+            row + 2, right_col - 6 +1, //campo span lunghezza 6
+            GN_FIELD_BOUNDED_DECIMAL,
+            6, 1.0, 10.0, 1,
+            context.layout.echo_row
+        };
+
+        return true;
+    }
+
+    void render(const GnFormContext& context, void* user_data)
+    {
+        if (!context.fields || !context.values ||
+            context.field_count != F2_DERIV_FIELD_COUNT ||
+            context.lab >= context.field_count)
+            return;
+
+        mask(context, user_data);
+
+        static const char* labels[] = {
+            "Numero di nodi n",
+            "Semiampiezza s"
+        };
+
+        static const char* hints[] = {
+            "n: numero di punti di campionamento [2..500]",
+            "s: intervallo di campionamento [-s,s], s in [1..10]"
+        };
+
+        for (std::size_t i = 0; i < context.field_count; ++i) {
+            const auto& field = context.fields[i];
+
+            fcn_form::write(
+                field.row, 5,
+                std::string(i == context.lab ? "> " : "  ") + labels[i],
+                field.column - 6);
+
+            fcn_form::write(
+                field.row, field.column,
+                fcn_form::field_value(
+                    context.values[i], field.length),
+                static_cast<int>(field.length),
+                GN_SCREEN_FIELD);
+        }
+
+        gn_screen_clear_line(context.layout.echo_row);
+
+        const int width =
+            std::max(1, context.layout.terminal_columns - 1);
+
+        fcn_form::write(
+            context.layout.hint_row, 2,
+            hints[context.lab],
+            width - 2, GN_SCREEN_MESSAGE);
+
+        fcn_form::write(
+            context.layout.status_top, 2,
+            "ESC Menu        F1 Help        F10 Esegui",
+            width - 2, GN_SCREEN_STATUS);
+
+        if (!context.message.empty()) {
+            fcn_form::write(
+                context.layout.echo_row, 2,
+                context.message,
+                width - 2, GN_SCREEN_ERROR);
+        }
+
+        gn_screen_flush();
+    }
+
+    GnFormChangeResult change(
+        GnEntryCommand command,
+        GnFormContext& context,
+        void*)
+    {
+        return fcn_form::change_linear(command, context);
+    }
+
+    void help(const GnFormContext& context, void*)
+    {
+        const std::vector<std::string> lines = {
+            "F1 HELP - Derivazione numerica",
+            "",
+            "Si campiona u(t) = arctan(t) su n nodi equidistanti.",
+            "",
+            "Parametri:",
+            "  n: numero di nodi [2..500]",
+            "  s: semiampiezza del dominio [1..10]",
+            "",
+            "Intervallo: [-s, s]",
+            "Passo: h = 2s / (n-1)",
+            "",
+            "Vengono confrontate:",
+            "  - derivazione mediante matrice D",
+            "  - derivazione mediante iterazione",
+            "  - derivata analitica 1/(1+t^2)",
+            "",
+            "F10 esegue il calcolo.",
+            "ESC ritorna al menu.",
+            "",
+            "F1, ENTER oppure ESC: ritorno ai parametri"
+        };
+
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+
+        const int width =
+            std::max(1, context.layout.terminal_columns - 1);
+
+        int row = 1;
+        for (const auto& line : lines) {
+            if (row > context.layout.terminal_rows)
+                break;
+
+            fcn_form::write(
+                row, line.empty() ? 1 : 2,
+                line, line.empty() ? width : width - 2,
+                row == 1 ? GN_SCREEN_TITLE : GN_SCREEN_NORMAL);
+            ++row;
+        }
+
+        gn_screen_flush();
+
+        for (;;) {
+            GnKeyEvent event{};
+            const GnPollResult result = gn_pump_once(&event);
+
+            if (result == GN_POLL_EMPTY) {
+                gn_cooperative_pause();
+                continue;
+            }
+
+            if (result == GN_POLL_ERROR ||
+                event.code == GN_KEY_F1 ||
+                event.code == GN_KEY_ENTER ||
+                event.code == GN_KEY_ESCAPE)
+                return;
+
+            gn_screen_beep();
+        }
+    }
+
+    bool prompt(F2DerivParams& params)
+    {
+        std::ostringstream span;
+        span << params.domain_span;
+
+        std::string values[F2_DERIV_FIELD_COUNT] = {
+            std::to_string(params.n),
+            span.str()
+        };
+
+        GnFormRunSpec spec;
+
+        spec.layout_options.header_rows = 2;
+        spec.layout_options.top_separator = true;
+        spec.layout_options.bottom_separator = true;
+        spec.layout_options.hint_line = true;
+        spec.layout_options.echo_line = true;
+        spec.layout_options.status_rows = 1;
+        spec.layout_options.min_viewport_rows = 10;
+        spec.layout_options.min_viewport_columns = 72;
+
+        spec.values = values;
+        spec.field_count = F2_DERIV_FIELD_COUNT;
+        spec.prepare = prepare;
+        spec.render = render;
+        spec.change = change;
+        spec.help = help;
+
+        const GnFormRunResult result = gn_form_run_session(spec);
+
+        if (result == GN_FORM_RUN_ACCEPT) {
+            params.n = std::stoi(values[0]);
+            params.domain_span = std::stod(values[1]);
+            return true;
+        }
+
+        if (result == GN_FORM_RUN_ERROR)
+            std::cerr << "Impossibile aprire il form Derivate.\n";
+
+        return false;
+    }
+
+} // f2_deriv_form
 
 namespace f2_norme_form
 {
