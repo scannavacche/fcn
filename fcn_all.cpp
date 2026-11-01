@@ -2417,8 +2417,8 @@ void ErrorPlot_Oscillator(
                         //    pc2[ik][i] += Xtilde[i][j] * V[j][2];
                         // }
                     for (int i =0; i < npoints; i++) {
-                        pc1[i] += U[i][1] * sigma[1];
-                        pc2[i] += U[i][2] * sigma[2];
+                        pc1[i] += U[i][0] * sigma[0];
+                        pc2[i] += U[i][1] * sigma[1];
 
                     }
                     //    (equivalente a U[i][k] * sigma[k]) // ok X_v_i = sigma_i_u_i

@@ -227,8 +227,7 @@ Vec nodi_random(
     for (int n = 0; n < NPoints; ++n) {
         rndthis = e2() - rndmin;
         rndfrac=  rndthis /  rndrange;
-        x[n]=rndfrac;
-        
+        x[n] = amin + (amax - amin) * rndfrac;        
     };
    
     return x;
