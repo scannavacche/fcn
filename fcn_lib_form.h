@@ -20,6 +20,28 @@ namespace f1_sample_form {
     bool prompt(F1SampleParams& params);
 }
 
+struct F1TaylorParams {
+    int n_terms = 20;
+    int target_arg = -2;
+};
+
+namespace f1_taylor_exp_form {
+    bool prompt(F1TaylorParams& params);
+}
+
+namespace f1_taylor_cos_form {
+    bool prompt(F1TaylorParams& params);
+}
+
+struct F1PrecParams {
+    double increment = 0.01;
+    int repetitions = 100;
+};
+
+namespace f1_prec_form {
+    bool prompt(F1PrecParams& params);
+}
+
 struct F2DerivParams {
     int n = 100;
     double domain_span = 1.0;

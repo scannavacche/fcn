@@ -1199,10 +1199,12 @@ void matrix_calcola_media(
             somma_row[i] += Aij;
             somma_col[j] += Aij;
         }
-        somma_row[i] /= (double) m;
-        for (int j = 0; j < n; j++) 
-            somma_col[j] /= (double) n;
     }
+    for (int i = 0; i < m; ++i)
+        somma_row[i] /= static_cast<double>(n);
+
+    for (int j = 0; j < n; ++j)
+        somma_col[j] /= static_cast<double>(m);    
 }
 
 double matrix_calcola_norma(

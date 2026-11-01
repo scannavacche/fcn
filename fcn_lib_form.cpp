@@ -362,7 +362,7 @@ namespace f1_sample_form {
     }
 
     // 7. Prompt 
-    
+
     bool prompt(F1SampleParams& params)
     {
         // 1. Valori iniziali degli ENTRY
@@ -406,6 +406,334 @@ namespace f1_sample_form {
             std::cerr << "Impossibile aprire il form Gram.\n";
 
         return false;
+    }
+}
+
+
+namespace f1_pair_form
+{
+    constexpr std::size_t FIELD_COUNT = 2;
+
+    struct Field {
+        const char* label;
+        const char* hint;
+        GnFieldType type;
+        std::size_t length;
+        double minimum;
+        double maximum;
+    };
+
+    struct Config {
+        const char* title;
+        const char* subtitle;
+        const char* description;
+        const char* explanation;
+        Field fields[FIELD_COUNT];
+    };
+
+    void mask(const GnFormContext& ctx, void* data)
+    {
+        const auto& cfg = *static_cast<Config*>(data);
+        const auto& l = ctx.layout;
+        const int width = std::max(1, l.terminal_columns - 1);
+
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+
+        fcn_form::write(l.header_top, 1, cfg.title,
+                        width, GN_SCREEN_TITLE);
+        fcn_form::write(l.header_top + 1, 3, cfg.subtitle,
+                        width - 3);
+        fcn_form::separator(l.top_separator_row, l.terminal_columns);
+        fcn_form::write(l.viewport.top, 3, cfg.description,
+                        width - 3);
+        fcn_form::separator(l.bottom_separator_row, l.terminal_columns);
+        fcn_form::separator(l.status_separator_row, l.terminal_columns);
+    }
+
+    bool prepare(GnFormContext& ctx, void* data)
+    {
+        if (!ctx.fields || !ctx.values ||
+            ctx.field_count != FIELD_COUNT || !data)
+            return false;
+
+        const auto& cfg = *static_cast<Config*>(data);
+        const int col = std::min(
+            48, std::max(35, ctx.layout.terminal_columns - 12));
+        const int row = ctx.layout.viewport.top + 4;
+
+        for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+            const auto& f = cfg.fields[i];
+            ctx.fields[i] = GnEntrySpec{
+                row + 2 * static_cast<int>(i), col,
+                f.type, f.length,
+                f.minimum, f.maximum,
+                1, ctx.layout.echo_row
+            };
+        }
+
+        // Convenzione GRIMM: bordo destro comune.
+        const auto max_length = std::max(
+            ctx.fields[0].length, ctx.fields[1].length);
+        const int right_col = col + static_cast<int>(max_length) - 1;
+
+        for (auto i = std::size_t{0}; i < FIELD_COUNT; ++i)
+            ctx.fields[i].column =
+                right_col - static_cast<int>(ctx.fields[i].length) + 1;
+
+        return true;
+    }
+
+    void render(const GnFormContext& ctx, void* data)
+    {
+        if (!data || !ctx.fields || !ctx.values ||
+            ctx.field_count != FIELD_COUNT || ctx.lab >= FIELD_COUNT)
+            return;
+
+        const auto& cfg = *static_cast<Config*>(data);
+        mask(ctx, data);
+
+        for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+            const auto& f = ctx.fields[i];
+
+            fcn_form::write(
+                f.row, 5,
+                std::string(i == ctx.lab ? "> " : "  ") +
+                    cfg.fields[i].label,
+                f.column - 6);
+
+            fcn_form::write(
+                f.row, f.column,
+                fcn_form::field_value(ctx.values[i], f.length),
+                static_cast<int>(f.length),
+                GN_SCREEN_FIELD);
+        }
+
+        gn_screen_clear_line(ctx.layout.echo_row);
+        const int width = std::max(1, ctx.layout.terminal_columns - 1);
+
+        fcn_form::write(ctx.layout.hint_row, 2,
+                        cfg.fields[ctx.lab].hint,
+                        width - 2, GN_SCREEN_MESSAGE);
+        fcn_form::write(ctx.layout.status_top, 2,
+                        "ESC Menu     F1 Help     F10 Esegui",
+                        width - 2, GN_SCREEN_STATUS);
+
+        if (!ctx.message.empty())
+            fcn_form::write(ctx.layout.echo_row, 2,
+                            ctx.message, width - 2, GN_SCREEN_ERROR);
+
+        gn_screen_flush();
+    }
+
+    GnFormChangeResult change(
+        GnEntryCommand command, GnFormContext& ctx, void*)
+    {
+        return fcn_form::change_linear(command, ctx);
+    }
+
+    void help(const GnFormContext& ctx, void* data)
+    {
+        const auto& cfg = *static_cast<Config*>(data);
+
+        const std::vector<std::string> lines = {
+            std::string("F1 HELP - ") + cfg.title,
+            "",
+            cfg.explanation,
+            "",
+            std::string("1. ") + cfg.fields[0].hint,
+            std::string("2. ") + cfg.fields[1].hint,
+            "",
+            "F10 esegue il calcolo.",
+            "ESC ritorna al menu.",
+            "",
+            "F1, ENTER oppure ESC: ritorno ai parametri"
+        };
+
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+        const int width = std::max(1, ctx.layout.terminal_columns - 1);
+
+        int row = 1;
+        for (const auto& line : lines) {
+            if (row > ctx.layout.terminal_rows) break;
+            fcn_form::write(
+                row, 2, line, width - 2,
+                row == 1 ? GN_SCREEN_TITLE : GN_SCREEN_NORMAL);
+            ++row;
+        }
+        gn_screen_flush();
+
+        for (;;) {
+            GnKeyEvent event{};
+            const auto result = gn_pump_once(&event);
+
+            if (result == GN_POLL_EMPTY) {
+                gn_cooperative_pause();
+                continue;
+            }
+            if (result == GN_POLL_ERROR ||
+                event.code == GN_KEY_F1 ||
+                event.code == GN_KEY_ENTER ||
+                event.code == GN_KEY_ESCAPE)
+                return;
+
+            gn_screen_beep();
+        }
+    }
+
+    bool validate(GnFormContext& ctx, void* data)
+    {
+        const auto& cfg = *static_cast<Config*>(data);
+
+        for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+            const auto& f = cfg.fields[i];
+            const auto& value = ctx.values[i];
+
+            if (value.empty()) {
+                ctx.lab = i;
+                ctx.message = "Il campo non puo' essere vuoto";
+                return false;
+            }
+
+            // GN_FIELD_INTEGER consente il segno, ma non ha bounds.
+            if (f.type == GN_FIELD_INTEGER) {
+                try {
+                    std::size_t consumed = 0;
+                    const int n = std::stoi(value, &consumed);
+                    if (consumed != value.size() ||
+                        n < f.minimum || n > f.maximum) {
+                        ctx.lab = i;
+                        ctx.message = "Argomento fuori intervallo";
+                        return false;
+                    }
+                } catch (const std::exception&) {
+                    ctx.lab = i;
+                    ctx.message = "Intero non valido";
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    bool run(Config& cfg, std::string (&values)[FIELD_COUNT])
+    {
+        GnFormRunSpec spec{};
+        spec.layout_options.header_rows = 2;
+        spec.layout_options.top_separator = true;
+        spec.layout_options.bottom_separator = true;
+        spec.layout_options.hint_line = true;
+        spec.layout_options.echo_line = true;
+        spec.layout_options.status_rows = 1;
+        spec.layout_options.min_viewport_rows = 10;
+        spec.layout_options.min_viewport_columns = 72;
+
+        spec.values = values;
+        spec.field_count = FIELD_COUNT;
+        spec.user_data = &cfg;
+        spec.prepare = prepare;
+        spec.render = render;
+        spec.change = change;
+        spec.help = help;
+        spec.validate = validate;
+
+        const auto result = gn_form_run_session(spec);
+
+        if (result == GN_FORM_RUN_ERROR)
+            std::cerr << "Errore nella sessione FORM.\n";
+
+        return result == GN_FORM_RUN_ACCEPT;
+    }
+}
+
+namespace f1_taylor_exp_form
+{
+    bool prompt(F1TaylorParams& params)
+    {
+        static f1_pair_form::Config cfg{
+            " Taylor - funzione esponenziale ",
+            "Convergenza, accuratezza e confronto float/double",
+            "Sviluppo di Taylor per exp(x)",
+            "Confronto tra diversi centri dello sviluppo.",
+            {
+                {"Numero termini", "Termini: da 1 a 40",
+                 GN_FIELD_BOUNDED_NATURAL, 2, 1, 40},
+                {"Argomento x", "x: intero da -99 a 99",
+                 GN_FIELD_INTEGER, 4, -99, 99}
+            }
+        };
+
+        std::string values[2] = {
+            std::to_string(params.n_terms),
+            std::to_string(params.target_arg)
+        };
+
+        if (!f1_pair_form::run(cfg, values)) return false;
+        params.n_terms = std::stoi(values[0]);
+        params.target_arg = std::stoi(values[1]);
+        return true;
+    }
+}
+
+namespace f1_taylor_cos_form
+{
+    bool prompt(F1TaylorParams& params)
+    {
+        static f1_pair_form::Config cfg{
+            " Taylor - funzione coseno ",
+            "Errore dello sviluppo di Maclaurin",
+            "Argomento espresso in gradi",
+            "Confronto con cos(x) e riferimento a 30 gradi.",
+            {
+                {"Numero termini", "Termini: da 1 a 40",
+                 GN_FIELD_BOUNDED_NATURAL, 2, 1, 40},
+                {"Angolo (gradi)", "Angolo: da -360 a 360 gradi",
+                 GN_FIELD_INTEGER, 4, -360, 360}
+            }
+        };
+
+        std::string values[2] = {
+            std::to_string(params.n_terms),
+            std::to_string(params.target_arg)
+        };
+
+        if (!f1_pair_form::run(cfg, values)) return false;
+        params.n_terms = std::stoi(values[0]);
+        params.target_arg = std::stoi(values[1]);
+        return true;
+    }
+}
+
+namespace f1_prec_form
+{
+    bool prompt(F1PrecParams& params)
+    {
+        static f1_pair_form::Config cfg{
+            " Precisione di macchina - IEEE 754 ",
+            "Epsilon, arrotondamenti e somme ripetute",
+            "Parametri per l'esperimento della somma",
+            "Le prove sull'epsilon rimangono inalterate.",
+            {
+                {"Incremento", "Incremento: 0.001 .. 1",
+                 GN_FIELD_BOUNDED_DECIMAL, 8, 0.001, 1.0},
+                {"Ripetizioni", "Numero di somme: 1 .. 999",
+                 GN_FIELD_BOUNDED_NATURAL, 3, 1, 999}
+            }
+        };
+
+        std::ostringstream out;
+        out << params.increment;
+
+        std::string values[2] = {
+            out.str(),
+            std::to_string(params.repetitions)
+        };
+
+        if (!f1_pair_form::run(cfg, values)) return false;
+        params.increment = std::stod(values[0]);
+        params.repetitions = std::stoi(values[1]);
+        return true;
     }
 }
 

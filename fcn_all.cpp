@@ -344,15 +344,29 @@ namespace {
     template <typename T>
     void loop_sum(
         T s, 
-        string n){
-        T steps = 0.01;
-        int loops = 100;
-        std::cout << "\n── Parte B2: somma di "<< std::setprecision(4)<< steps << " x " << loops << " "<< typeid(T).name() << ":"<< n <<" ──\n";
-        for (int i = 0; i < loops; ++i) s += steps;
+        std::string n, 
+        double increment, 
+        int loops)
+    {
+        const T steps = static_cast<T>(increment);
+        const long double expected =
+            static_cast<long double>(increment) * loops;
+
+        std::cout << "\n── Parte B2: somma di "
+                << std::setprecision(4) << steps
+                << " x " << loops << " "
+                << typeid(T).name() << ":"
+                << n << " ──\n";
+
+        for (int i = 0; i < loops; ++i)
+            s += steps;
+
         std::cout << std::setprecision(20);
-        std::cout << "Somma:   " << s << "\n";
-        std::cout << "Atteso:  " << 1.0 << "\n";
-        std::cout << "Errore:  " << std::abs(s - 1.0) << "\n";
+        std::cout << "Somma:  " << s << "\n";
+        std::cout << "Atteso: " << expected << "\n";
+        std::cout << "Errore: "
+                << std::abs(static_cast<long double>(s) - expected)
+                << "\n";
     }
 
     // FCN – Laboratorio 2, Esercizio 1
@@ -756,24 +770,26 @@ void ErrorPlot_Oscillator(
 
     void f1_taylor_exp() {
 
-        int n_terms = 20;
+        F1TaylorParams params{20, -2};
+
         Vecn n_val;
         Vecd n_vald;
         Vecf n_valf;
-        int curr_tile = 0;
-        figure_handle fig;
-
-        bool leave = false;
-        bool redo = false;
-        int target_arg = -2;
-        bool Cheat_e0 = true;
-        double LastD = 0; 
+        const bool Cheat_e0 = true;
+        double LastD = 0;
         double LastF = 0;
-    
-        
-        while (!leave) {
+
+        while (f1_taylor_exp_form::prompt(params)) {
+            const int n_terms = params.n_terms;
+            const int target_arg = params.target_arg;
+            int curr_tile = 0;
+
             clear_screen();
-            auto fig = matplot_table_init (false, "Taylor exp", "Convergenza di Taylor per exp(x)", 2, 2);
+            auto fig = matplot_table_init(
+                false, "Taylor exp",
+                "Convergenza di Taylor per exp(x)", 2, 2);
+
+        // Da qui conserviamo il calcolo attuale.            
             int TCenter = 0;
             // ── Parte A2: tabella errori per eˣ con x = 1 ────────────────────────   
             double e_esatto = std::exp(1);
@@ -809,43 +825,35 @@ void ErrorPlot_Oscillator(
             curr_tile++;
 
             fig->draw();
-            // getc(stdin);
-
-            redo = false;
-            while (!redo && !leave) {
-                cout << "Inserire nuovo valore di x di cui calcolare exp(x) < x - eXit>:  " ;
-
-                cin_clear();
-                if (cin >> target_arg) { if (target_arg != 0) redo=true;} else {cout << "Key: " << target_arg <<endl; leave=true;} ; 
-                cout << "Inserire numero di termini dello sviluppo di Taylor 1 .. 40 (<q> per uscire) > ";
-                if (cin >> n_terms) { if (n_terms>0 && n_terms<=40) redo=true;} else {cout << "Key: " << n_terms <<endl; leave=true;} ; 
-                cin_clear();
-            };
+            fcn_form::wait_report();
         }
     }
 
     void f1_taylor_cos() {
+        F1TaylorParams params{20, 1};
 
-        int n_terms = 20;
         Vecn n_val;
         Vecd n_vald;
         Vecf n_valf;
-        int curr_tile = 0;
-        figure_handle fig;
-
-        bool leave = false;
-        bool redo = false;
-        int target_arg = 1;    // angolo in gradi 
-        bool Cheat_e0 = true;
-        double LastD = 0; 
+        const bool Cheat_e0 = true;
+        double LastD = 0;
         double LastF = 0;
         double e_esatto;
-        int stderr_handle = dup(fileno(stderr)); // salva il vecchio stderr descriptor
-        FILE* fres = freopen("/dev/null", "w", stderr);       // evita le menate di gnuplot :)
-        
-        while (!leave) {
-            clear_screen(); 
-            auto fig = matplot_table_init (true, "Taylor cos", "Stima di cos(x) con Taylor centrato in 0", 2,2 );
+
+        while (f1_taylor_cos_form::prompt(params)) {
+            const int n_terms = params.n_terms;
+            const int target_arg = params.target_arg;
+            int curr_tile = 0;
+
+            int stderr_handle = dup(fileno(stderr));
+            FILE* fres = freopen("/dev/null", "w", stderr);
+
+            clear_screen();
+            auto fig = matplot_table_init(
+                true, "Taylor cos",
+                "Stima di cos(x) con Taylor centrato in 0", 2, 2);
+
+            // Primo grafico: codice attuale invariato.
             // ── Parte A2: tabella errori per cos(x) con x = 1 ────────────────────────   
             e_esatto = std::cos(deg2rad(target_arg)); // valore dal quale si calcola l'errore
             TablePrint_cos (n_vald, n_valf, n_val, target_arg, e_esatto, n_terms, Cheat_e0, LastD, LastF);
@@ -854,171 +862,177 @@ void ErrorPlot_Oscillator(
             TablePlot_cos(fig->current_axes(), n_vald, n_valf, n_val, target_arg, curr_tile, Cheat_e0);
 
             curr_tile++;
-            target_arg = 30; // secondo grafico, di riferimento a 30 gradi
-            e_esatto = std::cos(deg2rad(target_arg));
-            TablePrint_cos (n_vald, n_valf, n_val, target_arg, e_esatto, n_terms, Cheat_e0, LastD, LastF);
-            fig->nexttile(curr_tile); // punta al panel corrente, va bene con option base 0
-            TablePlot_cos(fig->current_axes(), n_vald, n_valf, n_val, target_arg, curr_tile, Cheat_e0);
+
+            const int reference_arg = 30;
+            e_esatto = std::cos(deg2rad(reference_arg));
+            TablePrint_cos(
+                n_vald, n_valf, n_val, reference_arg,
+                e_esatto, n_terms, Cheat_e0, LastD, LastF);
+            fig->nexttile(curr_tile);
+            TablePlot_cos(
+                fig->current_axes(), n_vald, n_valf, n_val,
+                reference_arg, curr_tile, Cheat_e0);
+
             curr_tile++;
 
             fig->draw();
-            // getc(stdin);
 
-            redo = false;
-            while (!redo && !leave) {
-                cout << "Inserire nuovo valore di x di cui calcolare cos(x) [deg 1..360] < x - eXit>:  " ;
-                cin_clear();
-                if (cin >> target_arg) { if ((target_arg >= -360) && (target_arg<=360)) redo=true;} else {cout << "Key: " << target_arg <<endl; leave=true;} ; 
-                cout << "Inserire numero di termini dello sviluppo di Taylor 1 .. 40 (<q> per uscire) > ";
-                if (cin >> n_terms) { if (n_terms>0 && n_terms<=40) redo=true;} else {cout << "Key: " << n_terms <<endl; leave=true;} ; 
-                cin_clear();
-                curr_tile=0;
-            };
-        }
-        fflush(stderr);  // tira lo sciacquone
-        dup2(stderr_handle, fileno(stderr));  //ripristina lo stderr su console
-        close(stderr_handle);  //liberaci dal duplicato tanto non ci induci in errore
+            fflush(stderr);
+            dup2(stderr_handle, fileno(stderr));
+            close(stderr_handle);
 
-        // ── Parte C2: cancellazione per x grande ─────────────────────────────────
-        // TODO C1: trova sperimentalmente il valore di n oltre cui l'errore
-        //          per taylor_exp(1.0, n) smette di diminuire
-        {
-            // questo e' gia' fatto sulla TablePrint con i codici colore ANSI 
+            fcn_form::wait_report();
         }
     }
 
     void f1_prec() {
+        F1PrecParams params{};
 
-        // =========================================================================
-        //  PARTE A1 — Trovare ε_M sperimentalmente
-        // =========================================================================
-        std::cout << "── Parte A1: machine epsilon (double) ──\n";
+        while (f1_prec_form::prompt(params)) {
+            clear_screen();
 
-        double eps = 1.0;
-        // TODO: dimezza eps finché 1.0 + eps == 1.0 (cioè finché 1+eps > 1 è vero)
-        // poi moltiplica per 2 per ottenere l'ultimo valore "visibile"
-        // ...
-        bool found_e = false;
-        double div_2 = 2.0;
-        clear_screen(); 
+            // =========================================================================
+            //  PARTE A1 — Trovare ε_M sperimentalmente
+            // =========================================================================
+            std::cout << "── Parte A1: machine epsilon (double) ──\n";
 
-        while (!found_e) {
-            if ((1.0 + eps) == 1.0) found_e = true; else eps /= div_2;
-            cout << "#" ;
-        }
-        cout << endl << endl;
+            double eps = 1.0;
+            // TODO: dimezza eps finché 1.0 + eps == 1.0 (cioè finché 1+eps > 1 è vero)
+            // poi moltiplica per 2 per ottenere l'ultimo valore "visibile"
+            // ...
+            bool found_e = false;
+            double div_2 = 2.0;
+            clear_screen(); 
 
-        std::cout << "eps_d (double)        :  " << std::scientific << eps << "\n";
-        std::cout << "numeric_limits double :  " << std::numeric_limits<double>::epsilon() << "\n";
-        std::cout << "rapporto  eps_d/eps_M :  " << eps / (double)std::numeric_limits<double>::epsilon() << "\n";
-        std::cout << endl;
+            while (!found_e) {
+                if ((1.0 + eps) == 1.0) found_e = true; else eps /= div_2;
+                cout << "#" ;
+            }
+            cout << endl << endl;
 
-        // Sono uguali? Di quanto differiscono?
+            std::cout << "eps_d (double)        :  " << std::scientific << eps << "\n";
+            std::cout << "numeric_limits double :  " << std::numeric_limits<double>::epsilon() << "\n";
+            std::cout << "rapporto  eps_d/eps_M :  " << eps / (double)std::numeric_limits<double>::epsilon() << "\n";
+            std::cout << endl;
 
-        // =========================================================================
-        //  PARTE A2 — Confronto float error
-        // =========================================================================
-        std::cout << "\n── Parte A2s: machine epsilon (float) ──\n";
+            // Sono uguali? Di quanto differiscono?
 
-        float eps_f = 1.0f;
-        // TODO: stesso algoritmo con float
-        // ...
-        found_e = false;
-        div_2 = 2.0f;
-        while (!found_e) {
-            if ((1.0f + eps_f) == 1.0f) found_e = true; else eps_f /= div_2;
-            cout << "!" ;
-        }
-        cout << endl << endl;
+            // =========================================================================
+            //  PARTE A2 — Confronto float error
+            // =========================================================================
+            std::cout << "\n── Parte A2s: machine epsilon (float) ──\n";
 
-        std::cout << "eps_f (float)         :  " << std::scientific << eps_f << "\n";
-        std::cout << "numeric_limits float  :  " << std::numeric_limits<float>::epsilon() << "\n";
-        std::cout << "rapporto  eps_f/eps_M :  " << eps_f / (float)std::numeric_limits<float>::epsilon() << "\n";
-        std::cout << endl;
+            float eps_f = 1.0f;
+            // TODO: stesso algoritmo con float
+            // ...
+            found_e = false;
+            div_2 = 2.0f;
+            while (!found_e) {
+                if ((1.0f + eps_f) == 1.0f) found_e = true; else eps_f /= div_2;
+                cout << "!" ;
+            }
+            cout << endl << endl;
 
-        // =========================================================================
-        //  PARTE A3 — Confronto float vs double 
-        // =========================================================================
-        std::cout << "\n── Parte A3s: float vs double ──\n";
+            std::cout << "eps_f (float)         :  " << std::scientific << eps_f << "\n";
+            std::cout << "numeric_limits float  :  " << std::numeric_limits<float>::epsilon() << "\n";
+            std::cout << "rapporto  eps_f/eps_M :  " << eps_f / (float)std::numeric_limits<float>::epsilon() << "\n";
+            std::cout << endl;
+
+            // =========================================================================
+            //  PARTE A3 — Confronto float vs double 
+            // =========================================================================
+            std::cout << "\n── Parte A3s: float vs double ──\n";
 
 
-        std::cout << "rapporto flt/dbl calc :  " << eps_f / eps << "\n";
-        std::cout << "rapporto flt/dbl mach :  " <<  (float)std::numeric_limits<float>::epsilon() / (double)std::numeric_limits<double>::epsilon() << "\n";
-        // Di quanti ordini di grandezza differiscono?
+            std::cout << "rapporto flt/dbl calc :  " << eps_f / eps << "\n";
+            std::cout << "rapporto flt/dbl mach :  " <<  (float)std::numeric_limits<float>::epsilon() / (double)std::numeric_limits<double>::epsilon() << "\n";
+            // Di quanti ordini di grandezza differiscono?
 
-        // =========================================================================
-        //  PARTE B1 — 0.1 + 0.2 == 0.3 ?
-        // =========================================================================
-        std::cout << "\n── Parte B1: 0.1 + 0.2 ──\n";
-        // TODO: stampa se sono uguali o diversi
-        // Spiega: 0.1 non è rappresentabile esattamente in binario
+            // =========================================================================
+            //  PARTE B1 — 0.1 + 0.2 == 0.3 ?
+            // =========================================================================
+            std::cout << "\n── Parte B1: 0.1 + 0.2 ──\n";
+            // TODO: stampa se sono uguali o diversi
+            // Spiega: 0.1 non è rappresentabile esattamente in binario
 
-        checksum<double>(0.1, 0.2, 0.3);
-        checksum<double>(0.5, 0.25, 0.75);
+            checksum<double>(0.1, 0.2, 0.3);
+            checksum<double>(0.5, 0.25, 0.75);
 
-        checksum<float>(0.1, 0.2, 0.3);
-        checksum<float>(0.5, 0.25, 0.75);
+            checksum<float>(0.1, 0.2, 0.3);
+            checksum<float>(0.5, 0.25, 0.75);
 
-        
-        
-        // =========================================================================
-        //  PARTE B2 — Somma di 0.1 per 10 volte
-        // =========================================================================
-        {
-            float s = 0.0;
-            loop_sum(s, "float"); // bene, riconosce il tipo dal primo param 
-        };
-        {
-            double s = 0.0;
-            loop_sum(s, "double"); // bene, riconosce il tipo dal primo param 
-        };
-        {
-            long double s = 0.0;
-            loop_sum(s, "long double"); // bene, riconosce il tipo dal primo param 
-        };
+            
+            
+            // =========================================================================
+            //  PARTE B2 — Somma di 0.1 per 10 volte
+            // =========================================================================
 
-        // =========================================================================
-        //  PARTE B3 — Più piccolo N tale che fl(1 + 1/N) == 1
-        // =========================================================================
-        std::cout << "\n── Parte B3: soglia visibilita' ──\n";
-        // TODO: ciclo su N crescenti, trova il primo N tale che
-        //       1.0 + 1.0/N == 1.0  (il computer non vede la differenza)
-        // Poi esprimilo in termini di eps_M: N ≈ 1/eps_M ?
-        // ...
-        double eps_m = std::numeric_limits<double>::epsilon();
-        double N = 2.0;
-        double N_target = 1.0;
-        double N_term = 1.0;
-        bool not_equal = true;
-        while (not_equal) {
-            if ((N_term + (N_term / N)) == N_target) {
-                not_equal = false;
-            } else{
-                N *= 2;
+            /*
+            {
+                float s = 0.0;
+                loop_sum(s, "float"); // bene, riconosce il tipo dal primo param 
             };
+            {
+                double s = 0.0;
+                loop_sum(s, "double"); // bene, riconosce il tipo dal primo param 
+            };
+            {
+                long double s = 0.0;
+                loop_sum(s, "long double"); // bene, riconosce il tipo dal primo param 
+            };
+            */
+
+            loop_sum(0.0f, "float",
+                    params.increment, params.repetitions);
+
+            loop_sum(0.0, "double",
+                    params.increment, params.repetitions);
+
+            loop_sum(0.0L, "long double",
+                    params.increment, params.repetitions);
+            // =========================================================================
+            //  PARTE B3 — Più piccolo N tale che fl(1 + 1/N) == 1
+            // =========================================================================
+            std::cout << "\n── Parte B3: soglia visibilita' ──\n";
+            // TODO: ciclo su N crescenti, trova il primo N tale che
+            //       1.0 + 1.0/N == 1.0  (il computer non vede la differenza)
+            // Poi esprimilo in termini di eps_M: N ≈ 1/eps_M ?
+            // ...
+            double eps_m = std::numeric_limits<double>::epsilon();
+            double N = 2.0;
+            double N_target = 1.0;
+            double N_term = 1.0;
+            bool not_equal = true;
+            while (not_equal) {
+                if ((N_term + (N_term / N)) == N_target) {
+                    not_equal = false;
+                } else{
+                    N *= 2;
+                };
+            }
+
+            // 1 + 1/N è distinguibile da 1 se N*eps_m < 2.
+            // Alla soglia N*eps_m = 2, il tie-to-even restituisce 1.
+            cout << "Ora andiamo a vedere tra " << (1 + N/2) << " e " << N << " ? " << endl;
+            cout << "N/2 * eps_m = " <<  eps_m * N /2  <<  " Ultimo distinguibile" << endl;
+            cout << "  N * eps_m = " <<  eps_m * N << " Primo indistinguibile" << endl;
+
+            // =========================================================================
+            //  PARTE C1 — Collegamento con Taylor (Esercizio 2)
+            // =========================================================================
+            std::cout << "\n── Parte C1: limite di Taylor collegato a eps_M ──\n";
+            // Taylor exp(1): calcola l'errore per n = 1..25
+            // Trova il valore n* dove l'errore è minimo
+            // Verifica che il termine n*-esimo della serie sia circa eps_M * e
+            // Stampa:
+            //   n*  |  errore minimo  |  termine n*  |  eps_M * e
+            // ...
+            cout << " Questo lo abbiamo visto bene nelle tavole di taylor colorate \n"
+                << " mancava solo il confronto con eps_M ma era gia' stimabile ad occhio attorno  10^-16 \n";
+            cout << "Premere un tasto per continuare" << endl;   
+
+            fcn_form::wait_report();
         }
-        cout << "Ora andiamo a vedere tra " << (1 + N/2) << " e " << N << " ? " << endl;
-        cout << "N/2 * eps_m = " <<  eps_m * N /2  <<  " Ultimo distinguibile" << endl;
-        cout << "  N * eps_m = " <<  eps_m * N << " Primo indistinguibile" << endl;
-
-        // =========================================================================
-        //  PARTE C1 — Collegamento con Taylor (Esercizio 2)
-        // =========================================================================
-        std::cout << "\n── Parte C1: limite di Taylor collegato a eps_M ──\n";
-        // Taylor exp(1): calcola l'errore per n = 1..25
-        // Trova il valore n* dove l'errore è minimo
-        // Verifica che il termine n*-esimo della serie sia circa eps_M * e
-        // Stampa:
-        //   n*  |  errore minimo  |  termine n*  |  eps_M * e
-        // ...
-        cout << " Questo lo abbiamo visto bene nelle tavole di taylor colorate \n"
-            << " mancava solo il confronto con eps_M ma era gia' stimabile ad occhio attorno  10^-16 \n";
-        cout << "Premere un tasto per continuare" << endl;   
-
-        // cin_clear();
-        wait_return_to_menu(false);
-        wait_return_to_menu(false);
-
     }
 
     void f2_deriv() {
@@ -3534,9 +3548,9 @@ void ErrorPlot_Oscillator(
         {
         return {
             {"f1_sample",      f1_sample},              // form ok
-            {"f1_taylor_exp",  f1_taylor_exp},
-            {"f1_taylor_cos",  f1_taylor_cos},
-            {"f1_prec",        f1_prec},
+            {"f1_taylor_exp",  f1_taylor_exp},          // form ok
+            {"f1_taylor_cos",  f1_taylor_cos},          // form ok
+            {"f1_prec",        f1_prec},                // form ok
             {"f2_deriv",       f2_deriv},               // form ok
             {"f2_cauchy",      f2_cauchy},
             {"f2_bordo",       f2_bordo},
