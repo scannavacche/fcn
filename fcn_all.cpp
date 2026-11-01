@@ -595,14 +595,13 @@ void ErrorPlot_Oscillator(
     void f1_sample() {
 
         // ── costanti ─────────────────────────────────────────────────────────────────
-        int    K = 40 ;                  // numero di funzioni base (frequenze: 0..N-1)
-        const int    N = 100;                // numero di nodi di campionamento
-        const int   Cols = 10;               // N di colonne per il dump a righe dei vettori 
+        F1SampleParams params{}; // N. di funzioni base e N. di nodi (default 40 e 100) 
+        const int   Cols = 10;   // N di colonne per il dump dei vettori 
 
         // alloco tutto prima per poter usare in un loop
 
         double NR;
-        int curr_tile = 0;
+        int curr_tile;
         vector<matrix_ptr> mtpr(4);
         Vec x_eq;
         Vec x_asym1;
@@ -612,15 +611,21 @@ void ErrorPlot_Oscillator(
         Mat G_asym1;
         Mat G_asym2;
         Mat G_rnd;
-        bool leave = false;
-        bool redo = false;
 
         int stderr_handle = dup(fileno(stderr)); // salva il vecchio stderr descriptor
         FILE* fres = freopen("/dev/null", "w", stderr);       // evita le menate di gnuplot :)
 
-        while (!leave) {
-            clear_screen(); 
-        // ── Parte A: nodi equidistanti ────────────────────────────────────────────
+        while (f1_sample_form::prompt(params)) {
+            const int K = params.K;
+            const int N = params.N;
+
+            // Silenzia temporaneamente i messaggi Gnuplot
+            int stderr_handle = dup(fileno(stderr));
+            FILE* fres = freopen("/dev/null", "w", stderr);
+
+            clear_screen();
+            
+            // ── Parte A: nodi equidistanti ────────────────────────────────────────────
             NR = 2*PI;
             x_eq = nodi_equidistanti(0, NR, N);
             G_eq  = matrix_build_gram(x_eq, K);
@@ -700,7 +705,8 @@ void ErrorPlot_Oscillator(
             fig->nexttile(curr_tile); // punta al panel corrente, va bene con option base 0
             mtpr[curr_tile] = matplot::imagesc(G_eq);
             matplot_legend_align(matplot::legend(), LeAl::Auto, K, 0.4);
-            mtpr[curr_tile]->display_name("100 nodi equidistanti in 0..2PI");
+            mtpr[curr_tile]->display_name(
+                itostr(N) + " nodi equidistanti in 0..2PI");
             matplot::colorbar();
 
             // 3) TODO 6: visualizzare anche G_nonEq come immagine e confrontare
@@ -710,7 +716,8 @@ void ErrorPlot_Oscillator(
             fig->nexttile(curr_tile); // punta al panel corrente, va bene con option base 0
             mtpr[curr_tile] = matplot::imagesc(G_rnd);
             matplot_legend_align(matplot::legend(), LeAl::Auto, K, 0.4);
-            mtpr[curr_tile]->display_name("100 nodi random");
+            mtpr[curr_tile]->display_name(
+                itostr(N) + " nodi random");
             matplot::colorbar();
             
             // 3) TODO 5bis: visualizzare anche G_Eq asimmetrico come immagine 
@@ -721,7 +728,8 @@ void ErrorPlot_Oscillator(
             fig->nexttile(curr_tile); // punta al panel corrente, va bene con option base 0
             mtpr[curr_tile] = matplot::imagesc(G_asym1);
             matplot_legend_align(matplot::legend(), LeAl::Auto, K, 0.4);
-            mtpr[curr_tile]->display_name("100 nodi equidistanti in 0..PI");
+            mtpr[curr_tile]->display_name(
+                itostr(N) + " nodi equidistanti in 0..PI");
             matplot::colorbar();
         
 
@@ -730,26 +738,20 @@ void ErrorPlot_Oscillator(
             fig->nexttile(curr_tile); // punta al panel corrente, va bene con option base 0
             mtpr[curr_tile] = matplot::imagesc(G_asym2);
             matplot_legend_align(matplot::legend(), LeAl::Auto, K, 0.4);
-            mtpr[curr_tile]->display_name("100 nodi equidistanti in 0..PI/2");
+            mtpr[curr_tile]->display_name(
+                itostr(N) + " nodi equidistanti in 0..PI/2");
             matplot::colorbar();
             
+
             fig->draw();
 
-            redo = false;
-            while (!redo && !leave) {
-                cout << "Segnale a freq K = "<< itostr(K) << " campionato su " << itostr(N) << " punti \n" ;
-                cout << "Inserire nuovo valore di K (dim base dello spazio del segnale) 1 .. 256 (<q> per uscire) > ";
-                cin_clear();
-                if (cin >> K) { if (K>0 && K<256) redo=true;} else {cout << "Key: " << K <<endl; leave=true;} ; 
-                cin_clear();
-            };
+            // Ripristina stderr prima di ritornare a GNPORT
+            fflush(stderr);                         // tira lo sciacquone
+            dup2(stderr_handle, fileno(stderr));    //ripristina lo stderr su console
+            close(stderr_handle);   //liberaci dal duplicato tanto non ci induci in errore
 
-
-
-        };
-        fflush(stderr);  // tira lo sciacquone
-        dup2(stderr_handle, fileno(stderr));  //ripristina lo stderr su console
-        close(stderr_handle);  //liberaci dal duplicato tanto non ci induci in errore
+            fcn_form::wait_report();
+        }
     }
 
     void f1_taylor_exp() {
@@ -3531,19 +3533,19 @@ void ErrorPlot_Oscillator(
     ActionRegistry build_action_registry() 
         {
         return {
-            {"f1_sample",      f1_sample},
+            {"f1_sample",      f1_sample},              // form ok
             {"f1_taylor_exp",  f1_taylor_exp},
             {"f1_taylor_cos",  f1_taylor_cos},
             {"f1_prec",        f1_prec},
-            {"f2_deriv",       f2_deriv},
-            {"f3_svd",          f3_svd},
+            {"f2_deriv",       f2_deriv},               // form ok
             {"f2_cauchy",      f2_cauchy},
             {"f2_bordo",       f2_bordo},
             {"f2_integral",    f2_integral},
-            {"f2_norme",       f2_norme},
+            {"f2_norme",       f2_norme},               // form ok
             {"f2_deconv",       f2_deconv},
-            {"f3_svd_test",     f3_svd_test},
-            {"f3_svd_pca",      f3_svd_pca},
+            {"f3_svd",          f3_svd},                // form ok
+            {"f3_svd_test",     f3_svd_test},           // form ok
+            {"f3_svd_pca",      f3_svd_pca},            // form ok 
             {"f3_svd_an",       f3_svd_an}, 
             {"sym_cauchy",      sym_cauchy},
             {"sym_hhalpha",     sym_hhalpha},

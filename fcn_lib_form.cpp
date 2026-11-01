@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+constexpr std::size_t F1_SAMPLE_FIELD_COUNT = 2;  // 3. aggiungi il conteggio
 constexpr std::size_t F2_DERIV_FIELD_COUNT = 2;
 constexpr std::size_t F2_NORME_FIELD_COUNT = 2;
 constexpr std::size_t F3_SVD_TEST_FIELD_COUNT = 2;
@@ -126,7 +127,7 @@ namespace fcn_form
         }
     }
 
-        void wait_report()
+    void wait_report()
     {
         std::cout << "\nPremi INVIO per tornare ai parametri...";
         clear_pending_stdin();
@@ -135,6 +136,278 @@ namespace fcn_form
     }
 
 } // namespace fcn_form
+
+namespace f1_sample_form {
+
+    // 4. prepara i campi
+    bool prepare(GnFormContext& context, void*)
+    {
+        if (!context.fields || !context.values ||
+            context.field_count != F1_SAMPLE_FIELD_COUNT)
+            return false;
+
+        const int col = std::min(
+            45, std::max(35, context.layout.terminal_columns - 11));
+
+        const int row = context.layout.viewport.top + 4;
+
+        // Prima definiamo i campi
+        context.fields[0] = GnEntrySpec{
+            row, col,
+            GN_FIELD_BOUNDED_NATURAL,
+            3, 1.0, 255.0, 1,
+            context.layout.echo_row
+        };
+
+        context.fields[1] = GnEntrySpec{
+            row + 2, col,
+            GN_FIELD_BOUNDED_NATURAL,
+            3, 2.0, 500.0, 1,
+            context.layout.echo_row
+        };
+
+        // Poi li allineiamo sul bordo destro comune
+        const int max_length = std::max(
+            static_cast<int>(context.fields[0].length),
+            static_cast<int>(context.fields[1].length));
+
+        const int right_col = col + max_length - 1;
+
+        for (std::size_t i = 0; i < context.field_count; ++i)
+            context.fields[i].column =
+                right_col - static_cast<int>(context.fields[i].length) + 1;
+
+        return true;
+    }
+
+    // 5a. Scrivi maschera
+    
+    
+    void mask(const GnFormContext& context, void*)
+    {
+        const auto& layout = context.layout;
+        const int width = std::max(1, layout.terminal_columns - 1);
+
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+
+        // Banda superiore
+        fcn_form::write(
+            layout.header_top, 1,
+            " Campionamento e matrici di Gram ",
+            width, GN_SCREEN_TITLE);
+
+        fcn_form::write(
+            layout.header_top + 1, 3,
+            "Confronto delle matrici di Gram con diversi campionamenti",
+            width - 3);
+
+        fcn_form::separator(
+            layout.top_separator_row, layout.terminal_columns);
+
+        // Descrizione all'interno della viewport
+        fcn_form::write(
+            layout.viewport.top, 3,
+            "Impostare il numero di funzioni base K e di nodi N.",
+            width - 3);
+
+        fcn_form::separator(
+            layout.bottom_separator_row, layout.terminal_columns);
+
+        fcn_form::separator(
+            layout.status_separator_row, layout.terminal_columns);
+    }
+
+    // 5b. e scrivi Help
+
+    void help(const GnFormContext& context, void*)
+    {
+        const std::vector<std::string> lines = {
+            "F1 HELP - Campionamento e matrici di Gram",
+            "",
+            "Costruzione e confronto di matrici di Gram",
+            "ottenute con differenti campionamenti.",
+            "",
+            "Parametri:",
+            "  K: numero di funzioni base [1..255]",
+            "  N: numero di nodi [2..500]",
+            "",
+            "La procedura costruisce quattro matrici",
+            "di Gram e ne visualizza i risultati.",
+            "",
+            "F10 esegue il calcolo.",
+            "ESC ritorna al menu.",
+            "",
+            "F1, ENTER oppure ESC: ritorno ai parametri"
+        };
+
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+
+        const int width =
+            std::max(1, context.layout.terminal_columns - 1);
+
+        int row = 1;
+
+        for (const auto& line : lines) {
+            if (row >= context.layout.terminal_rows)
+                break;
+
+            fcn_form::write(
+                row, line.empty() ? 1 : 2,
+                line,
+                line.empty() ? width : width - 2,
+                row == 1 ? GN_SCREEN_TITLE : GN_SCREEN_NORMAL);
+
+            ++row;
+        }
+
+        gn_screen_flush();
+
+        for (;;) {
+            GnKeyEvent event{};
+            const GnPollResult result = gn_pump_once(&event);
+
+            if (result == GN_POLL_EMPTY) {
+                gn_cooperative_pause();
+                continue;
+            }
+
+            if (result == GN_POLL_ERROR ||
+                event.code == GN_KEY_F1 ||
+                event.code == GN_KEY_ENTER ||
+                event.code == GN_KEY_ESCAPE)
+                return;
+
+            gn_screen_beep();
+        }
+    }
+
+
+    // 6a. Disegna 
+    void render(const GnFormContext& context, void* user_data)
+    {
+        if (!context.fields || !context.values ||
+            context.field_count != F1_SAMPLE_FIELD_COUNT ||
+            context.lab >= context.field_count)
+            return;
+
+        // Disegna la struttura statica
+        mask(context, user_data);
+
+        // Etichette e suggerimenti dei campi
+        static const char* labels[] = {
+            "Numero funzioni base K",
+            "Numero nodi N"
+        };
+
+        static const char* hints[] = {
+            "K: numero di funzioni base [1..255]",
+            "N: numero di nodi di campionamento [2..500]"
+        };
+
+        // Disegna i campi nelle posizioni fissate da prepare()
+        for (std::size_t i = 0; i < context.field_count; ++i) {
+            const auto& field = context.fields[i];
+
+            fcn_form::write(
+                field.row, 5,
+                std::string(i == context.lab ? "> " : "  ") + labels[i],
+                field.column - 6);
+
+            fcn_form::write(
+                field.row, field.column,
+                fcn_form::field_value(
+                    context.values[i], field.length),
+                static_cast<int>(field.length),
+                GN_SCREEN_FIELD);
+        }
+
+        // Riga dei messaggi
+        gn_screen_clear_line(context.layout.echo_row);
+
+        const int width =
+            std::max(1, context.layout.terminal_columns - 1);
+
+        // Suggerimento relativo al campo attivo
+        fcn_form::write(
+            context.layout.hint_row, 2,
+            hints[context.lab],
+            width - 2, GN_SCREEN_MESSAGE);
+
+        // Barra dei comandi
+        fcn_form::write(
+            context.layout.status_top, 2,
+            "ESC Menu        F1 Help        F10 Esegui",
+            width - 2, GN_SCREEN_STATUS);
+
+        // Eventuali messaggi di errore
+        if (!context.message.empty()) {
+            fcn_form::write(
+                context.layout.echo_row, 2,
+                context.message,
+                width - 2, GN_SCREEN_ERROR);
+        }
+
+        gn_screen_flush();
+    }
+
+    // 6b. e naviga
+    GnFormChangeResult change(
+        GnEntryCommand command,
+        GnFormContext& context,
+        void*)
+    {
+        return fcn_form::change_linear(command, context);
+    }
+
+    // 7. Prompt 
+    
+    bool prompt(F1SampleParams& params)
+    {
+        // 1. Valori iniziali degli ENTRY
+        std::string values[F1_SAMPLE_FIELD_COUNT] = {
+            std::to_string(params.K),
+            std::to_string(params.N)
+        };
+
+        // 2. Configurazione della sessione
+        GnFormRunSpec spec;
+
+        spec.layout_options.header_rows = 2;
+        spec.layout_options.top_separator = true;
+        spec.layout_options.bottom_separator = true;
+        spec.layout_options.hint_line = true;
+        spec.layout_options.echo_line = true;
+        spec.layout_options.status_rows = 1;
+        spec.layout_options.min_viewport_rows = 10;
+        spec.layout_options.min_viewport_columns = 72;
+
+        // 3. Dati e callback
+        spec.values = values;
+        spec.field_count = F1_SAMPLE_FIELD_COUNT;
+
+        spec.prepare = prepare;
+        spec.render = render;
+        spec.change = change;
+        spec.help = help;
+
+        // 4. Esecuzione del form
+        const GnFormRunResult result = gn_form_run_session(spec);
+
+        // 5. Restituzione dei parametri confermati
+        if (result == GN_FORM_RUN_ACCEPT) {
+            params.K = std::stoi(values[0]);
+            params.N = std::stoi(values[1]);
+            return true;
+        }
+
+        if (result == GN_FORM_RUN_ERROR)
+            std::cerr << "Impossibile aprire il form Gram.\n";
+
+        return false;
+    }
+}
 
 namespace f2_deriv_form
 {
@@ -763,7 +1036,7 @@ namespace f2_norme_form
 
 } // namespace f2_norme_form
 
-    namespace f3_svd_test_form
+namespace f3_svd_test_form
 {
         using fcn_form::write;
         using fcn_form::separator;

@@ -9,6 +9,17 @@
  * I dettagli GnFormRunResult restano confinati nell'implementazione.
  */
 
+// 1. Individua i parametri
+// 2. Definisci il contratto
+struct F1SampleParams {
+    int K = 40;        // Numero funzioni base
+    int N = 100; // Numero nodi    
+};
+
+namespace f1_sample_form {
+    bool prompt(F1SampleParams& params);
+}
+
 struct F2DerivParams {
     int n = 100;
     double domain_span = 1.0;
