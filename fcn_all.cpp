@@ -1129,19 +1129,19 @@ void ErrorPlot_Oscillator(
     };
 
     void f2_cauchy() {
-        int n = 50;          // numero di punti della griglia
-        double t0 = 0.0;     // tempo iniziale
-        double T  = 5.0;     // tempo finale
-        double x0 = 1.0;     // condizione iniziale x(t0)
 
         Vec t, fvals, b;
         Mat L;
+        F2CauchyParams params{};
+
+        while (f2_cauchy_form::prompt(params)) {
+            
         
-        bool leave = false;
-        bool redo = false;
-        while (!leave) {
+            const int n = params.n ;          // numero di punti della griglia
+            const double t0 = params.t0 ;     // tempo iniziale
+            const double T  = params.T ;      // tempo finale
+            const double x0 = params.x0 ;     // condizione iniziale x(t0)
             clear_screen();
-            redo = false;
 
             // Costruzione del sistema triangolare L x = b
             matrix_build_cauchy_sep(n, t0, T, x0, t, fvals, L, b, f_x, false);
@@ -1198,36 +1198,22 @@ void ErrorPlot_Oscillator(
             ylabel("cos(t)");
 
             fig->draw();
-        
-            redo = false;
-            while (!redo && !leave) {
-                std::cout << "Inserire nuovo T finale 5 .. 50 (<q> per uscire) > ";
-
-                cin_clear();
-
-                if (std::cin >> T) { if (T>=5 && T<=50) redo=true;} else {cout << "Key: " << T <<endl; leave=true;} ;
-                if (!leave) {
-                    std::cout << "Inserire nuovo valore iniziale x0 (<q> per uscire) > " ;
-                    if (std::cin >> x0) { if (x0>=t0 && x0<=T) redo=true;} else {cout << "Key: " << x0 <<endl; leave=true;} ;
-                };
-                cin_clear();
-            };
+            fcn_form::wait_report();
         };
     };
 
     void f2_bordo() {
-        int n = 200;           // numero di punti della griglia
-        double t0 = 0.0;        // tempo iniziale
-        double T  = 3.14159;     // tempo finale
-        double x0 = 0.0;        // condizione iniziale x(t0)
-        double x1 = 0.0;        // condizione finale x(T)
 
         Vec t, fvals, b, x, y;
         Mat A,L,U;
+        F2BordoParams params{};
 
-        bool leave = false;
-        bool redo = false;
-        while (!leave) {
+        while (f2_bordo_form::prompt(params)) {
+            int n = params.n;             // numero di punti della griglia
+            double t0 = params.t0;        // tempo iniziale
+            double T  = params.T;         // tempo finale
+            double x0 = params.x0;        // condizione iniziale x(t0)
+            double x1 = params.x1;        // condizione finale x(T)
 
             clear_screen();
             // Costruzione del sistema triangolare L x = b
@@ -1301,35 +1287,20 @@ void ErrorPlot_Oscillator(
 
             ffig->draw();
 
-            redo = false;
-            while (!redo && !leave) {
-                std::cout << "Inserire nuovo T finale 1 .. 10 (<q> per uscire) > ";
+            fcn_form::wait_report();
 
-                cin_clear();
-
-                if (std::cin >> T) { if (T>=1 && T<=10) redo=true;} else {cout << "Key: " << T <<endl; leave=true;} ;
-                if (!leave) {
-                    std::cout << "Inserire nuova cond iniziale x0 (<q> per uscire) > " ;
-                    if (std::cin >> x0) { if (x0>=t0 && x0<=T) redo=true;} else {cout << "Key: " << x0 <<endl; leave=true;} ;
-                    if (redo) {
-                        std::cout << "Inserire nuova cond finale x1 (<q> per uscire) > " ;
-                        if (std::cin >> x1) { if (x1>=x0 && x1<=T) redo=true;} else {cout << "Key: " << x1 <<endl; leave=true;} ;
-                    }
-                };
-                cin_clear();
-           };
         };
     };
 
     void f2_integral() {
 
-        double a=-7,b=7; // intervallo di integrazione
-        int N = 40; // numero di punti di campionamento   
-        bool leave = false; 
         Vec fvals;
+        F2IntegralParams params{};
+        while (f2_integral_form::prompt(params)) {
+            const double a = params.a ;           // inizio intervallo di integrazione
+            const double b = params.b ;           // fine intervallo di integrazione
+            const int N = params.N ;              // numero di punti di campionamento   
 
-        while (!leave) {
-            bool redo = false;
             clear_screen();
             double h = h_ticks(a,b,N); // passo di campionamento
 
@@ -1467,23 +1438,7 @@ void ErrorPlot_Oscillator(
             ylabel("valore");
             f->draw();
 
-            while (!redo && !leave) {
-                std::cout << "Inserire Numero di nodi di campionamento (<q> per uscire) > ";
-
-                cin_clear();
-
-                if (std::cin >> N) { if (N>=1 && N<=1000) redo=true;} else {cout << "Key: " << N <<endl; leave=true;} ;
-                if (!leave) {
-                    std::cout << "Inserire inizio intervallo di integrazione -10..10 (<q> per uscire) > " ;
-                    if (std::cin >> a) { if (a>-10 && a<=10) redo=true;} else {cout << "Key: " << a <<endl; leave=true;} ;
-                    if (redo) {
-                        std::cout << "Inserire nuova fine intervallo di integrazione "<< a <<"..10 (<q> per uscire) > " ;
-                        if (std::cin >> b) { if (b>a && b<=10) redo=true;} else {cout << "Key: " << b <<endl; leave=true;} ;
-                    }
-                };
-                cin_clear();
-            };
-
+            fcn_form::wait_report();
         };
     };
 
@@ -1735,16 +1690,19 @@ void ErrorPlot_Oscillator(
     };
 
     void f2_deconv() {
-        cout << "Deconvoluzione con Kernel di Gauss" << endl;
-        double a=0, b=1; // intervallo
-        int N = 100; // numero di punti separatori   
-        bool leave = false; 
-        double sigma = 2.0;
-        bool KG_Normal = true;
-        char KG_key = '\0';
+         
         Mat kappa2(4, Vec(3, 0.0)); // 0 numero cond, 1 norma2(K), 2 (norma2(K_inv))
+        F2DeconvParams params{};
+        clear_screen();
+        while (f2_deconv_form::prompt(params)) {
+            const double a = params.a;              // inizio intervallo
+            const double b = params.b;              // fine intervallo
+            const int N = params.N;                 // numero di punti separatori   
+            const double sigma = params.sigma;
+            const bool KG_Normal = params.KG_Normal; 
 
-        while (!leave) {
+            cout << "Deconvoluzione con Kernel di Gauss" << endl;  // vedere cosa fare di questo cout inutile
+
             double h  = h_ticks(a,b,N); 
             Mat K = matrix_build_gausskernel(N, sigma*h, h, KG_Normal, kappa2[0]);
             Mat K2 = matrix_build_gausskernel(N, sigma*2*h, h, KG_Normal, kappa2[1]);
@@ -2076,29 +2034,7 @@ void ErrorPlot_Oscillator(
 
                 f->draw();
             }
-
-            bool redo = false;
-            while (!redo && !leave) {
-                std::cout << "Numero di punti N sul lato della griglia [2..1024](<q> per uscire) > " ;
-                if (std::cin >> N) { if (N>=2 && N<=1025) redo=true;} else {cout << "Key: " << N <<endl; leave=true;} ;
-                if (redo) {
-                    std::cout << "Inserire nuova Deviazione Sigma in q multipli di h=(1/(N-1)) da 1 a "<< N-1 <<" (<q> per uscire) > " ;
-                    if (std::cin >> sigma) { if (sigma >=1 && sigma<=N-1) redo=true;} else {cout << "Key: " << sigma <<endl; leave=true;} ;
-                }
-                if (redo) {
-                    std::cout << "Il Kernel K va normalizzato? (<s/n> | <0> per uscire) > " ;
-                    if (std::cin >> KG_key) {
-                         if (KG_key == 'q') { 
-                            redo=false; 
-                            leave=true;
-                        } else {
-                            KG_Normal = (KG_key == 's'); 
-                            redo=true;
-                        }
-                    }
-                }
-                cin_clear();
-            };
+            fcn_form::wait_report();
         }
     }
 
@@ -2345,7 +2281,7 @@ void ErrorPlot_Oscillator(
     }
 
     void f3_svd_pca(){
-        F3SvdPcaParams params{100, 10, 2.0f, 2.0f};
+        F3SvdPcaParams params{100, 10, 2.0f, 2.0f};  // valori di default
 
         while (f3_svd_pca_form::prompt(params))
         {
@@ -3552,11 +3488,11 @@ void ErrorPlot_Oscillator(
             {"f1_taylor_cos",  f1_taylor_cos},          // form ok
             {"f1_prec",        f1_prec},                // form ok
             {"f2_deriv",       f2_deriv},               // form ok
-            {"f2_cauchy",      f2_cauchy},
-            {"f2_bordo",       f2_bordo},
-            {"f2_integral",    f2_integral},
+            {"f2_cauchy",      f2_cauchy},              // form ok
+            {"f2_bordo",       f2_bordo},               // form ok
+            {"f2_integral",    f2_integral},            // form ok
             {"f2_norme",       f2_norme},               // form ok
-            {"f2_deconv",       f2_deconv},
+            {"f2_deconv",       f2_deconv},             // form ok
             {"f3_svd",          f3_svd},                // form ok
             {"f3_svd_test",     f3_svd_test},           // form ok
             {"f3_svd_pca",      f3_svd_pca},            // form ok 

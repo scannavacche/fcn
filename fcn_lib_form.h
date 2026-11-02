@@ -53,9 +53,40 @@ namespace f2_deriv_form
     bool prompt(F2DerivParams& params);
 }
 
+struct F2CauchyParams {
+    int n = 50;
+    double t0 = 0.0;
+    double T = 5.0;
+    double x0 = 1.0;
+};
+namespace f2_cauchy_form {
+    bool prompt(F2CauchyParams& params);
+}
+
+struct F2BordoParams {
+    int n = 200;
+    double t0 = 0.0;
+    double T = 3.14159;
+    double x0 = 0.0;
+    double x1 = 0.0;
+};
+namespace f2_bordo_form {
+    bool prompt(F2BordoParams& params);
+}
+
+struct F2IntegralParams {
+    double a = -7.0;
+    double b = 7.0;
+    int N = 40;
+};
+namespace f2_integral_form {
+    bool prompt(F2IntegralParams& params);
+}
+
+
 struct F2NormeParams {
-    int n_max;          // default 640
-    int timing_reps;    // default 1
+    int n_max = 640;          // default 640
+    int timing_reps = 1;    // default 1
 };
 
 
@@ -64,7 +95,20 @@ namespace f2_norme_form
     bool prompt(F2NormeParams& params);
 };
 
- namespace f3_svd_test_form
+struct F2DeconvParams {
+    double a = 0.0;
+    double b = 1.0;
+    int N = 100;
+    double sigma = 2.0;  // moltiplicatore del passo h
+    bool KG_Normal = true;
+};
+
+namespace f2_deconv_form {
+    bool prompt(F2DeconvParams& params);
+}
+
+
+namespace f3_svd_test_form
 {
     bool prompt(int& n, int& d);
 };
@@ -75,10 +119,10 @@ namespace f3_svd_form
 };
 
 struct F3SvdPcaParams {
-    int n;
-    int d;
-    float factor_n;
-    float factor_d;
+    int n = 100;
+    int d = 10;
+    float factor_n = 2.0f;
+    float factor_d = 2.0f;
 };
 
 namespace f3_svd_pca_form

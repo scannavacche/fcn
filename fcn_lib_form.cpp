@@ -978,6 +978,315 @@ namespace f2_deriv_form
 
 } // f2_deriv_form
 
+namespace f2_multi_form {
+
+    constexpr std::size_t MAX_FIELDS = 5;
+
+    struct Field {
+        const char* label;
+        const char* hint;
+        GnFieldType type;
+        std::size_t length;
+        double lower;
+        double upper;
+    };
+
+    struct Config {
+        const char* title;
+        const char* subtitle;
+        const char* description;
+        const char* explanation;
+        std::size_t count;
+        Field fields[MAX_FIELDS];
+        std::size_t interval_start;  // indice campo t0/a
+        std::size_t interval_end;    // indice campo T/b
+        bool sigma_bounded_by_n = false; // solo deconvoluzione
+    };
+
+    std::string decimal(double value) {
+        std::ostringstream out;
+        out << std::setprecision(10) << value;
+        return out.str();
+    }
+
+    void mask(const GnFormContext& ctx, void* data) {
+        const auto& cfg = *static_cast<const Config*>(data);
+        const auto& l = ctx.layout;
+        const int width = std::max(1, l.terminal_columns - 1);
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+        fcn_form::write(l.header_top, 1, cfg.title,
+                        width, GN_SCREEN_TITLE);
+        fcn_form::write(l.header_top + 1, 3, cfg.subtitle,
+                        width - 3);
+        fcn_form::separator(l.top_separator_row, l.terminal_columns);
+        fcn_form::write(l.viewport.top, 3, cfg.description,
+                        width - 3);
+        fcn_form::separator(l.bottom_separator_row, l.terminal_columns);
+        fcn_form::separator(l.status_separator_row, l.terminal_columns);
+    }
+
+    bool prepare(GnFormContext& ctx, void* data) {
+        if (!data || !ctx.fields || !ctx.values) return false;
+        const auto& cfg = *static_cast<const Config*>(data);
+        if (ctx.field_count != cfg.count || cfg.count > MAX_FIELDS ||
+            cfg.count < 1) return false;
+
+        const int first_col = std::min(
+            59, std::max(45, ctx.layout.terminal_columns - 23));
+        const int first_row = ctx.layout.viewport.top + 3;
+        std::size_t max_length = 0;
+        for (std::size_t i = 0; i < cfg.count; ++i) {
+            const auto& f = cfg.fields[i];
+            ctx.fields[i] = GnEntrySpec{
+                first_row + static_cast<int>(2 * i),
+                first_col, f.type, f.length, f.lower, f.upper,
+                1, ctx.layout.echo_row
+            };
+            max_length = std::max(max_length, f.length);
+        }
+        const int right_col = first_col + static_cast<int>(max_length) - 1;
+        for (std::size_t i = 0; i < cfg.count; ++i) {
+            ctx.fields[i].column = right_col -
+                static_cast<int>(ctx.fields[i].length) + 1;
+        }
+        return true;
+    }
+
+    void render(const GnFormContext& ctx, void* data) {
+        if (!data || !ctx.fields || !ctx.values ||
+            ctx.lab >= ctx.field_count) return;
+        const auto& cfg = *static_cast<const Config*>(data);
+        if (ctx.field_count != cfg.count) return;
+        mask(ctx, data);
+        for (std::size_t i = 0; i < cfg.count; ++i) {
+            const auto& f = ctx.fields[i];
+            fcn_form::write(f.row, 5,
+                std::string(i == ctx.lab ? "> " : "  ") +
+                    cfg.fields[i].label,
+                f.column - 6);
+            fcn_form::write(f.row, f.column,
+                fcn_form::field_value(ctx.values[i], f.length),
+                static_cast<int>(f.length), GN_SCREEN_FIELD);
+        }
+        gn_screen_clear_line(ctx.layout.echo_row);
+        const int width = std::max(1, ctx.layout.terminal_columns - 1);
+        fcn_form::write(ctx.layout.hint_row, 2,
+            cfg.fields[ctx.lab].hint, width - 2, GN_SCREEN_MESSAGE);
+        fcn_form::write(ctx.layout.status_top, 2,
+            "ESC Menu     F1 Help     F10 Esegui",
+            width - 2, GN_SCREEN_STATUS);
+        if (!ctx.message.empty()) {
+            fcn_form::write(ctx.layout.echo_row, 2,
+                ctx.message, width - 2, GN_SCREEN_ERROR);
+        }
+        gn_screen_flush();
+    }
+
+    GnFormChangeResult change(GnEntryCommand command,
+                              GnFormContext& ctx, void*) {
+        return fcn_form::change_linear(command, ctx);
+    }
+
+    void help(const GnFormContext& ctx, void* data) {
+        const auto& cfg = *static_cast<const Config*>(data);
+        const int width = std::max(1, ctx.layout.terminal_columns - 1);
+        std::vector<std::string> lines = {
+            std::string("F1 HELP - ") + cfg.title,
+            "", cfg.explanation, "", "Parametri:"
+        };
+        for (std::size_t i = 0; i < cfg.count; ++i) {
+            lines.push_back(
+                std::string("  ") + cfg.fields[i].hint);
+        }
+        lines.push_back("");
+        lines.push_back("F10 esegue. ESC torna al menu.");
+        lines.push_back("F1 / ENTER / ESC: ritorno al form");
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+        int row = 1;
+        for (const auto& line : lines) {
+            if (row > ctx.layout.terminal_rows) break;
+            fcn_form::write(row, 2, line, width - 2,
+                row == 1 ? GN_SCREEN_TITLE : GN_SCREEN_NORMAL);
+            ++row;
+        }
+        gn_screen_flush();
+        for (;;) {
+            GnKeyEvent event{};
+            const GnPollResult result = gn_pump_once(&event);
+            if (result == GN_POLL_EMPTY) {
+                gn_cooperative_pause();
+                continue;
+            }
+            if (result == GN_POLL_ERROR ||
+                event.code == GN_KEY_F1 ||
+                event.code == GN_KEY_ENTER ||
+                event.code == GN_KEY_ESCAPE) return;
+            gn_screen_beep();
+        }
+    }
+
+    bool validate(GnFormContext& ctx, void* data) {
+        const auto& cfg = *static_cast<const Config*>(data);
+        for (std::size_t i = 0; i < cfg.count; ++i) {
+            if (ctx.values[i].empty()) {
+                ctx.lab = i;
+                ctx.message = "Il campo non puo' essere vuoto";
+                return false;
+            }
+        }
+        // Dopo la validazione individuale GNPORT, controlla la relazione.
+        const double left = std::stod(ctx.values[cfg.interval_start]);
+        const double right = std::stod(ctx.values[cfg.interval_end]);
+        if (!(right > left)) {
+            ctx.lab = cfg.interval_end;
+            ctx.message = "Estremo finale deve essere > iniziale";
+            return false;
+        }
+        if (cfg.sigma_bounded_by_n) {
+            const int n = std::stoi(ctx.values[2]);
+            const double sigma = std::stod(ctx.values[3]);
+            if (sigma > n - 1) {
+                ctx.lab = 3;
+                ctx.message = "sigma deve essere <= N-1";
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool run(Config& cfg, std::string* values) {
+        GnFormRunSpec spec{};
+        spec.layout_options.header_rows = 2;
+        spec.layout_options.top_separator = true;
+        spec.layout_options.bottom_separator = true;
+        spec.layout_options.hint_line = true;
+        spec.layout_options.echo_line = true;
+        spec.layout_options.status_rows = 1;
+        spec.layout_options.min_viewport_rows = 14;
+        spec.layout_options.min_viewport_columns = 80;
+        spec.values = values;
+        spec.field_count = cfg.count;
+        spec.user_data = &cfg;
+        spec.prepare = prepare;
+        spec.render = render;
+        spec.change = change;
+        spec.help = help;
+        spec.validate = validate;
+        const auto result = gn_form_run_session(spec);
+        if (result == GN_FORM_RUN_ERROR)
+            std::cerr << "Errore nella sessione form Foglio 2.\n";
+        return result == GN_FORM_RUN_ACCEPT;
+    }
+}
+
+namespace f2_cauchy_form {
+    bool prompt(F2CauchyParams& p) {
+        static f2_multi_form::Config cfg{
+            " Cauchy - problema ai valori iniziali ",
+            "Risoluzione discreta per tre termini forzanti",
+            "Griglia temporale [t0,T], condizione x(t0) = x0",
+            "Prove per f(t)=t, sin(t), cos(t); schema in avanti.",
+            4,
+            {
+                {"Numero nodi n", "n: 2 .. 400", GN_FIELD_BOUNDED_NATURAL, 3, 2, 400},
+                {"Tempo iniziale t0", "t0: -100 .. 100", GN_FIELD_BOUNDED_DECIMAL, 12, -100, 100},
+                {"Tempo finale T", "T: -100 .. 100, T > t0", GN_FIELD_BOUNDED_DECIMAL, 12, -100, 100},
+                {"Condizione iniziale x0", "x0: -100 .. 100", GN_FIELD_BOUNDED_DECIMAL, 12, -100, 100}
+            },
+            1, 2
+        };
+        std::string v[] = {std::to_string(p.n),
+            f2_multi_form::decimal(p.t0), f2_multi_form::decimal(p.T),
+            f2_multi_form::decimal(p.x0)};
+        if (!f2_multi_form::run(cfg, v)) return false;
+        p.n = std::stoi(v[0]); p.t0 = std::stod(v[1]);
+        p.T = std::stod(v[2]); p.x0 = std::stod(v[3]);
+        return true;
+    }
+}
+
+namespace f2_bordo_form {
+    bool prompt(F2BordoParams& p) {
+        static f2_multi_form::Config cfg{
+            " Problema differenziale ai limiti ",
+            "Risoluzione per fattorizzazione LU",
+            "Griglia [t0,T] con valori imposti x(t0), x(T)",
+            "BVP con 2 condizioni ai limiti; forzante cos(t).",
+            5,
+            {
+                {"Numero nodi n", "n: 3 .. 300", GN_FIELD_BOUNDED_NATURAL, 3, 3, 300},
+                {"Tempo iniziale t0", "t0: -100 .. 100", GN_FIELD_BOUNDED_DECIMAL, 12, -100, 100},
+                {"Tempo finale T", "T: -100 .. 100, T > t0", GN_FIELD_BOUNDED_DECIMAL, 12, -100, 100},
+                {"Valore al bordo x0", "x0: -100 .. 100", GN_FIELD_BOUNDED_DECIMAL, 12, -100, 100},
+                {"Valore al bordo x1", "x1: -100 .. 100", GN_FIELD_BOUNDED_DECIMAL, 12, -100, 100}
+            },
+            1, 2
+        };
+        std::string v[] = {std::to_string(p.n), f2_multi_form::decimal(p.t0),
+            f2_multi_form::decimal(p.T), f2_multi_form::decimal(p.x0),
+            f2_multi_form::decimal(p.x1)};
+        if (!f2_multi_form::run(cfg, v)) return false;
+        p.n = std::stoi(v[0]); p.t0 = std::stod(v[1]);
+        p.T = std::stod(v[2]); p.x0 = std::stod(v[3]);
+        p.x1 = std::stod(v[4]);
+        return true;
+    }
+}
+
+namespace f2_integral_form {
+    bool prompt(F2IntegralParams& p) {
+        static f2_multi_form::Config cfg{
+            " Integrazione numerica discreta ",
+            "Integrazione, derivazione, norme e condizionamento",
+            "Intervallo di integrazione [a,b] e N nodi",
+            "Integranda 1/(1+x^2), confronto con arctan(x).",
+            3,
+            {
+                {"Estremo a", "a: -100 .. 100", GN_FIELD_BOUNDED_DECIMAL, 12, -100, 100},
+                {"Estremo b", "b: -100 .. 100, b > a", GN_FIELD_BOUNDED_DECIMAL, 12, -100, 100},
+                {"Numero nodi N", "N: 3 .. 200", GN_FIELD_BOUNDED_NATURAL, 3, 3, 200}
+            },
+            0, 1
+        };
+        std::string v[] = {f2_multi_form::decimal(p.a),
+            f2_multi_form::decimal(p.b), std::to_string(p.N)};
+        if (!f2_multi_form::run(cfg, v)) return false;
+        p.a = std::stod(v[0]); p.b = std::stod(v[1]);
+        p.N = std::stoi(v[2]);
+        return true;
+    }
+}
+
+namespace f2_deconv_form {
+    bool prompt(F2DeconvParams& p) {
+        static f2_multi_form::Config cfg{
+            " Deconvoluzione - kernel di Gauss ",
+            "Confronto di convoluzioni e condizionamento",
+            "Intervallo, griglia, ampiezza sigma*h e normalizzazione",
+            "Sigma moltiplica il passo h; 1 <= sigma <= N-1; normalizzazione 0/1.",
+            5,
+            {
+                {"Estremo a", "a: -100 .. 100", GN_FIELD_BOUNDED_DECIMAL, 12, -100, 100},
+                {"Estremo b", "b: -100 .. 100, b > a", GN_FIELD_BOUNDED_DECIMAL, 12, -100, 100},
+                {"Numero nodi N", "N: 10 .. 120 (LU e matrici dense)", GN_FIELD_BOUNDED_NATURAL, 3, 10, 120},
+                {"Sigma (in passi h)", "sigma: 1 .. N-1", GN_FIELD_BOUNDED_DECIMAL, 8, 1, 119},
+                {"Kernel normalizzato", "KG_Normal: 1=si, 0=no", GN_FIELD_BOUNDED_NATURAL, 1, 0, 1}
+            },
+            0, 1, true
+        };
+        std::string v[] = {f2_multi_form::decimal(p.a),
+            f2_multi_form::decimal(p.b), std::to_string(p.N),
+            f2_multi_form::decimal(p.sigma), p.KG_Normal ? "1" : "0"};
+        if (!f2_multi_form::run(cfg, v)) return false;
+        p.a = std::stod(v[0]); p.b = std::stod(v[1]);
+        p.N = std::stoi(v[2]); p.sigma = std::stod(v[3]);
+        p.KG_Normal = std::stoi(v[4]) != 0;
+        return true;
+    }
+}
+
 namespace f2_norme_form
 {
     using fcn_form::write;
