@@ -409,7 +409,6 @@ namespace f1_sample_form {
     }
 }
 
-
 namespace f1_pair_form
 {
     constexpr std::size_t FIELD_COUNT = 2;
@@ -2591,4 +2590,488 @@ namespace f3_svd_pca_form
 
 } // namespace f3_svd_pca
 
+namespace f3_svd_an_form {
+    namespace {
+        constexpr std::size_t FIELD_COUNT = 6;
+        constexpr const char* labels[FIELD_COUNT] = {
+            "Numero campioni n", "Dimensione d[0]", "Dimensione d[1]",
+            "Dimensione d[2]", "Dimensione d[3]", "Seed generatore"
+        };
+        constexpr const char* hints[FIELD_COUNT] = {
+            "n: campioni per ciascuno dei quattro esperimenti [3..500]",
+            "d[0]: caratteristiche per il primo esperimento [2..n]",
+            "d[1]: caratteristiche per il secondo esperimento [2..n]",
+            "d[2]: caratteristiche per il terzo esperimento [2..n]",
+            "d[3]: caratteristiche per il quarto esperimento [2..n]",
+            "Seed: inizializzazione riproducibile dei cluster [0..999999]"
+        };
+
+        void mask(const GnFormContext& ctx, void*) {
+            const auto& l = ctx.layout;
+            const int width = std::max(1, l.terminal_columns - 1);
+            gn_screen_clear();
+            gn_screen_cursor_visible(0);
+            fcn_form::write(l.header_top, 1,
+                " PCA - analisi su quattro dimensioni ", width, GN_SCREEN_TITLE);
+            fcn_form::write(l.header_top + 1, 3,
+                "Confronto di quattro dataset con n fisso e d variabile",
+                width - 3);
+            fcn_form::separator(l.top_separator_row, l.terminal_columns);
+            fcn_form::write(l.viewport.top, 3,
+                "Ogni pannello usa n campioni e una diversa dimensione d.",
+                width - 3);
+            fcn_form::separator(l.bottom_separator_row, l.terminal_columns);
+            fcn_form::separator(l.status_separator_row, l.terminal_columns);
+        }
+
+        bool prepare(GnFormContext& ctx, void*) {
+            if (!ctx.fields || !ctx.values || ctx.field_count != FIELD_COUNT)
+                return false;
+            const int col = std::min(54,
+                std::max(43, ctx.layout.terminal_columns - 18));
+            const int row = ctx.layout.viewport.top + 3;
+            for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+                const bool seed = (i == FIELD_COUNT - 1);
+                ctx.fields[i] = GnEntrySpec{
+                    row + 2 * static_cast<int>(i), col,
+                    GN_FIELD_BOUNDED_NATURAL,
+                    seed ? std::size_t{6} : std::size_t{3},
+                    seed ? 0.0 : (i == 0 ? 3.0 : 2.0),
+                    seed ? 999999.0 : 500.0,
+                    1, ctx.layout.echo_row
+                };
+            }
+            std::size_t max_len = 0;
+            for (std::size_t i = 0; i < FIELD_COUNT; ++i)
+                max_len = std::max(max_len, ctx.fields[i].length);
+            const int right_col = col + static_cast<int>(max_len) - 1;
+            for (std::size_t i = 0; i < FIELD_COUNT; ++i)
+                ctx.fields[i].column = right_col -
+                    static_cast<int>(ctx.fields[i].length) + 1;
+            return true;
+        }
+
+        void render(const GnFormContext& ctx, void* data) {
+            if (!ctx.fields || !ctx.values ||
+                ctx.field_count != FIELD_COUNT || ctx.lab >= FIELD_COUNT)
+                return;
+            mask(ctx, data);
+            for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+                const auto& f = ctx.fields[i];
+                fcn_form::write(f.row, 5,
+                    std::string(i == ctx.lab ? "> " : "  ") + labels[i],
+                    f.column - 6);
+                fcn_form::write(f.row, f.column,
+                    fcn_form::field_value(ctx.values[i], f.length),
+                    static_cast<int>(f.length), GN_SCREEN_FIELD);
+            }
+            const int width = std::max(1, ctx.layout.terminal_columns - 1);
+            gn_screen_clear_line(ctx.layout.echo_row);
+            fcn_form::write(ctx.layout.hint_row, 2,
+                hints[ctx.lab], width - 2, GN_SCREEN_MESSAGE);
+            fcn_form::write(ctx.layout.status_top, 2,
+                "ESC Menu     F1 Help     F10 Esegui",
+                width - 2, GN_SCREEN_STATUS);
+            if (!ctx.message.empty())
+                fcn_form::write(ctx.layout.echo_row, 2,
+                    ctx.message, width - 2, GN_SCREEN_ERROR);
+            gn_screen_flush();
+        }
+
+        GnFormChangeResult change(GnEntryCommand command,
+                                GnFormContext& ctx, void*) {
+            return fcn_form::change_linear(command, ctx);
+        }
+
+        void help(const GnFormContext& ctx, void*) {
+            std::vector<std::string> lines = {
+                "F1 HELP - PCA: analisi per dimensioni",
+                "",
+                "Quattro esperimenti PCA/SVD con numero campioni n fisso.",
+                "Ogni pannello usa la dimensione d[i] corrispondente.",
+                "Le dimensioni devono essere almeno 2 e non superiori a n.",
+                "Il seed controlla la riproducibilita' dei dati generati.",
+                "",
+                "F10 esegue; ESC torna al menu.",
+                "F1 / ENTER / ESC: ritorno ai parametri."
+            };
+            gn_screen_clear();
+            gn_screen_cursor_visible(0);
+            const int width = std::max(1, ctx.layout.terminal_columns - 1);
+            int row = 1;
+            for (const auto& line : lines) {
+                if (row > ctx.layout.terminal_rows) break;
+                fcn_form::write(row, 2, line, width - 2,
+                    row == 1 ? GN_SCREEN_TITLE : GN_SCREEN_NORMAL);
+                ++row;
+            }
+            gn_screen_flush();
+            for (;;) {
+                GnKeyEvent event{};
+                const GnPollResult result = gn_pump_once(&event);
+                if (result == GN_POLL_EMPTY) {
+                    gn_cooperative_pause();
+                    continue;
+                }
+                if (result == GN_POLL_ERROR || event.code == GN_KEY_F1 ||
+                    event.code == GN_KEY_ENTER || event.code == GN_KEY_ESCAPE)
+                    return;
+                gn_screen_beep();
+            }
+        }
+
+        bool validate(GnFormContext& ctx, void*) {
+            if (!ctx.values || ctx.field_count != FIELD_COUNT) return false;
+            try {
+                for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+                    if (ctx.values[i].empty()) {
+                        ctx.lab = i;
+                        ctx.message = "Campo obbligatorio";
+                        return false;
+                    }
+                }
+                const int n = std::stoi(ctx.values[0]);
+                for (std::size_t i = 1; i <= 4; ++i) {
+                    const int d = std::stoi(ctx.values[i]);
+                    if (d > n) {
+                        ctx.lab = i;
+                        ctx.message = "La dimensione d deve essere <= n";
+                        return false;
+                    }
+                }
+            } catch (const std::exception&) {
+                ctx.message = "Valore numerico non valido";
+                return false;
+            }
+            return true;
+        }
+    }
+
+    bool prompt(F3SvdAnParams& params) {
+        std::string values[FIELD_COUNT] = {
+            std::to_string(params.n), std::to_string(params.d[0]),
+            std::to_string(params.d[1]), std::to_string(params.d[2]),
+            std::to_string(params.d[3]), std::to_string(params.seed)
+        };
+        GnFormRunSpec spec{};
+        spec.layout_options.header_rows = 2;
+        spec.layout_options.top_separator = true;
+        spec.layout_options.bottom_separator = true;
+        spec.layout_options.hint_line = true;
+        spec.layout_options.echo_line = true;
+        spec.layout_options.status_rows = 1;
+        spec.layout_options.min_viewport_rows = 16;
+        spec.layout_options.min_viewport_columns = 80;
+        spec.values = values;
+        spec.field_count = FIELD_COUNT;
+        spec.prepare = prepare;
+        spec.render = render;
+        spec.change = change;
+        spec.help = help;
+        spec.validate = validate;
+
+        const auto result = gn_form_run_session(spec);
+        if (result != GN_FORM_RUN_ACCEPT) {
+            if (result == GN_FORM_RUN_ERROR)
+                std::cerr << "Impossibile aprire il form PCA analisi.\n";
+            return false;
+        }
+        params.n = std::stoi(values[0]);
+        for (std::size_t i = 0; i < 4; ++i)
+            params.d[i] = std::stoi(values[i + 1]);
+        params.seed = std::stoi(values[5]);
+        return true;
+    }
+} // namespace f3_svd_an_form
+
+namespace ode_multi_form {
+    constexpr std::size_t MAX_FIELDS = 11;
+    enum class Kind { Euler, Osc2D, LotkaV };
+
+    struct Field {
+        const char* label;
+        const char* hint;
+        GnFieldType type;
+        std::size_t length;
+        double min_value;
+        double max_value;
+    };
+    struct Config {
+        const char* title;
+        const char* subtitle;
+        const char* description;
+        Kind kind;
+        std::size_t count;
+        Field fields[MAX_FIELDS];
+    };
+
+    std::string decimal(double x) {
+        std::ostringstream os;
+        os << std::setprecision(10) << x;
+        return os.str();
+    }
+    void mask(const GnFormContext& ctx, void* user_data) {
+        const auto& cfg = *static_cast<const Config*>(user_data);
+        const auto& l = ctx.layout;
+        const int w = std::max(1, l.terminal_columns - 1);
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+        fcn_form::write(l.header_top, 1, cfg.title, w, GN_SCREEN_TITLE);
+        fcn_form::write(l.header_top + 1, 3, cfg.subtitle, w - 3);
+        fcn_form::separator(l.top_separator_row, l.terminal_columns);
+        fcn_form::write(l.viewport.top, 3, cfg.description, w - 3);
+        fcn_form::separator(l.bottom_separator_row, l.terminal_columns);
+        fcn_form::separator(l.status_separator_row, l.terminal_columns);
+    }
+    bool prepare(GnFormContext& ctx, void* user_data) {
+        if (!user_data || !ctx.fields || !ctx.values) return false;
+        const auto& cfg = *static_cast<const Config*>(user_data);
+        if (cfg.count == 0 || cfg.count > MAX_FIELDS ||
+            ctx.field_count != cfg.count) return false;
+        const int first_col = std::min(59, std::max(48, ctx.layout.terminal_columns - 23));
+        const int first_row = ctx.layout.viewport.top + 1;
+        std::size_t max_length = 0;
+        for (std::size_t i = 0; i < cfg.count; ++i) {
+            const auto& f = cfg.fields[i];
+            ctx.fields[i] = GnEntrySpec{
+                first_row + static_cast<int>(i), first_col,
+                f.type, f.length, f.min_value, f.max_value,
+                1, ctx.layout.echo_row
+            };
+            max_length = std::max(max_length, f.length);
+        }
+        // GRIMM: stesso bordo destro, una sola lunghezza per campo.
+        const int right_col = first_col + static_cast<int>(max_length) - 1;
+        for (std::size_t i = 0; i < cfg.count; ++i)
+            ctx.fields[i].column = right_col -
+                static_cast<int>(ctx.fields[i].length) + 1;
+        return true;
+    }
+    void render(const GnFormContext& ctx, void* user_data) {
+        if (!user_data || !ctx.fields || !ctx.values ||
+            ctx.lab >= ctx.field_count) return;
+        const auto& cfg = *static_cast<const Config*>(user_data);
+        if (ctx.field_count != cfg.count) return;
+        mask(ctx, user_data);
+        for (std::size_t i = 0; i < cfg.count; ++i) {
+            const auto& field = ctx.fields[i];
+            fcn_form::write(field.row, 5,
+                std::string(i == ctx.lab ? "> " : "  ") + cfg.fields[i].label,
+                field.column - 6);
+            fcn_form::write(field.row, field.column,
+                fcn_form::field_value(ctx.values[i], field.length),
+                static_cast<int>(field.length), GN_SCREEN_FIELD);
+        }
+        gn_screen_clear_line(ctx.layout.echo_row);
+        const int w = std::max(1, ctx.layout.terminal_columns - 1);
+        fcn_form::write(ctx.layout.hint_row, 2,
+            cfg.fields[ctx.lab].hint, w - 2, GN_SCREEN_MESSAGE);
+        fcn_form::write(ctx.layout.status_top, 2,
+            "ESC Menu      F1 Help      F10 Esegui", w - 2, GN_SCREEN_STATUS);
+        if (!ctx.message.empty())
+            fcn_form::write(ctx.layout.echo_row, 2,
+                ctx.message, w - 2, GN_SCREEN_ERROR);
+        gn_screen_flush();
+    }
+    GnFormChangeResult change(GnEntryCommand cmd, GnFormContext& ctx, void*) {
+        return fcn_form::change_linear(cmd, ctx);
+    }
+    void help(const GnFormContext& ctx, void* user_data) {
+        const auto& cfg = *static_cast<const Config*>(user_data);
+        std::vector<std::string> lines{
+            std::string("F1 HELP - ") + cfg.title, "",
+            cfg.description, "",
+            "N1..N4 sono numeri di INTERVALLI (nodi = N+1).",
+            "Le quattro risoluzioni vanno in ordine crescente.", ""
+        };
+        for (std::size_t i = 0; i < cfg.count; ++i)
+            lines.push_back(std::string("  ") + cfg.fields[i].hint);
+        if (cfg.kind == Kind::Osc2D) {
+            lines.push_back("Oscillatore: sia libero sia smorzato.");
+            lines.push_back("Per la soluzione esatta: 0 <= gamma < omega.");
+        }
+        if (cfg.kind == Kind::LotkaV)
+            lines.push_back("Lotka-Volterra: coefficienti positivi.");
+        lines.push_back("F10 esegue. ESC ritorna al menu.");
+        lines.push_back("F1 / INVIO / ESC: ritorno ai parametri.");
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+        const int w = std::max(1, ctx.layout.terminal_columns - 1);
+        int row = 1;
+        for (const auto& s : lines) {
+            if (row > ctx.layout.terminal_rows) break;
+            const GnScreenRole role = row == 1 ? GN_SCREEN_TITLE : GN_SCREEN_NORMAL;
+            fcn_form::write(row, 2, s, w - 2, role);
+            ++row;
+        }
+        gn_screen_flush();
+        for (;;) {
+            GnKeyEvent event{};
+            const auto result = gn_pump_once(&event);
+            if (result == GN_POLL_EMPTY) {
+                gn_cooperative_pause();
+                continue;
+            }
+            if (result == GN_POLL_ERROR ||
+                event.code == GN_KEY_F1 || event.code == GN_KEY_ENTER ||
+                event.code == GN_KEY_ESCAPE) return;
+            gn_screen_beep();
+        }
+    }
+    bool validate(GnFormContext& ctx, void* user_data) {
+        if (!ctx.values || !user_data) return false;
+        const auto& cfg = *static_cast<const Config*>(user_data);
+        double v[MAX_FIELDS]{};
+        for (std::size_t i = 0; i < cfg.count; ++i) {
+            try {
+                if (ctx.values[i].empty()) throw std::invalid_argument("empty");
+                std::size_t count = 0;
+                v[i] = std::stod(ctx.values[i], &count);
+                if (count != ctx.values[i].size() ||
+                    !(v[i] >= cfg.fields[i].min_value &&
+                      v[i] <= cfg.fields[i].max_value))
+                    throw std::out_of_range("value");
+            } catch (const std::exception&) {
+                ctx.lab = i;
+                ctx.message = "Valore non valido o fuori intervallo";
+                return false;
+            }
+        }
+        for (std::size_t i = 1; i < 4; ++i) {
+            if (!(v[i] > v[i-1])) {
+                ctx.lab = i;
+                ctx.message = "Impostare N1 < N2 < N3 < N4";
+                return false;
+            }
+        }
+        if (cfg.kind == Kind::Osc2D && !(v[8] < v[7])) {
+            ctx.lab = 8;
+            ctx.message = "Per la soluzione esatta: gamma < omega";
+            return false;
+        }
+        return true;
+    }
+    bool run(Config& cfg, std::string* values) {
+        GnFormRunSpec spec{};
+        spec.layout_options.header_rows = 2;
+        spec.layout_options.top_separator = true;
+        spec.layout_options.bottom_separator = true;
+        spec.layout_options.hint_line = true;
+        spec.layout_options.echo_line = true;
+        spec.layout_options.status_rows = 1;
+        spec.layout_options.min_viewport_rows = 14;
+        spec.layout_options.min_viewport_columns = 80;
+        spec.values = values;
+        spec.field_count = cfg.count;
+        spec.user_data = &cfg;
+        spec.prepare = prepare;
+        spec.render = render;
+        spec.change = change;
+        spec.help = help;
+        spec.validate = validate;
+        const auto result = gn_form_run_session(spec);
+        if (result == GN_FORM_RUN_ERROR)
+            std::cerr << "Errore sessione form ODE.\n";
+        return result == GN_FORM_RUN_ACCEPT;
+    }
+}
+
+namespace ode_euler_form {
+    bool prompt(OdeEulerParams& p) {
+        static ode_multi_form::Config cfg{
+            " ODE scalari - Euler, Heun, RK4 ",
+            "Confronto per decadimento esponenziale e logistica",
+            "Quattro griglie e condizioni iniziali. t0 = 0.",
+            ode_multi_form::Kind::Euler, 6, {
+                {"Intervalli N1", "N1: 2..800", GN_FIELD_BOUNDED_NATURAL, 3, 2, 800},
+                {"Intervalli N2", "N2: 2..800", GN_FIELD_BOUNDED_NATURAL, 3, 2, 800},
+                {"Intervalli N3", "N3: 2..800", GN_FIELD_BOUNDED_NATURAL, 3, 2, 800},
+                {"Intervalli N4", "N4: 2..800", GN_FIELD_BOUNDED_NATURAL, 3, 2, 800},
+                {"Tempo finale b", "b: 0.1..30", GN_FIELD_BOUNDED_DECIMAL, 10, 0.1, 30},
+                {"Condizione y0", "y0: 0.01..9.99 (logistica K=10)",
+                    GN_FIELD_BOUNDED_DECIMAL, 10, 0.01, 9.99}
+            }
+        };
+        std::string v[] = {
+            std::to_string(p.N[0]), std::to_string(p.N[1]),
+            std::to_string(p.N[2]), std::to_string(p.N[3]),
+            ode_multi_form::decimal(p.b), ode_multi_form::decimal(p.y0)
+        };
+        if (!ode_multi_form::run(cfg, v)) return false;
+        for (std::size_t i = 0; i < 4; ++i) p.N[i] = std::stoi(v[i]);
+        p.b = std::stod(v[4]); p.y0 = std::stod(v[5]);
+        return true;
+    }
+}
+namespace ode_osc2d_form {
+    bool prompt(OdeOsc2DParams& p) {
+        static ode_multi_form::Config cfg{
+            " ODE vettoriali - oscillatore 2D ",
+            "RK4 libero e smorzato; soluzioni esatte e fase",
+            "Quattro griglie, condizioni iniziali e parametri. t0 = 0.",
+            ode_multi_form::Kind::Osc2D, 9, {
+                {"Intervalli N1", "N1: 2..800", GN_FIELD_BOUNDED_NATURAL, 3, 2, 800},
+                {"Intervalli N2", "N2: 2..800", GN_FIELD_BOUNDED_NATURAL, 3, 2, 800},
+                {"Intervalli N3", "N3: 2..800", GN_FIELD_BOUNDED_NATURAL, 3, 2, 800},
+                {"Intervalli N4", "N4: 2..800", GN_FIELD_BOUNDED_NATURAL, 3, 2, 800},
+                {"Tempo finale b", "b: 0.1..30", GN_FIELD_BOUNDED_DECIMAL, 10, 0.1, 30},
+                {"Posizione iniziale q0", "q0: -10..10", GN_FIELD_BOUNDED_DECIMAL, 10, -10, 10},
+                {"Velocita iniziale p0", "p0: -10..10", GN_FIELD_BOUNDED_DECIMAL, 10, -10, 10},
+                {"Frequenza omega", "omega: 0.1..10", GN_FIELD_BOUNDED_DECIMAL, 10, 0.1, 10},
+                {"Smorzamento gamma", "gamma: 0..9.99, gamma < omega",
+                    GN_FIELD_BOUNDED_DECIMAL, 10, 0, 9.99}
+            }
+        };
+        std::string v[] = {
+            std::to_string(p.N[0]), std::to_string(p.N[1]),
+            std::to_string(p.N[2]), std::to_string(p.N[3]),
+            ode_multi_form::decimal(p.b), ode_multi_form::decimal(p.q0),
+            ode_multi_form::decimal(p.p0), ode_multi_form::decimal(p.omega),
+            ode_multi_form::decimal(p.gamma)
+        };
+        if (!ode_multi_form::run(cfg, v)) return false;
+        for (std::size_t i = 0; i < 4; ++i) p.N[i] = std::stoi(v[i]);
+        p.b = std::stod(v[4]); p.q0 = std::stod(v[5]);
+        p.p0 = std::stod(v[6]); p.omega = std::stod(v[7]);
+        p.gamma = std::stod(v[8]);
+        return true;
+    }
+}
+namespace ode_lotkav_form {
+    bool prompt(OdeLotkaVParams& p) {
+        static ode_multi_form::Config cfg{
+            " ODE - Lotka Volterra ",
+            "Predatori e prede: piano delle fasi con Euler",
+            "Quattro griglie; popolazioni iniziali; coefficienti del modello.",
+            ode_multi_form::Kind::LotkaV, 11, {
+                {"Intervalli N1", "N1: 2..800", GN_FIELD_BOUNDED_NATURAL, 3, 2, 800},
+                {"Intervalli N2", "N2: 2..800", GN_FIELD_BOUNDED_NATURAL, 3, 2, 800},
+                {"Intervalli N3", "N3: 2..800", GN_FIELD_BOUNDED_NATURAL, 3, 2, 800},
+                {"Intervalli N4", "N4: 2..800", GN_FIELD_BOUNDED_NATURAL, 3, 2, 800},
+                {"Tempo finale b", "b: 0.1..30", GN_FIELD_BOUNDED_DECIMAL, 10, 0.1, 30},
+                {"Prede iniziali q0", "q0: 0.01..10", GN_FIELD_BOUNDED_DECIMAL, 10, 0.01, 10},
+                {"Predatori iniziali p0", "p0: 0.01..10", GN_FIELD_BOUNDED_DECIMAL, 10, 0.01, 10},
+                {"Alpha crescita prede", "alpha: 0.01..10", GN_FIELD_BOUNDED_DECIMAL, 10, 0.01, 10},
+                {"Beta predazione", "beta: 0.01..10", GN_FIELD_BOUNDED_DECIMAL, 10, 0.01, 10},
+                {"Gamma mortalita", "gamma: 0.01..10", GN_FIELD_BOUNDED_DECIMAL, 10, 0.01, 10},
+                {"Delta riproduzione", "delta: 0.01..10", GN_FIELD_BOUNDED_DECIMAL, 10, 0.01, 10}
+            }
+        };
+        std::string v[] = {
+            std::to_string(p.N[0]), std::to_string(p.N[1]),
+            std::to_string(p.N[2]), std::to_string(p.N[3]),
+            ode_multi_form::decimal(p.b), ode_multi_form::decimal(p.q0),
+            ode_multi_form::decimal(p.p0), ode_multi_form::decimal(p.alpha),
+            ode_multi_form::decimal(p.beta), ode_multi_form::decimal(p.gamma),
+            ode_multi_form::decimal(p.delta)
+        };
+        if (!ode_multi_form::run(cfg, v)) return false;
+        for (std::size_t i = 0; i < 4; ++i) p.N[i] = std::stoi(v[i]);
+        p.b = std::stod(v[4]); p.q0 = std::stod(v[5]);
+        p.p0 = std::stod(v[6]); p.alpha = std::stod(v[7]);
+        p.beta = std::stod(v[8]); p.gamma = std::stod(v[9]);
+        p.delta = std::stod(v[10]);
+        return true;
+    }
+}
 

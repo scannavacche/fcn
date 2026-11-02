@@ -1,6 +1,8 @@
 #ifndef FCN_LIB_FORM_H
 #define FCN_LIB_FORM_H
 
+#include <array>
+
 /*
  * Layer UI specifico FCN.
  *
@@ -129,6 +131,51 @@ namespace f3_svd_pca_form
 {
     bool prompt(F3SvdPcaParams& params);
 };
+
+struct F3SvdAnParams {
+    int n = 200;
+    std::array<int, 4> d{{4, 8, 40, 80}};
+    int seed = 42;
+};
+
+namespace f3_svd_an_form {
+    bool prompt(F3SvdAnParams& params);
+}
+
+struct OdeEulerParams {
+    std::array<int, 4> N{10, 20, 40, 80}; // intervalli, NON nodi
+    double b = 5.0;
+    double y0 = 1.0;
+};
+namespace ode_euler_form {
+    bool prompt(OdeEulerParams& p);
+}
+
+struct OdeOsc2DParams {
+    std::array<int, 4> N{10, 20, 40, 80};
+    double b = 5.0;
+    double q0 = 1.0;
+    double p0 = 1.0;
+    double omega = 1.0;
+    double gamma = 0.2;
+};
+namespace ode_osc2d_form {
+    bool prompt(OdeOsc2DParams& p);
+}
+
+struct OdeLotkaVParams {
+    std::array<int, 4> N{50, 100, 200, 400};
+    double b = 10.0;
+    double q0 = 1.2; // prede
+    double p0 = 0.8; // predatori
+    double alpha = 1.0;
+    double beta  = 1.0;
+    double gamma = 1.0;
+    double delta = 1.0;
+};
+namespace ode_lotkav_form {
+    bool prompt(OdeLotkaVParams& p);
+}
 
 // Ritorno dal rapporto stdio alla form dei parametri.
 namespace fcn_form

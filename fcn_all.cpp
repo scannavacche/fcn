@@ -2404,17 +2404,17 @@ void ErrorPlot_Oscillator(
     }
 
     void f3_svd_an(){
-        bool leave = false;
         
-        while (!leave) 
-        {
-			int n = 200;
-			vector<int> d = {4, 8, 40, 80};
+        F3SvdAnParams params{};
+
+        while (f3_svd_an_form::prompt(params)) {
+            const int n = params.n;
+            const auto& d = params.d;
+            const int seed = params.seed;
+            clear_screen();
 			
             // ── TODO 7: PCA e scatter plot ────────────────────────────────────────────
             
-            clear_screen();
-
 			auto fig = matplot_table_init(true, "PCA", "PCA — prime due componenti principali", 2, 2 );
 
 			for (int ik = 0; ik < 4; ik++) 
@@ -2427,7 +2427,7 @@ void ErrorPlot_Oscillator(
 
 				cout << "in generazione cluster da " << npoints << " X " << ncols << " punti\n";
 
-				auto [X, label] = genera_cluster(npoints, ncols, /*seed=*/42);
+				auto [X, label] = genera_cluster(npoints, ncols, seed);
 				// a) Centrare X: sottrai la media di ogni colonna
 
 				// TODO: calcola mean_j = sum_i X[i][j] / n
@@ -2447,7 +2447,7 @@ void ErrorPlot_Oscillator(
 				trmatrix_bidiagonalizza(Xtilde, U0, B, V0, bidiag_mode, false);
 				Mat Ub, Vb_t; Vec sigma;
 				svd_bidiagonale(B, Ub, Vb_t, sigma);
-                Mat Vb = matrix_trasposta(Vb); // raddrizzo perche' alglib rende Vb_t   
+                Mat Vb = matrix_trasposta(Vb_t); // raddrizzo perche' alglib rende Vb_t   
 				Mat U = matrix_prodotto_matrix(U0, Ub);
 				Mat V = matrix_prodotto_matrix(V0, Vb);
 				// matrix_test_ortogonale(V, "V");
@@ -2464,14 +2464,13 @@ void ErrorPlot_Oscillator(
 					//    pc2[ik][i] += Xtilde[i][j] * V[j][2];
 					// }
 				for (int i =0; i < npoints; i++) {
-					pc1[i] += U[i][1] * sigma[1];
-					pc2[i] += U[i][2] * sigma[2];
-					
+					pc1[i] += U[i][0] * sigma[0];
+					pc2[i] += U[i][1] * sigma[1];					
 				}
 				//    (equivalente a U[i][k] * sigma[k]) // ok X_v_i = sigma_i_u_i
 
 				// TODO
-				cout << std::setw(12) << std::fixed << std::setprecision(2) 
+				cout << std::setfill(' ') << std::setw(12) << std::fixed << std::setprecision(2) 
 					<< "matrice " << npoints << "_X_" << ncols << " sigma_1 " 
 					<< sigma[0] << " sigma_2 " << sigma[1] 
 					<< " S_1/_2 ratio " << sigma[0]/sigma[1] << endl;
@@ -2497,27 +2496,8 @@ void ErrorPlot_Oscillator(
             }   
             // e) Prova con d variabile: {2, 5, 20, 50}
             // f) Stampa sigma[0], sigma[1] vs il resto: cosa noti?
-
-
-        
-
-            bool redo = false;
-            /* 
-            while (!redo && !leave) {
-
-                std::cout << "Numero di righe della matrice per PCA = n [3..500] (<q> per uscire) > " ;
-                if (std::cin >> n) { if (n>=3 && n<=500) redo=true;} else {cout << "Key: " << n <<endl; leave=true;} ;
-                if (redo) {
-                    std::cout << " numero di colonne = d da n a "<< 500 <<" (<q> per uscire) > " ;
-                    if (std::cin >> d) { if (d >=n && d<=500) redo=true;} else {cout << "Key: " << d <<endl; leave=true;} ;
-                }
-                cin_clear();
-            };
-            */ 
-            wait_return_to_menu(false);
-            wait_return_to_menu(false);
-            leave = true;
-       }
+            fcn_form::wait_report();
+        }
     }
 
     void sym_cauchy() {
@@ -2672,23 +2652,24 @@ void ErrorPlot_Oscillator(
         };
     };
 
-    void ode_euler() {
-        //
-        // confronto Eulero-Heun test runner
-        //
-        int N_values[] = {10, 20, 40, 80}; // numero di intervalli (i nodi sono +1)  su cui iterare 
-        int nN = 4;  // dimensione di N_values
+    void ode_euler()
+    {
+        OdeEulerParams params{};
 
-        const double a = 0.0;
-        double b = 5.0;
-        double y0 = 1.0;     // condizione al bordo x(t0)
+        while (ode_euler_form::prompt(params)) {
+            const auto& N_values = params.N;
 
+            const double a = 0.0;
+            const double b = params.b;
+            const double y0 = params.y0;
 
-        bool leave = false;
-        bool redo = false;
-        while (!leave) {
-            clear_screen();
-            redo = false;
+            ode_set_logistic_params(
+                ode_g_logistic.r,
+                ode_g_logistic.K,
+                y0
+            );
+
+            clear_screen(); 
             for (int istage = 0; istage < 2; istage++)
             {
 
@@ -2719,7 +2700,7 @@ void ErrorPlot_Oscillator(
                         << "\n";
                 std::cout << std::string(66, '_') << "\n";
 
-                for (int k = 0; k < nN; ++k) {
+                for (std::size_t k = 0; k < N_values.size(); ++k) {
                     const int N = N_values[k];  
                     if (N <= 0) continue;
 
@@ -2881,20 +2862,7 @@ void ErrorPlot_Oscillator(
                 matplot::legend();
                 fig_err->draw();
             }
-
-            redo = false;
-            while (!redo && !leave) {
-                std::cout << "Inserire nuovo max b 0 .. 100 (<q> per uscire) > ";
-
-                cin_clear();
-
-                if (std::cin >> b) { if (b>=0 && b<=100) redo=true;} else {cout << "Key: " << b <<endl; leave=true;} ;
-                if (!leave) {
-                    std::cout << "Inserire nuovo valore iniziale y0 (<q> per uscire) > " ;
-                    if (std::cin >> y0) { if (y0>=a && y0<=b) redo=true;} else {cout << "Key: " << y0 <<endl; leave=true;} ;
-                };
-                cin_clear();
-            };
+            fcn_form::wait_report();
         };
     };
  
@@ -2902,37 +2870,24 @@ void ErrorPlot_Oscillator(
         //
         // confronto Eulero-Heun test runner
         //
-        int N_values[] = {10, 20, 40, 80}; // numero di intervalli (i nodi sono +1)  su cui iterare 
-        int nN = 4;  // dimensione di N_values
-
-        const double a = 0.0;
-        double b = 5.0;
-        //
-        // init per oscillatori 
-        //
-        double omega = ode_oscillator_omega;
-        double gamma = ode_oscillator_gamma;
-        double q0 = 1.0;     // condizione al bordo q(t0)
-        double p0 = 1.0;     // condizione al bordo p(t0)
-        bool damped = false;
-        bool leave = false;
-        bool redo = false;
+        OdeOsc2DParams params{};
         MatStr Table_des(4, VecStr(5));
+
         Table_des[0][0] = "q(t) vs t con ";
         Table_des[0][1] = std::string(22, ' ') + "q(t) = q0 * cos(wt) + p0/w * sin(wt)";
-        Table_des[0][2] = "Eulero";
+        Table_des[0][2] = "RK4";
         Table_des[0][3] = "Esatta";
         Table_des[0][4] = "green";
 
         Table_des[1][0] = "p(t) vs t con "; 
         Table_des[1][1] = std::string(22, ' ') + "p(t) = -w * q0 sin(wt) + p0 * cos(wt)";
-        Table_des[1][2] = "Eulero";
+        Table_des[1][2] = "RK4";
         Table_des[1][3] = "Esatta";
         Table_des[1][4] = "cyan";
 
         Table_des[2][0] = "q(t) vs p(t) con "; 
         Table_des[2][1] = std::string(22, ' ') + "diagramma di fase";
-        Table_des[2][2] = "Eulero";
+        Table_des[2][2] = "RK4";
         Table_des[2][3] = "Esatta";
         Table_des[2][4] = "red";
 
@@ -2942,17 +2897,24 @@ void ErrorPlot_Oscillator(
         Table_des[3][3] = "Errore p(t)";
         Table_des[3][4] = "green";
 
-        while (!leave) {
-            clear_screen();
-            redo = false;
+        while (ode_osc2d_form::prompt(params)) {
+            const auto& N_values = params.N;
+            const double a = 0.0;
+            const double b = params.b;
+            const double q0 = params.q0;
+            const double p0 = params.p0;
+            const double omega = params.omega;
+            const double gamma = params.gamma;
+            clear_screen();    // for (istage=0;istage<2;...): INVARIATO
+
             for (int istage = 0; istage < 2; istage ++ ) {
                 for (int ipanel = 0; ipanel<4; ipanel++) {
                     if (istage == 0) {
                         Table_des[ipanel][1].replace(0, 22, "Oscillatore libero:   ");
-                        damped = false;
+                        // damped = false;
                     } else {
                         Table_des[ipanel][1].replace(0, 22, "Oscillatore smorzato  ");
-                        damped = true;
+                        // damped = true;
                     }
                 }
                 ode_set_oscillator_omega(omega); // loop successivi, se reimpostato utente
@@ -2968,9 +2930,8 @@ void ErrorPlot_Oscillator(
 
 
 
-                for (int k = 0; k < nN; ++k) {
-                    const int N = N_values[k];  
-
+                for (std::size_t k = 0; k < N_values.size(); ++k) {
+                    const int N = N_values[k];
                     if (N <= 0) continue;
 
                     q_euler_mat[k].resize(N + 1);
@@ -3051,28 +3012,28 @@ void ErrorPlot_Oscillator(
                 TablePlot_Oscillator(
                     0,              // qui gli devo passare quale table plottare
                     q_euler_mat, q_exact_mat, t_nodes_mat,
-                    N_values, Table_des 
+                    N_values.data(), Table_des 
                 );
 
 
                 TablePlot_Oscillator(
                     1,              // qui gli devo passare quale table plottare
                     p_euler_mat, p_exact_mat, t_nodes_mat,
-                    N_values, Table_des 
+                    N_values.data(), Table_des 
                 );
 
                 PhasePlot_Oscillator(
                     2, 
                     q_euler_mat, p_euler_mat,
                     q_exact_mat, p_exact_mat,
-                    N_values, Table_des
+                    N_values.data(), Table_des
                 );
 
                 ErrorPlot_Oscillator(
                     3,                  
                     q_euler_mat, q_exact_mat,
                     p_euler_mat, p_exact_mat,
-                    t_nodes_mat, N_values, Table_des
+                    t_nodes_mat, N_values.data(), Table_des
                 );
 
                 /*
@@ -3084,27 +3045,7 @@ void ErrorPlot_Oscillator(
                 */
             }   
 
-            redo = false;
-            while (!redo && !leave) {
-                std::cout << "Inserire nuovo max b 0 .. 100 (<q> per uscire) > ";
-
-                cin_clear();
-
-                if (std::cin >> b) { if (b>=0 && b<=100) redo=true;} else {cout << "Key: " << b <<endl; leave=true;} ;
-                if (!leave) {
-                    std::cout << "Inserire nuovo valore iniziale p0=q0 (<q> per uscire) > " ;
-                    if (std::cin >> p0) { if (p0>=a && p0<=b) redo=true;} else {cout << "Key: " << p0 <<endl; leave=true;} ;
-                    if (!leave) {
-                        std::cout << "Inserire nuova frequenza omega > 0 (<q> per uscire) > " ;
-                        if (std::cin >> omega) { if (omega>0 && omega<=10) redo=true;} else {cout << "Key: " << omega <<endl; leave=true;} ;
-                        if (!leave && damped) {
-                            std::cout << "Inserire nuova att gamma > 0 (<q> per uscire) > " ;
-                            if (std::cin >> gamma) { if (gamma>0 && gamma<=10) redo=true;} else {cout << "Key: " << gamma <<endl; leave=true;} ;
-                        };
-                    };
-                };
-                cin_clear();
-            };
+            fcn_form::wait_report();
         };
     };
 
