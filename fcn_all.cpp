@@ -467,7 +467,8 @@ namespace {
         const Mat& q_exact_mat,
         const Mat& p_exact_mat,
         const int N_values[],
-        const MatStr& Table_des)
+        const MatStr& Table_des,
+        bool show_exact = true)
     {
         figure_handle fig = matplot_table_init(
             true,
@@ -476,9 +477,19 @@ namespace {
             2, 2);
         const double tol = 0.05;
         double q_min, q_max, p_min, p_max;
-        PhasingTheLimits(q_euler_mat, q_exact_mat, q_min, q_max, tol);
-        PhasingTheLimits(p_euler_mat, p_exact_mat, p_min, p_max, tol);
-       
+//          PhasingTheLimits(q_euler_mat, q_exact_mat, q_min, q_max, tol);
+//          PhasingTheLimits(p_euler_mat, p_exact_mat, p_min, p_max, tol);
+            PhasingTheLimits(
+                q_euler_mat,
+                show_exact ? q_exact_mat : q_euler_mat,
+                q_min, q_max, tol
+            );
+
+            PhasingTheLimits(
+                p_euler_mat,
+                show_exact ? p_exact_mat : p_euler_mat,
+                p_min, p_max, tol
+            );       
 
         for (int k = 0; k < 4; ++k) {
             fig->nexttile(k);
@@ -498,12 +509,14 @@ namespace {
             ph_eul->marker("");
 
             // Esatta: curva nera in fase
-            auto ph_ex = plot(q_exact_mat[k], p_exact_mat[k]);
-            ph_ex->color("black");
-            ph_ex->display_name(Table_des[istage][3]);
-            ph_ex->line_width(3);
-            ph_ex->line_style(" -");
-            ph_ex->marker("");
+            if (show_exact) {
+                auto ph_ex = plot(q_exact_mat[k], p_exact_mat[k]);
+                ph_ex->color("black");
+                ph_ex->display_name(Table_des[istage][3]);
+                ph_ex->line_width(3);
+                ph_ex->line_style(" -");
+                ph_ex->marker("");
+            }
 
             matplot::legend();
             xlabel("q");
@@ -2872,31 +2885,30 @@ void ErrorPlot_Oscillator(
         //
         OdeOsc2DParams params{};
         MatStr Table_des(4, VecStr(5));
+        // Oscillatore smorzato (Omega = sqrt(omega^2 - gamma^2))
+
 
         Table_des[0][0] = "q(t) vs t con ";
-        Table_des[0][1] = std::string(22, ' ') + "q(t) = q0 * cos(wt) + p0/w * sin(wt)";
         Table_des[0][2] = "RK4";
         Table_des[0][3] = "Esatta";
         Table_des[0][4] = "green";
 
         Table_des[1][0] = "p(t) vs t con "; 
-        Table_des[1][1] = std::string(22, ' ') + "p(t) = -w * q0 sin(wt) + p0 * cos(wt)";
         Table_des[1][2] = "RK4";
         Table_des[1][3] = "Esatta";
         Table_des[1][4] = "cyan";
 
         Table_des[2][0] = "q(t) vs p(t) con "; 
-        Table_des[2][1] = std::string(22, ' ') + "diagramma di fase";
         Table_des[2][2] = "RK4";
         Table_des[2][3] = "Esatta";
         Table_des[2][4] = "red";
 
         Table_des[3][0] = "Error(t)"; 
-        Table_des[3][1] = std::string(22, ' ') + "errore nel tempo";
         Table_des[3][2] = "Errore q(t)";
         Table_des[3][3] = "Errore p(t)";
         Table_des[3][4] = "green";
-
+        const string libero =   "Oscillatore libero:   ";
+        const string smorzato = "Oscillatore smorzato: ";
         while (ode_osc2d_form::prompt(params)) {
             const auto& N_values = params.N;
             const double a = 0.0;
@@ -2908,15 +2920,35 @@ void ErrorPlot_Oscillator(
             clear_screen();    // for (istage=0;istage<2;...): INVARIATO
 
             for (int istage = 0; istage < 2; istage ++ ) {
-                for (int ipanel = 0; ipanel<4; ipanel++) {
-                    if (istage == 0) {
-                        Table_des[ipanel][1].replace(0, 22, "Oscillatore libero:   ");
-                        // damped = false;
-                    } else {
-                        Table_des[ipanel][1].replace(0, 22, "Oscillatore smorzato  ");
-                        // damped = true;
-                    }
+
+                if (istage == 0) {
+                    Table_des[0][1] =
+                        libero + "q(t) =\\n"
+                        "q0*cos(omega*t) + p0/omega*sin(omega*t)";
+                    Table_des[1][1] =
+                        libero + "p(t) =\\n"
+                        "-omega*q0*sin(omega*t) + p0*cos(omega*t)";
+                    Table_des[2][1] = 
+                        libero + "diagramma di fase";
+                    Table_des[3][1] = 
+                        libero + "errore nel tempo";
                 }
+                else {
+                    Table_des[0][1] = 
+                        smorzato + "q(t) =\\n"
+                        "exp(-gamma*t) [q0*cos(Omega*t)"
+                        " + (p0+gamma*q0)/Omega*sin(Omega*t)]";
+
+                    Table_des[1][1] =
+                        smorzato + "p(t) =\\n"
+                        "exp(-gamma*t) [p0*cos(Omega*t)"
+                        " - (omega^2*q0+gamma*p0)/Omega*sin(Omega*t)]";
+                    Table_des[2][1] = 
+                        smorzato + "diagramma di fase";
+                    Table_des[3][1] = 
+                        smorzato + "errore nel tempo";
+                }
+
                 ode_set_oscillator_omega(omega); // loop successivi, se reimpostato utente
                 ode_set_oscillator_gamma(gamma); // loop successivi, se reimpostato utente
 
@@ -3049,35 +3081,45 @@ void ErrorPlot_Oscillator(
         };
     };
 
+ 
     void ode_lotkav() {
-        //
-        // confronto Eulero-Heun test runner
-        //
-        int N_values[] = {50, 100, 200, 400}; // numero di intervalli (i nodi sono +1)  su cui iterare 
-        int nN = 4;  // dimensione di N_values
 
-        const double a = 0.0;
-        double b = 10.0;
+        OdeLotkaVParams params{};
 
-        double alpha, beta, gamma, delta;
-        ode_get_lotka_volterra_params(alpha, beta, gamma, delta);
-
-        double q0 = 1.2;     // condizione al bordo x(t0)
-        double p0 = 0.8;     // condizione al bordo y(t0)
-
-        bool leave = false;
-        bool redo = false;
         MatStr Table_des(4, VecStr(5));
-        Table_des[2][0] = "q(t) vs p(t) con "; 
-        Table_des[2][1] = "Oscillatore 2D: diagramma di fase";
+        Table_des[2][0] = "q(t) vs p(t) con ";
+        Table_des[2][1] = "Lotka-Volterra: diagramma di fase";
         Table_des[2][2] = "Eulero";
-        Table_des[2][3] = "Esatta";
+        Table_des[2][3] = "";
         Table_des[2][4] = "red";
 
-        while (!leave) {
+        while (ode_lotkav_form::prompt(params)) {
+            const auto& N_values = params.N;
+
+            const double a  = 0.0;
+            const double b  = params.b;
+            const double q0 = params.q0;
+            const double p0 = params.p0;
+            // Se servissero localmente anche i coefficienti del modello:
+            // const double alpha = params.alpha;
+            // const double beta  = params.beta;
+            // const double gamma = params.gamma;
+            // const double delta = params.delta;
+            // ma non e' il nostro caso, passano direttamente
+            // dal form al setter, quindi allo stato globale letto dalla rhs
+
+            ode_set_lotka_volterra_params( 
+                params.alpha,
+                params.beta,
+                params.gamma,
+                params.delta
+            );
+
             clear_screen();
-            redo = false;
-            ode_get_lotka_volterra_params(alpha, beta, gamma, delta); // reimpostato da user per next loop
+
+        // Qui riprende il corpo originale:
+        // vettori di soluzione...
+           // ode_get_lotka_volterra_params(alpha, beta, gamma, delta); // reimpostato da user per next loop
 
             // vettori di soluzione(matrici con un vettore per nodelist 0..3)
  
@@ -3089,7 +3131,7 @@ void ErrorPlot_Oscillator(
 
 
 
-            for (int k = 0; k < nN; ++k) {
+            for (int k = 0; k < N_values.size(); ++k) {
                 const int N = N_values[k];  
 
                 if (N <= 0) continue;
@@ -3148,48 +3190,19 @@ void ErrorPlot_Oscillator(
                 2, 
                 q_euler_mat, p_euler_mat,
                 q_exact_mat, p_exact_mat,
-                N_values, Table_des
+                N_values.data(), Table_des,
+                false
             );
 
 
             /*
-                        manc`a solo questa tabellina sull' errore globale
+                        manca solo questa tabellina sull' errore globale
                         
             max_abs_err_q[k] = max_j |q_euler_mat[k][j] - q_exact_mat[k][j]|,
 
             max_abs_err_p[k] = max_j |p_euler_mat[k][j] - p_exact_mat[k][j]|           
             */
-           
-
-            redo = false;
-            while (!redo && !leave) {
-                std::cout << "Inserire nuovo max b 0 .. 100 (<q> per uscire) > ";
-
-                cin_clear();
-
-                if (std::cin >> b) { if (b>=0 && b<=100) redo=true;} else {cout << "Key: " << b <<endl; leave=true;} ;
-                if (!leave) {
-                    std::cout << "Inserire nuovo valore iniziale x0=y0 (<q> per uscire) > " ;
-                    if (std::cin >> p0) { if (p0>=a && p0<=b) redo=true;} else {cout << "Key: " << p0 <<endl; leave=true;} ;
-                    if (!leave) {
-                        std::cout << "Inserire alpha - crescita preda > 0 (<q> per uscire) > " ;
-                        if (std::cin >> alpha) { if (alpha>0 && alpha<=10) redo=true;} else {cout << "Key: " << alpha <<endl; leave=true;} ;
-                        if (!leave) {
-                            std::cout << "Inserire beta - predazione > 0 (<q> per uscire) > " ;
-                            if (std::cin >> beta) { if (beta>0 && beta<=10) redo=true;} else {cout << "Key: " << beta <<endl; leave=true;} ;
-                            if (!leave) {
-                                std::cout << "Inserire gamma - mortalita' predatori > 0 (<q> per uscire) > " ;
-                                if (std::cin >> gamma) { if (gamma>0 && gamma<=10) redo=true;} else {cout << "Key: " << gamma <<endl; leave=true;} ;
-                                if (!leave) {
-                                    std::cout << "Inserire delta - accoppiamento predatori > 0 (<q> per uscire) > " ;
-                                    if (std::cin >> delta) { if (delta>0 && delta<=10) redo=true;} else {cout << "Key: " << delta <<endl; leave=true;} ;
-                                };
-                            };
-                        };
-                    };
-                };
-                cin_clear();
-            };
+            fcn_form::wait_report();
         };
     }
 
@@ -3437,12 +3450,12 @@ void ErrorPlot_Oscillator(
             {"f3_svd",          f3_svd},                // form ok
             {"f3_svd_test",     f3_svd_test},           // form ok
             {"f3_svd_pca",      f3_svd_pca},            // form ok 
-            {"f3_svd_an",       f3_svd_an}, 
+            {"f3_svd_an",       f3_svd_an},             // form ok
             {"sym_cauchy",      sym_cauchy},
             {"sym_hhalpha",     sym_hhalpha},
-            {"ode_euler",       ode_euler},
-            {"ode_osc2d",       ode_osc2d},
-            {"ode_lotkav",      ode_lotkav},
+            {"ode_euler",       ode_euler},             // form ok
+            {"ode_osc2d",       ode_osc2d},             // form ok
+            {"ode_lotkav",      ode_lotkav},            // form ok
             {"gg1",             gg1},
             {"gg2",             gg2},
             {"al_qr",           al_qr},
