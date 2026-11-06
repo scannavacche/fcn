@@ -2586,13 +2586,10 @@ namespace {
 	}
  
     void sym_hhalpha() {
-
-        int n = 100;          // numero di punti della griglia        
-        bool leave = false;
-        bool redo = false;
-        while (!leave) {
+        SymHHAlphaParams params{};
+        while (sym_hhalpha_form::prompt(params)) {
             clear_screen();
-            redo = false;
+            const int n = params.n; // numero di pounti della griglie
             auto fig = matplot_table_init(true, "Householder", "Monitoraggio del riflesso", 1, 1);            
             matplot::legend();
             Vec v, w;
@@ -2628,14 +2625,7 @@ namespace {
             ylabel("alpha");
 
             fig->draw();
-        
-            redo = false;
-            while (!redo && !leave) {
-                std::cout << "Inserire nuovo n 1..100 (<q> per uscire) > ";
-                cin_clear();
-                if (std::cin >> n) { if (n>=1 && n<=100) redo=true;} else {cout << "Key: " << n <<endl; leave=true;} ;
-                cin_clear();
-            };
+            fcn_form::wait_report();
         };
     };
 

@@ -180,6 +180,31 @@ namespace sym_cauchy_form {
     bool prompt(SymCauchyParams& params);
 }
 
+/*
+ * Simulazione E1c - monitoraggio del riflettore di Householder.
+ *
+ * n e' la dimensione del VETTORE DI OUTPUT del monitoraggio, non la
+ * dimensione di un singolo riflettore. Per ogni i = 2,...,n-1:
+ *   v^(i) = (1,-1,1,-1,...) in R^i;
+ *   w^(i) = H(v^(i)) * v^(i), con H riflettore di Householder;
+ *   si registra w^(i)[0] e lo si rappresenta rispetto ad i.
+ *   Poiche' v_0=1, il valore teorico e' w^(i)[0] = -sqrt(i).
+ *
+ * Se n >= 7 viene anche costruito e verificato H(v^(6)), stampato
+ * su console. I primi due campioni degli array del grafico sono
+ * segnaposto inizializzati a zero; non sono esperimenti i=0,1.
+ *
+ * Il form modifica soltanto n, e lascia intatte le routine numeriche.
+ * prompt(params) restituisce true su F10, false su ESC.
+ */
+struct SymHHAlphaParams {
+    int n = 100; // campioni allocati; i test reali vanno da 2 a n-1
+};
+
+namespace sym_hhalpha_form {
+    bool prompt(SymHHAlphaParams& params);
+}
+
 struct OdeEulerParams {
     std::array<int, 4> N{10, 20, 40, 80}; // intervalli, NON nodi
     double b = 5.0;

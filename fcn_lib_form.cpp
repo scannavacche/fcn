@@ -3037,6 +3037,171 @@ namespace sym_cauchy_form {
     }
 } // namespace sym_cauchy_form
 
+// Simulazione E1c - un campo, implementazione privata al prompt.
+// Richiede i servizi fcn_form e GNPORT gia' usati negli altri form.
+namespace sym_hhalpha_form {
+    namespace {
+        constexpr std::size_t FIELD_COUNT = 1;
+        constexpr int N_MIN = 3;
+        constexpr int N_MAX = 100; // limite del vecchio input; n=1,2 non calcola nulla
+
+        void mask(const GnFormContext& ctx, void*) {
+            const auto& l = ctx.layout;
+            const int width = std::max(1, l.terminal_columns - 1);
+            gn_screen_clear();
+            gn_screen_cursor_visible(0);
+            fcn_form::write(l.header_top, 1,
+                " Simulazione E1c - riflessione di Householder ",
+                width, GN_SCREEN_TITLE);
+            fcn_form::write(l.header_top + 1, 3,
+                "Monitoraggio del primo elemento del vettore riflesso",
+                width - 3);
+            fcn_form::separator(l.top_separator_row, l.terminal_columns);
+            fcn_form::write(l.viewport.top, 3,
+                "Vettori alternati +/-1, dimensioni i = 2,...,n-1. F1: dettagli.",
+                width - 3);
+            fcn_form::separator(l.bottom_separator_row, l.terminal_columns);
+            fcn_form::separator(l.status_separator_row, l.terminal_columns);
+        }
+
+        bool prepare(GnFormContext& ctx, void*) {
+            if (!ctx.fields || !ctx.values || ctx.field_count != FIELD_COUNT)
+                return false;
+            const int right_col = std::min(67,
+                std::max(43, ctx.layout.terminal_columns - 12));
+            ctx.fields[0] = GnEntrySpec{
+                ctx.layout.viewport.top + 4, right_col - 2,
+                GN_FIELD_BOUNDED_NATURAL, 3, N_MIN, N_MAX,
+                1, ctx.layout.echo_row
+            };
+            return true;
+        }
+
+        void render(const GnFormContext& ctx, void* data) {
+            if (!ctx.fields || !ctx.values ||
+                ctx.field_count != FIELD_COUNT || ctx.lab >= FIELD_COUNT)
+                return;
+            mask(ctx, data);
+            const auto& f = ctx.fields[0];
+            fcn_form::write(f.row, 5, "> Dimensione massima n", f.column - 6);
+            fcn_form::write(f.row, f.column,
+                fcn_form::field_value(ctx.values[0], f.length),
+                static_cast<int>(f.length), GN_SCREEN_FIELD);
+            gn_screen_clear_line(ctx.layout.echo_row);
+            const int width = std::max(1, ctx.layout.terminal_columns - 1);
+            fcn_form::write(ctx.layout.hint_row, 2,
+                "n: 3..100; prova su dimensioni da 2 a n-1",
+                width - 2, GN_SCREEN_MESSAGE);
+            fcn_form::write(ctx.layout.status_top, 2,
+                "ESC Menu      F1 Help      F10 Esegui",
+                width - 2, GN_SCREEN_STATUS);
+            if (!ctx.message.empty())
+                fcn_form::write(ctx.layout.echo_row, 2, ctx.message,
+                                width - 2, GN_SCREEN_ERROR);
+            gn_screen_flush();
+        }
+
+        GnFormChangeResult change(
+            GnEntryCommand command, GnFormContext& ctx, void*) {
+            return fcn_form::change_linear(command, ctx);
+        }
+
+        void help(const GnFormContext& ctx, void*) {
+            gn_screen_clear();
+            gn_screen_cursor_visible(0);
+            const std::vector<std::string> lines = {
+                "E1c - Monitoraggio di Householder", "",
+                "Il parametro n stabilisce la dimensione massima dei vettori usati",
+                "per verificare il comportamento del riflettore di Householder.",
+                "Per ogni i da 2 a n-1 si costruisce un vettore di",
+                "dimensione i con componenti 1,-1,1,-1,... .",
+                "Si forma il riflettore H e si calcola w = H*v.",
+                "Il grafico mostra w[0] in funzione della dimensione i.", "",
+                "Il riflettore e' ortogonale: ||H*v||2 = ||v||2.",
+                "Per il vettore alternato ||v||2 = sqrt(i),",
+                "e il primo componente riflesso e' w[0] = -sqrt(i).", "",
+                "Se n >= 7, per i=6 si stampano la matrice H e",
+                "l'esito del controllo di ortogonalita'.", "",
+                "n = 100 di default; campo ammesso 3..100.",
+                "Le posizioni 0 e 1 negli array del grafico sono",
+                "segnaposto e NON rappresentano prove numeriche.", "",
+                "Il report numerico e' stampato nella console:",
+                "dopo il grafico, INVIO ritorna al form.", "",
+                "F10: esegui; ESC: torna al menu."
+            };
+            const int width = std::max(1, ctx.layout.terminal_columns - 1);
+            int row = 1;
+            for (const auto& line : lines) {
+                if (row >= ctx.layout.terminal_rows - 2) break;
+                fcn_form::write(row, 2, line, width - 2,
+                    row == 1 ? GN_SCREEN_TITLE : GN_SCREEN_NORMAL);
+                ++row;
+            }
+            fcn_form::write(ctx.layout.terminal_rows - 1, 2,
+                "ESC: ritorna al form", width - 2, GN_SCREEN_STATUS);
+            gn_screen_flush();
+            for (;;) {
+                GnKeyEvent ev{};
+                const auto result = gn_pump_once(&ev);
+                if (result == GN_POLL_EMPTY) {
+                    gn_cooperative_pause();
+                    continue;
+                }
+                if (result == GN_POLL_ERROR || ev.code == GN_KEY_ESCAPE ||
+                    ev.code == GN_KEY_ENTER || ev.code == GN_KEY_F1)
+                    return;
+                gn_screen_beep();
+            }
+        }
+
+        bool validate(GnFormContext& ctx, void*) {
+            if (!ctx.values) return false;
+            try {
+                std::size_t consumed = 0;
+                const int n = std::stoi(ctx.values[0], &consumed);
+                if (consumed == ctx.values[0].size() &&
+                    n >= N_MIN && n <= N_MAX)
+                    return true;
+            } catch (const std::exception&) {
+                // Il messaggio viene assegnato sotto.
+            }
+            ctx.lab = 0;
+            ctx.message = "n deve essere un intero compreso tra 3 e 100";
+            return false;
+        }
+    } // namespace anonimo
+
+    bool prompt(SymHHAlphaParams& p) {
+        std::string values[FIELD_COUNT] = {std::to_string(p.n)};
+        GnFormRunSpec spec{};
+        spec.layout_options.header_rows = 2;
+        spec.layout_options.top_separator = true;
+        spec.layout_options.bottom_separator = true;
+        spec.layout_options.hint_line = true;
+        spec.layout_options.echo_line = true;
+        spec.layout_options.status_rows = 1;
+        spec.layout_options.min_viewport_rows = 10;
+        spec.layout_options.min_viewport_columns = 80;
+        spec.values = values;
+        spec.field_count = FIELD_COUNT;
+        spec.prepare = prepare;
+        spec.render = render;
+        spec.change = change;
+        spec.help = help;
+        spec.validate = validate;
+
+        const GnFormRunResult result = gn_form_run_session(spec);
+        if (result != GN_FORM_RUN_ACCEPT) {
+            if (result == GN_FORM_RUN_ERROR)
+                std::cerr << "Impossibile aprire il form Householder E1c.\n";
+            return false;
+        }
+        p.n = std::stoi(values[0]);
+        return true;
+    }
+} // namespace sym_hhalpha_form
+
+
 namespace ode_multi_form {
     constexpr std::size_t MAX_FIELDS = 11;
     enum class Kind { Euler, Osc2D, LotkaV };
