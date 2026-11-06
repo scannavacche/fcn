@@ -3201,7 +3201,6 @@ namespace sym_hhalpha_form {
     }
 } // namespace sym_hhalpha_form
 
-
 namespace ode_multi_form {
     constexpr std::size_t MAX_FIELDS = 11;
     enum class Kind { Euler, Osc2D, LotkaV };
@@ -3493,3 +3492,184 @@ namespace ode_lotkav_form {
     }
 }
 
+// Form GNPORT per al_qr(): 2 campi, unico punto d'ingresso pubblico.
+namespace al_qr_form {
+    namespace {
+        constexpr std::size_t FIELD_COUNT = 2;
+        constexpr int N_MIN = 3;
+        constexpr int N_MAX = 20;
+        constexpr int D_MIN = 3;
+
+        void mask(const GnFormContext& ctx, void*) {
+            const auto& l = ctx.layout;
+            const int width = std::max(1, l.terminal_columns - 1);
+            gn_screen_clear();
+            gn_screen_cursor_visible(0);
+            fcn_form::write(l.header_top, 1,
+                " QR di Householder - minimi quadrati ", width, GN_SCREEN_TITLE);
+            fcn_form::write(l.header_top + 1, 3,
+                "A in R^(n x d): n righe (misure), d colonne (feature)", width - 3);
+            fcn_form::separator(l.top_separator_row, l.terminal_columns);
+            fcn_form::write(l.viewport.top, 3,
+                "Matrice tall: n >= d. F1: QR completa e residuo LS.", width - 3);
+            fcn_form::separator(l.bottom_separator_row, l.terminal_columns);
+            fcn_form::separator(l.status_separator_row, l.terminal_columns);
+        }
+
+        bool prepare(GnFormContext& ctx, void*) {
+            if (!ctx.fields || !ctx.values || ctx.field_count != FIELD_COUNT)
+                return false;
+            const int right_col = std::min(67,
+                std::max(43, ctx.layout.terminal_columns - 12));
+            const int top = ctx.layout.viewport.top;
+            // Allineamento destro comune, come negli altri form GRIMM/GNPORT.
+            ctx.fields[0] = GnEntrySpec{top + 3, right_col - 1,
+                GN_FIELD_BOUNDED_NATURAL, 2, N_MIN, N_MAX,
+                1, ctx.layout.echo_row};
+            ctx.fields[1] = GnEntrySpec{top + 5, right_col - 1,
+                GN_FIELD_BOUNDED_NATURAL, 2, D_MIN, N_MAX,
+                1, ctx.layout.echo_row};
+            return true;
+        }
+
+        void render(const GnFormContext& ctx, void* data) {
+            if (!ctx.fields || !ctx.values || ctx.field_count != FIELD_COUNT ||
+                ctx.lab >= FIELD_COUNT)
+                return;
+            mask(ctx, data);
+            const char* labels[FIELD_COUNT] = {
+                "> Numero righe n (osservazioni)",
+                "> Numero colonne d (feature)"
+            };
+            const int width = std::max(1, ctx.layout.terminal_columns - 1);
+            for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+                const auto& f = ctx.fields[i];
+                fcn_form::write(f.row, 5, labels[i], f.column - 6);
+                fcn_form::write(f.row, f.column,
+                    fcn_form::field_value(ctx.values[i], f.length),
+                    static_cast<int>(f.length), GN_SCREEN_FIELD);
+            }
+            gn_screen_clear_line(ctx.layout.echo_row);
+            fcn_form::write(ctx.layout.hint_row, 2,
+                ctx.lab == 0 ? "n: 3..20; numero di equazioni / misure"
+                            : "d: 3..n; colonne / incognite, non superiori alle righe",
+                width - 2, GN_SCREEN_MESSAGE);
+            fcn_form::write(ctx.layout.status_top, 2,
+                "ESC Menu      F1 Help      F10 Esegui", width - 2, GN_SCREEN_STATUS);
+            if (!ctx.message.empty())
+                fcn_form::write(ctx.layout.echo_row, 2, ctx.message,
+                    width - 2, GN_SCREEN_ERROR);
+            gn_screen_flush();
+        }
+
+        GnFormChangeResult change(
+            GnEntryCommand command, GnFormContext& ctx, void*) {
+            return fcn_form::change_linear(command, ctx);
+        }
+
+        void help(const GnFormContext& ctx, void*) {
+            gn_screen_clear();
+            gn_screen_cursor_visible(0);
+            const std::vector<std::string> lines = {
+                "QR di Householder e minimi quadrati", "",
+                "CONVENZIONE DI al_qr: A ha n righe e d colonne (n x d).",
+                "n: numero di osservazioni / equazioni, da 3 a 20.",
+                "d: numero di feature / incognite, da 3 a n.",
+                "Per i minimi quadrati implementati: n >= d (matrice tall).", "",
+                "QR completa: A = Q R, Q di ordine n e R di taglia n x d.",
+                "Se A ha rango colonna pieno, R = [R1; 0], R1 d x d.",
+                "Si risolve R1*x = c, con c prime d componenti di Q^T*b.",
+                "Le restanti n-d componenti danno la norma del residuo LS.", "",
+                "Prova 1: b casuale, verifica ||A-QR|| e ||Ax-b||.",
+                "Prova 2: b = A*x_true + rumore, verifica recupero di x.",
+                "Stima del condizionamento da autovalori di A^T A.",
+                "Gli algoritmi numerici non sono modificati dal form.", "",
+                "I risultati sono stampati in console; INVIO torna al form.",
+                "F10 esegue, ESC torna al menu."
+            };
+            const int width = std::max(1, ctx.layout.terminal_columns - 1);
+            int row = 1;
+            for (const auto& line : lines) {
+                if (row >= ctx.layout.terminal_rows - 2) break;
+                fcn_form::write(row, 2, line, width - 2,
+                    row == 1 ? GN_SCREEN_TITLE : GN_SCREEN_NORMAL);
+                ++row;
+            }
+            fcn_form::write(ctx.layout.terminal_rows - 1, 2,
+                "ESC: ritorna al form", width - 2, GN_SCREEN_STATUS);
+            gn_screen_flush();
+            for (;;) {
+                GnKeyEvent ev{};
+                const auto result = gn_pump_once(&ev);
+                if (result == GN_POLL_EMPTY) {
+                    gn_cooperative_pause();
+                    continue;
+                }
+                if (result == GN_POLL_ERROR || ev.code == GN_KEY_ESCAPE ||
+                    ev.code == GN_KEY_ENTER || ev.code == GN_KEY_F1)
+                    return;
+                gn_screen_beep();
+            }
+        }
+
+        bool validate(GnFormContext& ctx, void*) {
+            if (!ctx.values) return false;
+            int n = 0;
+            int d = 0;
+            try {
+                std::size_t used_n = 0, used_d = 0;
+                n = std::stoi(ctx.values[0], &used_n);
+                d = std::stoi(ctx.values[1], &used_d);
+                if (used_n != ctx.values[0].size() ||
+                    n < N_MIN || n > N_MAX) {
+                    ctx.lab = 0;
+                    ctx.message = "n: numero di righe compreso tra 3 e 20";
+                    return false;
+                }
+                if (used_d != ctx.values[1].size() ||
+                    d < D_MIN || d > n) {
+                    ctx.lab = 1;
+                    ctx.message = "d: numero di colonne tra 3 e n (n >= d)";
+                    return false;
+                }
+                return true;
+            } catch (const std::exception&) {
+                ctx.lab = 0;
+                ctx.message = "n e d devono essere interi validi (3 <= d <= n <= 20)";
+                return false;
+            }
+        }
+    } // namespace anonimo: dettagli strumentali al solo prompt
+
+    bool prompt(AlQRParams& p) {
+        std::string values[FIELD_COUNT] = {
+            std::to_string(p.n), std::to_string(p.d)
+        };
+        GnFormRunSpec spec{};
+        spec.layout_options.header_rows = 2;
+        spec.layout_options.top_separator = true;
+        spec.layout_options.bottom_separator = true;
+        spec.layout_options.hint_line = true;
+        spec.layout_options.echo_line = true;
+        spec.layout_options.status_rows = 1;
+        spec.layout_options.min_viewport_rows = 10;
+        spec.layout_options.min_viewport_columns = 80;
+        spec.values = values;
+        spec.field_count = FIELD_COUNT;
+        spec.prepare = prepare;
+        spec.render = render;
+        spec.change = change;
+        spec.help = help;
+        spec.validate = validate;
+        const auto result = gn_form_run_session(spec);
+        if (result != GN_FORM_RUN_ACCEPT) {
+            if (result == GN_FORM_RUN_ERROR)
+                std::cerr << "Impossibile aprire il form QR/LS.\n";
+            return false;
+        }
+        // Commit atomico: ESC lascia invariata la struct.
+        p.n = std::stoi(values[0]);
+        p.d = std::stoi(values[1]);
+        return true;
+    }
+} // namespace al_qr_form

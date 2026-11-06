@@ -3204,13 +3204,12 @@ namespace {
 
     }
 
-    void al_qr(){
-        bool leave = false;
-        clear_screen();
-        int n = 12,  d = 4;
+    void al_qr() {
+        AlQRParams params{};
 
-        while (!leave) 
-        {
+        while (al_qr_form::prompt(params)) {
+            const int n = params.n; // RIGHE / osservazioni
+            const int d = params.d; // COLONNE / feature
             clear_screen();
 
             Vec v = {3.0, 1.0, -2.0};
@@ -3281,7 +3280,7 @@ namespace {
             b       = vector_add_noise(b_clean, 1.0); // ad esempio 1 millesimo
 
             linear_QR_least_squares(A, b, x, residuo);
-
+            Ax = matrix_prodotto_vector(A, x); // Nuova soluzione, nuovo Ax
             Vec rn(n);
             for (int i = 0; i < n; ++i) rn[i] = Ax[i] - b[i];
             vector_dump(x_true, 10, x.size(), "x_true Imposto");
@@ -3335,17 +3334,7 @@ namespace {
                 printf(" cond_2(A) stimata = inf (sigma_min ~ 0)\n");
             }
 // ...
-            bool redo = false;
-            while (!redo && !leave) {
-
-                std::cout << "Numero di righe della matrice di test = n [3..20] (<q> per uscire) > " ;
-                if (std::cin >> n) { if (n>=3 && n<=20) redo=true;} else {cout << "Key: " << n <<endl; leave=true;} ;
-                if (redo) {
-                    std::cout << " numero di colonne = d da n a "<< 30 <<" (<q> per uscire) > " ;
-                    if (std::cin >> d) { if (d >=n && d<=30) redo=true;} else {cout << "Key: " << d <<endl; leave=true;} ;
-                }
-                cin_clear();
-            };
+            fcn_form::wait_report();
        }
     }
     

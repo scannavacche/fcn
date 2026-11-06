@@ -240,6 +240,23 @@ namespace ode_lotkav_form {
     bool prompt(OdeLotkaVParams& p);
 }
 
+/*
+ * al_qr - fattorizzazione QR e minimi quadrati su una matrice tall.
+ * Convenzione LOCALE di al_qr(): A in R^(n x d)
+ *   n = numero di righe, osservazioni/equazioni
+ *   d = numero di colonne, feature/incognite
+ * Il risolutore linear_QR_least_squares richiede n >= d.
+ * GNPORT verifica questo vincolo PRIMA dell'avvio dell'esperimento.
+ * Il parametro del form non rinomina le variabili degli algoritmi:
+ * altre routine possono usare la convenzione classica m x n.
+ */
+struct AlQRParams {
+    int n = 12; // righe / osservazioni
+    int d = 4;  // colonne / feature, con d <= n
+};
+namespace al_qr_form {
+    bool prompt(AlQRParams& params);
+}
 
 // Ritorno dal rapporto stdio alla form dei parametri.
 namespace fcn_form
