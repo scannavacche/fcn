@@ -3298,8 +3298,8 @@ namespace {
             vector_dump(x, 10, x.size(), "x Ricalcolato");
             printf("||Ax - b||_2 (LS) = %.2e\n", vector_calcola_norma(2, rn));
 
-            Vec dx(n);
-            for (int i = 0; i < n; ++i)
+            Vec dx(d);
+            for (int i = 0; i < d; ++i)
                 dx[i] = x[i] - x_true[i];
 
             double rel_x = vector_calcola_norma(2, dx) / vector_calcola_norma(2, x_true);
