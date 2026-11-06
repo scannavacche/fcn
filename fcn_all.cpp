@@ -414,12 +414,12 @@ namespace {
     }
 
     void TablePlot_Oscillator(
-            const int istage,
-            const Mat& euler_mat, 
-            const Mat& exact_mat,
-            const Mat& t_nodes_mat,
-            const int N_values[],
-            const MatStr& Table_des)
+        const int istage,
+        const Mat& euler_mat, 
+        const Mat& exact_mat,
+        const Mat& t_nodes_mat,
+        const int N_values[],
+        const MatStr& Table_des)
     {
         figure_handle fig = matplot_table_init(
             true, 
@@ -526,62 +526,62 @@ namespace {
         fig->draw();
     }
 
-void ErrorPlot_Oscillator(
-    int istage,                    // 3
-    const Mat& q_euler_mat,
-    const Mat& q_exact_mat,
-    const Mat& p_euler_mat,
-    const Mat& p_exact_mat,
-    const Mat& t_nodes_mat,
-    const int N_values[],
-    const MatStr& Table_des
-) {
-    figure_handle fig = matplot_table_init(
-        true,
-        "Metodi iterativi per problema di Cauchy",
-        Table_des[istage][1],      // es. "Oscillatore 2D: errore nel tempo"
-        2, 2
-    );
+    void ErrorPlot_Oscillator(
+        int istage,                    // 3
+        const Mat& q_euler_mat,
+        const Mat& q_exact_mat,
+        const Mat& p_euler_mat,
+        const Mat& p_exact_mat,
+        const Mat& t_nodes_mat,
+        const int N_values[],
+        const MatStr& Table_des
+    ) {
+        figure_handle fig = matplot_table_init(
+            true,
+            "Metodi iterativi per problema di Cauchy",
+            Table_des[istage][1],      // es. "Oscillatore 2D: errore nel tempo"
+            2, 2
+        );
 
-    for (int k = 0; k < 4; ++k) {
-        fig->nexttile(k);
-        auto ax = fig->current_axes();
-        ax->title(Table_des[istage][0] + itostr(N_values[k]) + " Intervalli");
-        ax->hold(on);
+        for (int k = 0; k < 4; ++k) {
+            fig->nexttile(k);
+            auto ax = fig->current_axes();
+            ax->title(Table_des[istage][0] + itostr(N_values[k]) + " Intervalli");
+            ax->hold(on);
 
-        // costruisci vettori di errore per questo k
-        std::vector<double> e_q, e_p;
-        e_q.reserve(q_euler_mat[k].size());
-        e_p.reserve(p_euler_mat[k].size());
-        for (std::size_t j = 0; j < q_euler_mat[k].size(); ++j) {
-            e_q.push_back(q_euler_mat[k][j] - q_exact_mat[k][j]);
-            e_p.push_back(p_euler_mat[k][j] - p_exact_mat[k][j]);
+            // costruisci vettori di errore per questo k
+            std::vector<double> e_q, e_p;
+            e_q.reserve(q_euler_mat[k].size());
+            e_p.reserve(p_euler_mat[k].size());
+            for (std::size_t j = 0; j < q_euler_mat[k].size(); ++j) {
+                e_q.push_back(q_euler_mat[k][j] - q_exact_mat[k][j]);
+                e_p.push_back(p_euler_mat[k][j] - p_exact_mat[k][j]);
+            }
+
+            // errore su q(t)
+            auto eq = plot(t_nodes_mat[k], e_q);
+            eq->color(Table_des[istage][4]);
+            eq->display_name(Table_des[istage][2]);
+            eq->line_width(5);
+            eq->line_style(" -");
+            eq->marker("");
+
+            // errore su p(t)
+            auto ep = plot(t_nodes_mat[k], e_p);
+            ep->color("red");
+            ep->display_name(Table_des[istage][3]);
+            ep->line_width(4);
+            ep->line_style(" -");
+            ep->marker("");
+
+            matplot::legend();
+            xlabel("t (nodi equidistanti)");
+            ylabel("errore");
+
         }
 
-        // errore su q(t)
-        auto eq = plot(t_nodes_mat[k], e_q);
-        eq->color(Table_des[istage][4]);
-        eq->display_name(Table_des[istage][2]);
-        eq->line_width(5);
-        eq->line_style(" -");
-        eq->marker("");
-
-        // errore su p(t)
-        auto ep = plot(t_nodes_mat[k], e_p);
-        ep->color("red");
-        ep->display_name(Table_des[istage][3]);
-        ep->line_width(4);
-        ep->line_style(" -");
-        ep->marker("");
-
-        matplot::legend();
-        xlabel("t (nodi equidistanti)");
-        ylabel("errore");
-
+        fig->draw();
     }
-
-    fig->draw();
-}
 
     void Gershgorin_execute(Mat& A){
 
@@ -2513,103 +2513,77 @@ void ErrorPlot_Oscillator(
         }
     }
 
-    void sym_cauchy() {
-        int n = 100;          // numero di punti della griglia
-        double t0 = -PI;     // tempo iniziale
-        double T  = PI;     // tempo finale
-        double x0 = -1.0;     // condizione iniziale x(t0)
-        double a_arg = 1;
-        double f_arg = 0;
+	void sym_cauchy() {
+		SymCauchyParams params{};
 
-        Vec t, avals, fvals, b;
-        Mat L;
-        
-        bool leave = false;
-        bool redo = false;
-        while (!leave) {
-            clear_screen();
-            redo = false;
-            auto fig = matplot_table_init(true, "Cauchy", "Soluzione numerica del problema di Cauchy", 2, 2);            
-            matplot::legend();
-            Vec x;
-            {
-                // Costruzione del sistema triangolare L x = b
-                // matrix_build_cauchy_int(n, t0, T, x0, t, fvals, L, b, f_sin2plus1, true);
-                matrix_build_cauchy( n, t0, T, x0, t, avals, fvals, L, b, f_const, 0, f_sin2plus1, 0, true) ;
-                // vector_dump(b, 10, b.size(), " b = 1/(1+sin^2) "); 
-                x = linear_subst_BW(L, b);
-                // vector_dump(x, 10, x.size(), " x da Lx = b"); 
+		while (sym_cauchy_form::prompt(params)) {
+			const int n = params.n;                 // NODI, non intervalli
+			const double t0 = params.t0;           // indipendente da T
+			const double T = params.T;
+			const double x0 = params.x0;
+			const double a_arg = params.a_arg;
+			const double f_arg = params.f_arg;
 
-                fig->nexttile(0);
-                imagesc(L)->display_name("Verifica matrice");
-                colorbar();
-            }
+			Vec t, avals, fvals, b;
+			Mat L;
+			clear_screen();
+			auto fig = matplot_table_init(
+				true, "Cauchy", "Soluzione numerica del problema di Cauchy", 2, 2);
+			matplot::legend();
+			Vec x;
+			{
+				// PROVA 1 (pannelli 0,1).  a(t)=0, f(t)=1/(1+sin^2(t)).
+				// backw=true: il valore x0 e' imposto in T, NON in t0.
+				matrix_build_cauchy(
+					n, t0, T, x0, t, avals, fvals, L, b,
+					f_const, 0, f_sin2plus1, 0, true);
+				x = linear_subst_BW(L, b);
+				fig->nexttile(0);
+				imagesc(L)->display_name("Verifica matrice");
+				colorbar();
+			}
+			{
+				fig->nexttile(1);
+				auto p = plot(t, x);
+				p->line_width(2);
+				p->display_name("1 / (1 + sin^2(t))");
+				xlabel("t");
+				ylabel("f(x(t))");
+			}
+			{
+				// PROVA 2 (pannello 2). a(t)=cos(t), stessa f(t).
+				// backw=false: condizione z(t0)=x0.
+				matrix_build_cauchy(
+					n, t0, T, x0, t, avals, fvals, L, b,
+					f_cos, 0, f_sin2plus1, 0, false);
+				x = linear_subst_FW(L, b);
+				fig->nexttile(2);
+				auto p = plot(t, x);
+				p->line_width(2);
+				p->display_name(" x(t) + 1 / (1 + sin^2(t))");
+				xlabel("t");
+				ylabel("f(x(t))");
+			}
+			{
+				// PROVA 3 (pannello 3). a(t)=a_arg, f(t)=f_arg.
+				// f_const e' trattata come sentinella per i due valori costanti.
+				// z(t0)=1 e' una scelta dell'esperimento originale: NON usa x0.
+				matrix_build_cauchy(
+					n, t0, T, 1, t, avals, fvals, L, b,
+					f_const, a_arg, f_const, f_arg, false);
+				x = linear_subst_FW(L, b);
+				fig->nexttile(3);
+				auto p = plot(t, x);
+				p->line_width(2);
+				p->display_name(" x^-1(t) ");
+				xlabel("t");
+				ylabel("f(x(t))");
+			}
 
-            {        
-                // Visualizzazione della soluzione numerica x(t)
-                fig->nexttile(1);
-                auto p = plot(t, x);
-                p->line_width(2);
-                p->display_name("1 / (1 + sin^2(t))");
-                xlabel("t");
-                ylabel("f(x(t))");
-                auto ax=fig->current_axes();
-                // ax->y_axis().limits({-1.00e-1, 1.00e-1 });
-            }
-            {
-                matrix_build_cauchy( n, t0, T, x0, t, avals, fvals, L, b, f_cos, 0, f_sin2plus1, 0, false) ;
-                x = linear_subst_FW(L, b);
-                fig->nexttile(2);
-                auto p = plot(t, x);
-                p->line_width(2);
-                p->display_name(" x(t) + 1 / (1 + sin^2(t))");
-                xlabel("t");
-                ylabel("f(x(t))");
-                auto ax=fig->current_axes();
-            }
-            {
-                matrix_build_cauchy( n, t0, T, 1, t, avals, fvals, L, b, f_const, a_arg, f_const, f_arg, false) ;
-                x = linear_subst_FW(L, b);
-                fig->nexttile(3);
-                auto p = plot(t, x);
-                p->line_width(2);
-                p->display_name(" x^-1(t) ");
-                xlabel("t");
-                ylabel("f(x(t))");
-                auto ax=fig->current_axes();
-            }
-
-
-            fig->draw();
-        
-            redo = false;
-            while (!redo && !leave) {
-                std::cout << "Inserire nuovo T finale -10 .. 10 (<q> per uscire) > ";
-
-                cin_clear();
-
-                if (std::cin >> T) { if (T>=-10 && T<=-10) redo=true;} else {cout << "Key: " << T <<endl; leave=true;} ;
-                if (!leave) {
-                    std::cout << "Inserire nuovo valore iniziale x0 (<q> per uscire) > " ;
-                    if (std::cin >> x0) { if (x0>=t0 && x0<=T) redo=true;} else {cout << "Key: " << x0 <<endl; leave=true;} ;
-                    if (!leave) {
-
-                        std::cout << "Inserire numero di nodi n (<q> per uscire) > " ;
-                        if (std::cin >> n) { if (n>=1 && n<=2000) redo=true;} else {cout << "Key: " << n <<endl; leave=true;} ;
-                        if (!leave) {
-                            std::cout << "Inserire coeff di z(t) [-2k, 2k] (<q> per uscire) > " ;
-                            if (std::cin >> a_arg) { if (a_arg>=-2000 && a_arg<=2000) redo=true;} else {cout << "Key: " << a_arg <<endl; leave=true;} ;
-                            if (!leave) {
-                                std::cout << "Inserire coeff di f(t) [-10k, 10k] (<q> per uscire) > " ;
-                                if (std::cin >> f_arg) { if (f_arg>=-1e5 && f_arg<=1e5) redo=true;} else {cout << "Key: " << f_arg <<endl; leave=true;} ;
-                            }
-                        }
-                    }
-                };
-                cin_clear();
-            };
-        };
-    };
+			fig->draw();
+			// fcn_form::wait_report();
+		}
+	}
  
     void sym_hhalpha() {
 
@@ -3077,11 +3051,10 @@ void ErrorPlot_Oscillator(
                 */
             }   
 
-            fcn_form::wait_report();
+            // fcn_form::wait_report();
         };
     };
 
- 
     void ode_lotkav() {
 
         OdeLotkaVParams params{};
@@ -3202,7 +3175,11 @@ void ErrorPlot_Oscillator(
 
             max_abs_err_p[k] = max_j |p_euler_mat[k][j] - p_exact_mat[k][j]|           
             */
-            fcn_form::wait_report();
+            //
+            // quando disponibile allora si reinserisce wait_report per vederla
+            //
+            
+                // fcn_form::wait_report();
         };
     }
 

@@ -142,6 +142,44 @@ namespace f3_svd_an_form {
     bool prompt(F3SvdAnParams& params);
 }
 
+/*
+ * Simulazione d'esame - problema di Cauchy scalare
+ *
+ *   z'(t) = a(t) z(t) + f(t),   t in [t0,T],   n nodi equidistanti.
+ *
+ * I sei campi descrivono la griglia e i coefficienti delle tre prove
+ * attualmente selezionate in sym_cauchy(); la scelta di a(t) e f(t)
+ * tramite menu NON e' ancora implementata.
+ *
+ * Esperimento 1 (pannelli 0,1):
+ *   a(t)=0, f(t)=1/(1+sin(t)^2), schema backward, z(T)=x0.
+ *   NOTA: qui x0 e' il valore all'estremo FINALE T.
+ * Esperimento 2 (pannello 2):
+ *   a(t)=cos(t), f(t)=1/(1+sin(t)^2), forward, z(t0)=x0.
+ * Esperimento 3 (pannello 3):
+ *   a(t)=a_arg, f(t)=f_arg, forward, z(t0)=1 (fisso).
+ *   NOTA: x0 NON modifica l'esperimento 3.
+ *
+ * t0 e T sono indipendenti (non si impone t0=-T); T>t0.
+ * n conta i NODI, quindi gli intervalli sono n-1.
+ * I puntatori a funzione e il comportamento di f_const appartengono
+ * a matrix_build_cauchy(), dichiarata in fcn_lib_calc.h.
+ *
+ * prompt(params): true se confermato con F10, false se annullato.
+ * La struct rimane nel chiamante; Esc non ne modifica i valori.
+ */
+struct SymCauchyParams {
+    int n = 100;                                  // nodi, NON intervalli
+    double t0 = -3.14159265358979323846;         // istante iniziale
+    double T = 3.14159265358979323846;           // istante finale, T>t0
+    double x0 = -1.0;                             // z(T) prova 1; z(t0) prova 2
+    double a_arg = 1.0;                           // a costante, solo prova 3
+    double f_arg = 0.0;                           // f costante, solo prova 3
+};
+namespace sym_cauchy_form {
+    bool prompt(SymCauchyParams& params);
+}
+
 struct OdeEulerParams {
     std::array<int, 4> N{10, 20, 40, 80}; // intervalli, NON nodi
     double b = 5.0;
@@ -176,6 +214,7 @@ struct OdeLotkaVParams {
 namespace ode_lotkav_form {
     bool prompt(OdeLotkaVParams& p);
 }
+
 
 // Ritorno dal rapporto stdio alla form dei parametri.
 namespace fcn_form

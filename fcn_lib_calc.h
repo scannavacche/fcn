@@ -210,20 +210,45 @@ void linear_QR_least_squares(
 //
 // funzioni per la gestione di vettori e matrici
 //
+
+/*
+ * Costruisce un sistema triangolare per z'(t)=a(t)z(t)+f(t).
+ * Griglia: n nodi equidistanti in [t0,T], h=(T-t0)/(n-1).
+ *
+ * at e ft sono puntatori a funzioni double(double), scelti dal chiamante.
+ * Se at==nullptr o ft==nullptr, la corrispondente funzione e' zero.
+ * Se at==&f_const o ft==&f_const, viene usato rispettivamente
+ * a_arg o f_arg COME COSTANTE; non si valuta f_const(t).
+ * Se i callback sono omessi: at=f_one e ft=f_zero.
+ *
+ * backw==false: schema forward (triangolare inferiore), z(t0)=z_bc;
+ * backw==true:  schema backward (triangolare superiore), z(T)=z_bc.
+ * Attenzione: z_bc NON si riferisce sempre all'estremo iniziale!
+ *
+ * Non modificare i puntatori a funzione quando si aggiunge il form GNPORT:
+ * la loro scelta rimane nel chiamante, NON nel costruttore numerico.
+ */
+// Incollare questo blocco immediatamente PRIMA della dichiarazione
+// di matrix_build_cauchy() in fcn_lib_calc.h.
+// Correggere anche il commento del parametro z_bc:
+// double z_bc,   // z(t0) se !backw, z(T) se backw
+// E il commento di f_arg:
+// double f_arg = 0, // usato se ft == &f_const
+
 void matrix_build_cauchy(
     int n, 
     double t0,      // tempo iniziale t0
     double T,       // tempo finale T
-    double z_bc,    // condizione al contorno z(t0) = z_bc (era x0 prima)
+    double z_bc,    // condizione al contorno z(t0) se !backw, z(T) se backw
     Vec &t,         // nodelist t_i 
     Vec &avals,     // coefficiente di z(t) valutati nei nodi t_i
     Vec &fvals,     // funzioni f(t) valutate nei nodi t_i
     Mat &L, 
     Vec &b, 
     double (*at)(double) = f_one,
-    double a_arg = 1,           // argomento (se at == &f_const) della funzione at
+    double a_arg = 0,           // valore costante di a(t), usato se at == &f_const
     double (*ft)(double) = f_zero,
-    double f_arg = 0,           // argomento (se at == &f_const) della funzione ft
+    double f_arg = 0,           // valore costante di f(t), usato se ft == &f_const
     bool backw = false) ;
 
 

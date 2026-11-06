@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <cmath>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -2783,6 +2784,258 @@ namespace f3_svd_an_form {
         return true;
     }
 } // namespace f3_svd_an_form
+
+namespace sym_cauchy_form {
+    // Simulazione d'esame: form a sei campi per sym_cauchy().
+    // Si appoggia ai servizi fcn_form gia' definiti in questo file.
+
+    namespace {
+        constexpr std::size_t FIELD_COUNT = 6;
+        struct FieldInfo {
+            const char* label;
+            const char* hint;
+            GnFieldType type;
+            std::size_t length;
+            double minimum;
+            double maximum;
+        };
+        constexpr FieldInfo fields[FIELD_COUNT] = {
+            {"Numero nodi n", "n: nodi [2..2000], intervalli = n-1",
+                GN_FIELD_BOUNDED_NATURAL, 4, 2, 2000},
+            {"Tempo iniziale t0", "t0: [-100..100], indipendente da T",
+                GN_FIELD_BOUNDED_DECIMAL, 18, -100, 100},
+            {"Tempo finale T", "T: [-100..100], deve essere maggiore di t0",
+                GN_FIELD_BOUNDED_DECIMAL, 18, -100, 100},
+            {"Valore al bordo x0", "x0: [-100000..100000], usato nelle prove 1 e 2",
+                GN_FIELD_BOUNDED_DECIMAL, 18, -100000, 100000},
+            {"Coefficiente a_arg", "a_arg: [-2000..2000], costante solo nella prova 3",
+                GN_FIELD_BOUNDED_DECIMAL, 18, -2000, 2000},
+            {"Forzante f_arg", "f_arg: [-100000..100000], costante solo nella prova 3",
+                GN_FIELD_BOUNDED_DECIMAL, 18, -100000, 100000}
+        };
+
+        std::string decimal(double value) {
+            // Evita la notazione scientifica, non adatta al campo DECIMAL.
+            std::ostringstream os;
+            os << std::fixed << std::setprecision(14) << value;
+            std::string s = os.str();
+            const auto dot = s.find('.');
+            if (dot != std::string::npos) {
+                while (!s.empty() && s.back() == '0') s.pop_back();
+                if (!s.empty() && s.back() == '.') s.pop_back();
+            }
+            return s == "-0" ? "0" : s;
+        }
+
+        void mask(const GnFormContext& ctx, void*) {
+            const auto& l = ctx.layout;
+            const int width = std::max(1, l.terminal_columns - 1);
+            gn_screen_clear();
+            gn_screen_cursor_visible(0);
+            fcn_form::write(l.header_top, 1,
+                " Simulazione E1b - Cauchy generalizzato ",
+                width, GN_SCREEN_TITLE);
+            fcn_form::write(l.header_top + 1, 3,
+                "z'(t) = a(t)*z(t) + f(t)  |  tre prove a funzioni fissate",
+                width - 3);
+            fcn_form::separator(l.top_separator_row, l.terminal_columns);
+            fcn_form::write(l.viewport.top, 3,
+                "Intervallo [t0,T], n nodi; F1 spiega funzioni e valori al bordo.",
+                width - 3);
+            fcn_form::separator(l.bottom_separator_row, l.terminal_columns);
+            fcn_form::separator(l.status_separator_row, l.terminal_columns);
+        }
+
+        bool prepare(GnFormContext& ctx, void*) {
+            if (!ctx.fields || !ctx.values || ctx.field_count != FIELD_COUNT)
+                return false;
+            const int col = std::min(54,
+                std::max(45, ctx.layout.terminal_columns - 26));
+            const int row = ctx.layout.viewport.top + 2;
+            std::size_t longest = 0;
+            for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+                const auto& info = fields[i];
+                ctx.fields[i] = GnEntrySpec{
+                    row + 2 * static_cast<int>(i), col,
+                    info.type, info.length, info.minimum, info.maximum,
+                    1, ctx.layout.echo_row
+                };
+                longest = std::max(longest, info.length);
+            }
+            // GRIMM: stessa colonna di fine campo per tutti gli entry.
+            const int right_col = col + static_cast<int>(longest) - 1;
+            for (std::size_t i = 0; i < FIELD_COUNT; ++i)
+                ctx.fields[i].column = right_col -
+                    static_cast<int>(ctx.fields[i].length) + 1;
+            return true;
+        }
+
+        void render(const GnFormContext& ctx, void* data) {
+            if (!ctx.fields || !ctx.values ||
+                ctx.field_count != FIELD_COUNT || ctx.lab >= FIELD_COUNT)
+                return;
+            mask(ctx, data);
+            for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+                const auto& f = ctx.fields[i];
+                fcn_form::write(f.row, 5,
+                    std::string(i == ctx.lab ? "> " : "  ") + fields[i].label,
+                    f.column - 6);
+                fcn_form::write(f.row, f.column,
+                    fcn_form::field_value(ctx.values[i], f.length),
+                    static_cast<int>(f.length), GN_SCREEN_FIELD);
+            }
+            gn_screen_clear_line(ctx.layout.echo_row);
+            const int width = std::max(1, ctx.layout.terminal_columns - 1);
+            fcn_form::write(ctx.layout.hint_row, 2, fields[ctx.lab].hint,
+                            width - 2, GN_SCREEN_MESSAGE);
+            fcn_form::write(ctx.layout.status_top, 2,
+                "ESC Menu      F1 Help (2 pagine)      F10 Esegui",
+                width - 2, GN_SCREEN_STATUS);
+            if (!ctx.message.empty())
+                fcn_form::write(ctx.layout.echo_row, 2, ctx.message,
+                                width - 2, GN_SCREEN_ERROR);
+            gn_screen_flush();
+        }
+
+        GnFormChangeResult change(
+            GnEntryCommand command, GnFormContext& ctx, void*) {
+            return fcn_form::change_linear(command, ctx);
+        }
+
+        void help(const GnFormContext& ctx, void*) {
+            // Due schermate per documentare TUTTI gli esperimenti senza
+            // troncare il testo nelle consuete 24 righe del terminale.
+            const std::vector<std::string> page1 = {
+                "E1b - Cauchy generalizzato  [1/2]  ESPERIMENTI", "",
+                "Problema: z'(t) = a(t)*z(t) + f(t)",
+                "n NODI uniformi in [t0,T]; h=(T-t0)/(n-1).", "",
+                "Prova 1 - matrice + curva (pannelli 0 e 1):",
+                "  a(t)=0; f(t)=1/(1+sin(t)^2).",
+                "  Schema BACKWARD: il valore x0 e' imposto in T!", "",
+                "Prova 2 - curva (pannello 2):",
+                "  a(t)=cos(t); f(t)=1/(1+sin(t)^2).",
+                "  Schema FORWARD: z(t0)=x0.", "",
+                "Prova 3 - curva (pannello 3):",
+                "  a(t)=a_arg, f(t)=f_arg (costanti).",
+                "  Schema FORWARD: z(t0)=1, NON x0.", "",
+                "Le tre prove sono fissate nel chiamante sym_cauchy().",
+                "Non esiste ancora la scelta delle funzioni da form."
+            };
+            const std::vector<std::string> page2 = {
+                "E1b - Cauchy generalizzato  [2/2]  PARAMETRI/API", "",
+                "n: nodi [2..2000]. t0,T: estremi indipendenti, T>t0.",
+                "x0: valore di bordo per le prove 1 e 2 (non prova 3).",
+                "a_arg e f_arg: costanti usate solo nella prova 3.", "",
+                "matrix_build_cauchy riceve callback:",
+                "  double (*at)(double) per a(t)",
+                "  double (*ft)(double) per f(t)",
+                "Passando f_const, il costruttore usa a_arg/f_arg",
+                "come valore costante, anziche' valutare il callback.",
+                "nullptr e' interpretato come funzione nulla.",
+                "backw=false: condizione in t0, matrice inferiore.",
+                "backw=true:  condizione in T, matrice superiore.", "",
+                "I limiti delle caselle sono vincoli della UI, non",
+                "ipotesi matematiche sui coefficienti dell'ODE.", "",
+                "F10: esegui. ESC nel form: menu."
+            };
+            std::size_t page = 0;
+            for (;;) {
+                gn_screen_clear();
+                gn_screen_cursor_visible(0);
+                const auto& lines = page == 0 ? page1 : page2;
+                const int width = std::max(1, ctx.layout.terminal_columns - 1);
+                int row = 1;
+                for (const auto& line : lines) {
+                    if (row >= ctx.layout.terminal_rows - 2) break;
+                    fcn_form::write(row, 2, line, width - 2,
+                        row == 1 ? GN_SCREEN_TITLE : GN_SCREEN_NORMAL);
+                    ++row;
+                }
+                fcn_form::write(ctx.layout.terminal_rows - 1, 2,
+                    "INVIO/F1: cambia pagina       ESC: ritorna al form",
+                    width - 2, GN_SCREEN_STATUS);
+                gn_screen_flush();
+                for (;;) {
+                    GnKeyEvent ev{};
+                    const auto result = gn_pump_once(&ev);
+                    if (result == GN_POLL_EMPTY) {
+                        gn_cooperative_pause();
+                        continue;
+                    }
+                    if (result == GN_POLL_ERROR || ev.code == GN_KEY_ESCAPE)
+                        return;
+                    if (ev.code == GN_KEY_ENTER || ev.code == GN_KEY_F1) {
+                        page = 1 - page;
+                        break;
+                    }
+                    gn_screen_beep();
+                }
+            }
+        }
+
+        bool validate(GnFormContext& ctx, void*) {
+            if (!ctx.values) return false;
+            for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+                try {
+                    if (ctx.values[i].empty()) throw std::invalid_argument("empty");
+                    std::size_t consumed = 0;
+                    const double v = std::stod(ctx.values[i], &consumed);
+                    if (consumed != ctx.values[i].size() ||
+                        !std::isfinite(v) || v < fields[i].minimum ||
+                        v > fields[i].maximum)
+                        throw std::out_of_range("bounds");
+                } catch (const std::exception&) {
+                    ctx.lab = i;
+                    ctx.message = "Campo vuoto, non numerico o fuori intervallo";
+                    return false;
+                }
+            }
+            if (!(std::stod(ctx.values[2]) > std::stod(ctx.values[1]))) {
+                ctx.lab = 2;
+                ctx.message = "L'estremo finale T deve essere > t0";
+                return false;
+            }
+            return true;
+        }
+    } // namespace anonimo
+
+    bool prompt(SymCauchyParams& p) {
+        std::string values[FIELD_COUNT] = {
+            std::to_string(p.n), decimal(p.t0), decimal(p.T),
+            decimal(p.x0), decimal(p.a_arg), decimal(p.f_arg)
+        };
+        GnFormRunSpec spec{};
+        spec.layout_options.header_rows = 2;
+        spec.layout_options.top_separator = true;
+        spec.layout_options.bottom_separator = true;
+        spec.layout_options.hint_line = true;
+        spec.layout_options.echo_line = true;
+        spec.layout_options.status_rows = 1;
+        spec.layout_options.min_viewport_rows = 16;
+        spec.layout_options.min_viewport_columns = 80;
+        spec.values = values;
+        spec.field_count = FIELD_COUNT;
+        spec.prepare = prepare;
+        spec.render = render;
+        spec.change = change;
+        spec.help = help;
+        spec.validate = validate;
+        const GnFormRunResult result = gn_form_run_session(spec);
+        if (result != GN_FORM_RUN_ACCEPT) {
+            if (result == GN_FORM_RUN_ERROR)
+                std::cerr << "Impossibile aprire il form Cauchy E1b.\n";
+            return false;
+        }
+        // Commit atomico: ESC non cambia la struct del chiamante.
+        p.n = std::stoi(values[0]);
+        p.t0 = std::stod(values[1]);
+        p.T = std::stod(values[2]);
+        p.x0 = std::stod(values[3]);
+        p.a_arg = std::stod(values[4]);
+        p.f_arg = std::stod(values[5]);
+        return true;
+    }
+} // namespace sym_cauchy_form
 
 namespace ode_multi_form {
     constexpr std::size_t MAX_FIELDS = 11;
