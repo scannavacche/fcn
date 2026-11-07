@@ -3497,9 +3497,8 @@ namespace al_qr_form {
     namespace {
         constexpr std::size_t FIELD_COUNT = 2;
         constexpr int N_MIN = 3;
-        constexpr int N_MAX = 20;
+        constexpr int N_MAX = 200;
         constexpr int D_MIN = 3;
-
         void mask(const GnFormContext& ctx, void*) {
             const auto& l = ctx.layout;
             const int width = std::max(1, l.terminal_columns - 1);
@@ -3523,11 +3522,12 @@ namespace al_qr_form {
                 std::max(43, ctx.layout.terminal_columns - 12));
             const int top = ctx.layout.viewport.top;
             // Allineamento destro comune, come negli altri form GRIMM/GNPORT.
-            ctx.fields[0] = GnEntrySpec{top + 3, right_col - 1,
-                GN_FIELD_BOUNDED_NATURAL, 2, N_MIN, N_MAX,
+            ctx.fields[0] = GnEntrySpec{top + 3, right_col - 2,
+                GN_FIELD_BOUNDED_NATURAL, 3, N_MIN, N_MAX,
                 1, ctx.layout.echo_row};
-            ctx.fields[1] = GnEntrySpec{top + 5, right_col - 1,
-                GN_FIELD_BOUNDED_NATURAL, 2, D_MIN, N_MAX,
+
+            ctx.fields[1] = GnEntrySpec{top + 5, right_col - 2,
+                GN_FIELD_BOUNDED_NATURAL, 3, D_MIN, N_MAX,
                 1, ctx.layout.echo_row};
             return true;
         }
@@ -3551,7 +3551,7 @@ namespace al_qr_form {
             }
             gn_screen_clear_line(ctx.layout.echo_row);
             fcn_form::write(ctx.layout.hint_row, 2,
-                ctx.lab == 0 ? "n: 3..20; numero di equazioni / misure"
+                ctx.lab == 0 ? "n: 3..200; numero di equazioni / misure"
                             : "d: 3..n; colonne / incognite, non superiori alle righe",
                 width - 2, GN_SCREEN_MESSAGE);
             fcn_form::write(ctx.layout.status_top, 2,
@@ -3573,7 +3573,7 @@ namespace al_qr_form {
             const std::vector<std::string> lines = {
                 "QR di Householder e minimi quadrati", "",
                 "CONVENZIONE DI al_qr: A ha n righe e d colonne (n x d).",
-                "n: numero di osservazioni / equazioni, da 3 a 20.",
+                "n: numero di osservazioni / equazioni, da 3 a 200.",
                 "d: numero di feature / incognite, da 3 a n.",
                 "Per i minimi quadrati implementati: n >= d (matrice tall).", "",
                 "QR completa: A = Q R, Q di ordine n e R di taglia n x d.",
@@ -3623,7 +3623,7 @@ namespace al_qr_form {
                 if (used_n != ctx.values[0].size() ||
                     n < N_MIN || n > N_MAX) {
                     ctx.lab = 0;
-                    ctx.message = "n: numero di righe compreso tra 3 e 20";
+                    ctx.message = "n: numero di righe compreso tra 3 e 200";
                     return false;
                 }
                 if (used_d != ctx.values[1].size() ||
@@ -3635,7 +3635,7 @@ namespace al_qr_form {
                 return true;
             } catch (const std::exception&) {
                 ctx.lab = 0;
-                ctx.message = "n e d devono essere interi validi (3 <= d <= n <= 20)";
+                ctx.message = "n e d devono essere interi validi (3 <= d <= n <= 200)";
                 return false;
             }
         }

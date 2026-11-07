@@ -3238,12 +3238,16 @@ namespace {
             
             Mat Q, R; 
             linear_QR_dec(A, Q, R);
-            matrix_dump(Q, "Matrice Q unitaria");
-            matrix_dump(R, "Matrice R upper");
+            if (n <= 20) {
+                matrix_dump(Q, "Matrice Q unitaria");
+                matrix_dump(R, "Matrice R upper");
+            }           
             // matrix_test_ortogonale(Q, "matrice Q");
             Mat A_r = matrix_prodotto_matrix(Q,R);
             // matrix_dump(A, "Matrice originale");
-              matrix_dump(A_r, "Ar = Q * R (Ricostruita)");
+            if (n <= 20) {
+                matrix_dump(A_r, "Ar = Q * R (Ricostruita)");
+            }
             Mat E = matrix_calcola_diff(A,A_r);
             printf(" Error_F_lab         ||A - Q*R||_F = %.2e\n", matrix_calcola_errore_Fr(A, A_r));
             printf(" Error_F_mia         ||A - Q*R||_F = %.2e\n", matrix_calcola_norma(-1, E));
