@@ -3363,6 +3363,89 @@ namespace {
         }
     }
 
+    void JL_distanze_dataset() {
+        JLDistanzeDatasetParams params{};
+
+        while (JL_distanze_dataset_form::prompt(params)) {
+            clear_screen();
+            auto [X, label] = genera_cluster(params.n, params.d, params.seed);
+            if (X.size() != label.size())
+                throw std::runtime_error("Dataset: X e label incompatibili");
+
+            // Due liste di indici: X rimane l'unico dataset.
+            std::vector<std::size_t> c0, c1;
+            for (std::size_t i = 0; i < label.size(); ++i) {
+                if (label[i] == 0) c0.push_back(i);
+                else if (label[i] == 1) c1.push_back(i);
+                else throw std::runtime_error("Etichetta cluster inattesa");
+            }
+
+            std::cout << "Dataset: " << X.size() << " x " << X[0].size()
+                    << "  seed=" << params.seed << '\n';
+            std::cout << "Cluster 0: ";
+            for (auto i : c0) std::cout << i << ' ';
+            std::cout << "\nCluster 1: ";
+            for (auto i : c1) std::cout << i << ' ';
+            std::cout << "\n\n";
+
+            // Per ispezionare esplicitamente X quando serve:
+            // matrix_dump(X, "Random X");
+
+            std::cout << std::fixed << std::setprecision(8);
+            auto stampa = [&](std::size_t i, std::size_t j, double d2) {
+                std::cout << std::setw(4) << i << std::setw(4) << j
+                        << std::setw(18) << d2 << '\n';
+            };
+
+            double somma00 = 0.0, somma11 = 0.0, somma01 = 0.0;
+            std::size_t n00 = 0, n11 = 0, n01 = 0;
+
+            std::cout << "=== INTRA CLUSTER 0 ===\n   i   j            D2\n";
+            for (std::size_t a = 0; a < c0.size(); ++a)
+                for (std::size_t b = a + 1; b < c0.size(); ++b) {
+                    const auto i = c0[a], j = c0[b];
+                    const double d2 = vector_distanza2(X[i], X[j]);
+                    stampa(i, j, d2);
+                    somma00 += d2;
+                    ++n00;
+                }
+
+            std::cout << "\n=== INTRA CLUSTER 1 ===\n   i   j            D2\n";
+            for (std::size_t a = 0; a < c1.size(); ++a)
+                for (std::size_t b = a + 1; b < c1.size(); ++b) {
+                    const auto i = c1[a], j = c1[b];
+                    const double d2 = vector_distanza2(X[i], X[j]);
+                    stampa(i, j, d2);
+                    somma11 += d2;
+                    ++n11;
+                }
+
+            std::cout << "\n=== INTER CLUSTER ===\n   i   j            D2\n";
+            for (std::size_t i : c0)
+                for (std::size_t j : c1) {
+                    const double d2 = vector_distanza2(X[i], X[j]);
+                    stampa(i, j, d2);
+                    somma01 += d2;
+                    ++n01;
+                }
+
+            std::cout << "\n=== RIEPILOGO ===\n"
+                    << "Coppie intra cluster 0: " << n00 << '\n'
+                    << "Coppie intra cluster 1: " << n11 << '\n'
+                    << "Coppie inter cluster:   " << n01 << '\n'
+                    << "Totale coppie:          " << n00 + n11 + n01 << '\n';
+            if (n00 && n11 && n01) {
+                const double intra = (somma00 + somma11) / (n00 + n11);
+                const double inter = somma01 / n01;
+                std::cout << "Media D2 intra 0:       " << somma00 / n00 << '\n'
+                        << "Media D2 intra 1:       " << somma11 / n11 << '\n'
+                        << "Media D2 intra totale:  " << intra << '\n'
+                        << "Media D2 inter:         " << inter << '\n';
+            }
+            fcn_form::wait_report();
+        }
+    }
+
     void sandbox() {
         SandboxParams params{};
         while (sandbox_form::prompt(params)) {
@@ -3413,7 +3496,8 @@ namespace {
             {"gg1",             gg1},
             {"gg2",             gg2},
             {"al_qr",           al_qr},
-            {"JL_dist",         JL_distanze},
+            {"JL_dist",         JL_distanze}, 
+            {"JL_X_rand",       JL_distanze_dataset}, 
             {"sandbox",         sandbox}
             };
         }

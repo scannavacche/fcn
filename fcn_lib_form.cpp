@@ -3891,3 +3891,190 @@ namespace JL_distanze_form {
         return true;
     }
 }
+
+namespace JL_distanze_dataset_form {
+    namespace {
+    constexpr std::size_t FIELD_COUNT = 3;
+
+    constexpr const char* labels[FIELD_COUNT] = {
+        "Numero osservazioni n", "Dimensione delle feature d", "Seed generatore"
+    };
+    constexpr const char* hints[FIELD_COUNT] = {
+        "n: numero totale di osservazioni [4..30]",
+        "d: numero di caratteristiche per osservazione [1..500]",
+        "seed: seme riproducibile del dataset [0..999999]"
+    };
+
+    void mask(const GnFormContext& ctx, void*) {
+        const auto& l = ctx.layout;
+        const int width = std::max(1, l.terminal_columns - 1);
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+        fcn_form::write(l.header_top, 1,
+            " JL - distanze quadratiche tra osservazioni ",
+            width, GN_SCREEN_TITLE);
+        fcn_form::write(l.header_top + 1, 3,
+            "Dataset a due cluster: confronti intra e inter cluster",
+            width - 3);
+        fcn_form::separator(l.top_separator_row, l.terminal_columns);
+        fcn_form::write(l.viewport.top, 3,
+            "Generazione riproducibile: n righe, d feature, seed fissato.",
+            width - 3);
+        fcn_form::separator(l.bottom_separator_row, l.terminal_columns);
+        fcn_form::separator(l.status_separator_row, l.terminal_columns);
+    }
+
+    bool prepare(GnFormContext& ctx, void*) {
+        if (!ctx.fields || !ctx.values || ctx.field_count != FIELD_COUNT)
+            return false;
+        const int col = std::min(54,
+            std::max(43, ctx.layout.terminal_columns - 18));
+        const int right_col = col + 6 - 1;
+        const int row = ctx.layout.viewport.top + 3;
+        ctx.fields[0] = GnEntrySpec{
+            row, right_col - 3 + 1,
+            GN_FIELD_BOUNDED_NATURAL, 3, 4.0, 30.0, 1, ctx.layout.echo_row
+        };
+        ctx.fields[1] = GnEntrySpec{
+            row + 2, right_col - 3 + 1,
+            GN_FIELD_BOUNDED_NATURAL, 3, 1.0, 500.0, 1, ctx.layout.echo_row
+        };
+        ctx.fields[2] = GnEntrySpec{
+            row + 4, right_col - 6 + 1,
+            GN_FIELD_BOUNDED_NATURAL, 6, 0.0, 999999.0, 1, ctx.layout.echo_row
+        };
+        return true;
+    }
+
+    void render(const GnFormContext& ctx, void* data) {
+        if (!ctx.fields || !ctx.values ||
+            ctx.field_count != FIELD_COUNT || ctx.lab >= FIELD_COUNT)
+            return;
+        mask(ctx, data);
+        for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+            const auto& f = ctx.fields[i];
+            fcn_form::write(f.row, 5,
+                std::string(i == ctx.lab ? "> " : "  ") + labels[i],
+                f.column - 6);
+            fcn_form::write(f.row, f.column,
+                fcn_form::field_value(ctx.values[i], f.length),
+                static_cast<int>(f.length), GN_SCREEN_FIELD);
+        }
+        gn_screen_clear_line(ctx.layout.echo_row);
+        const int width = std::max(1, ctx.layout.terminal_columns - 1);
+        fcn_form::write(ctx.layout.hint_row, 2,
+            hints[ctx.lab], width - 2, GN_SCREEN_MESSAGE);
+        fcn_form::write(ctx.layout.status_top, 2,
+            "ESC Menu     F1 Help     F10 Esegui",
+            width - 2, GN_SCREEN_STATUS);
+        if (!ctx.message.empty())
+            fcn_form::write(ctx.layout.echo_row, 2,
+                ctx.message, width - 2, GN_SCREEN_ERROR);
+        gn_screen_flush();
+    }
+
+    GnFormChangeResult change(GnEntryCommand cmd, GnFormContext& ctx, void*) {
+        return fcn_form::change_linear(cmd, ctx);
+    }
+
+    void help(const GnFormContext& ctx, void*) {
+        const std::vector<std::string> lines = {
+            "F1 HELP - JL: distanze quadratiche",
+            "",
+            "genera_cluster(n,d,seed) costruisce due cluster.",
+            "Le righe di X sono osservazioni in R^d.",
+            "",
+            "Parametri:",
+            std::string("  ") + hints[0],
+            std::string("  ") + hints[1],
+            std::string("  ") + hints[2],
+            "",
+            "Si stampano tutte le coppie intra 0, intra 1 e inter.",
+            "Si calcolano le relative medie di D2.",
+            "",
+            "F10 esegue; ESC torna al menu.",
+            "F1 / ENTER / ESC: ritorno al form"
+        };
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+        const int width = std::max(1, ctx.layout.terminal_columns - 1);
+        int row = 1;
+        for (const auto& line : lines) {
+            if (row > ctx.layout.terminal_rows) break;
+            fcn_form::write(row, 2, line, width - 2,
+                row == 1 ? GN_SCREEN_TITLE : GN_SCREEN_NORMAL);
+            ++row;
+        }
+        gn_screen_flush();
+        for (;;) {
+            GnKeyEvent event{};
+            const GnPollResult r = gn_pump_once(&event);
+            if (r == GN_POLL_EMPTY) {
+                gn_cooperative_pause();
+                continue;
+            }
+            if (r == GN_POLL_ERROR ||
+                event.code == GN_KEY_F1 ||
+                event.code == GN_KEY_ENTER ||
+                event.code == GN_KEY_ESCAPE) return;
+            gn_screen_beep();
+        }
+    }
+
+    bool validate(GnFormContext& ctx, void*) {
+        constexpr int minvals[] = {4, 1, 0};
+        constexpr int maxvals[] = {30, 500, 999999};
+        for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+            try {
+                const std::string& raw = ctx.values[i];
+                std::size_t consumed = 0;
+                const int v = std::stoi(raw, &consumed);
+                if (consumed != raw.size() || v < minvals[i] || v > maxvals[i]) {
+                    ctx.lab = i;
+                    ctx.message = "Valore fuori intervallo";
+                    return false;
+                }
+            } catch (const std::exception&) {
+                ctx.lab = i;
+                ctx.message = "Inserire un numero intero valido";
+                return false;
+            }
+        }
+        return true;
+    }
+    } // namespace anonimo
+
+    bool prompt(JLDistanzeDatasetParams& p) {
+        std::string values[FIELD_COUNT] = {
+            std::to_string(p.n), std::to_string(p.d), std::to_string(p.seed)
+        };
+        GnFormRunSpec spec{};
+        spec.layout_options.header_rows = 2;
+        spec.layout_options.top_separator = true;
+        spec.layout_options.bottom_separator = true;
+        spec.layout_options.hint_line = true;
+        spec.layout_options.echo_line = true;
+        spec.layout_options.status_rows = 1;
+        spec.layout_options.min_viewport_rows = 12;
+        spec.layout_options.min_viewport_columns = 80;
+        spec.values = values;
+        spec.field_count = FIELD_COUNT;
+        spec.prepare = prepare;
+        spec.render = render;
+        spec.change = change;
+        spec.help = help;
+        spec.validate = validate;
+        const GnFormRunResult result = gn_form_run_session(spec);
+        if (result != GN_FORM_RUN_ACCEPT) {
+            if (result == GN_FORM_RUN_ERROR)
+                std::cerr << "Impossibile aprire il form JL dataset.\n";
+            return false;
+        }
+        // Aggiornamento atomico al solo F10: ESC non modifica i parametri.
+        p.n = std::stoi(values[0]);
+        p.d = std::stoi(values[1]);
+        p.seed = std::stoi(values[2]);
+        return true;
+    }
+} // namespace JL_distanze_dataset_form
+

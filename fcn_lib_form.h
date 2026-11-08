@@ -278,6 +278,16 @@ namespace JL_distanze_form {
     bool prompt(JLDistanceParams& params);
 }
 
+struct JLDistanzeDatasetParams {
+    int n = 10;      // Numero totale di osservazioni
+    int d = 80;      // Feature per osservazione
+    int seed = 42;   // Seed riproducibile per std::mt19937
+};
+
+namespace JL_distanze_dataset_form {
+    bool prompt(JLDistanzeDatasetParams& params);
+}
+
 
 // Ritorno dal rapporto stdio alla form dei parametri.
 namespace fcn_form
