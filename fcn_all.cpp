@@ -3375,6 +3375,11 @@ namespace {
             // Due liste di indici: X rimane l'unico dataset.
 
             const int k = params.k; // se ti serve per report e controlli dimensionali
+            const std::array<double, 6> soglie = {
+                0.05, 0.10, 0.20, 0.30, 0.40, 0.50
+            };
+
+            std::array<size_t, 6> violazioni{};
 
             Mat A = matrix_random_jl(
                 params.k, 
@@ -3411,7 +3416,10 @@ namespace {
 
                     somma_delta += delta;
                     ++coppie;
-
+                    for (size_t s = 0; s < soglie.size(); ++s) {
+                        if (delta > soglie[s])
+                            ++violazioni[s];
+                    }
                     if (delta > max_delta) {
                         max_delta = delta;
                         i_max = i;
@@ -3427,7 +3435,21 @@ namespace {
             cout << "Distorsione max:  " << max_delta << '\n';
             cout << "Coppia peggiore:  (" << i_max << "," << j_max << ")\n";
 
+            cout << "\n=== VIOLAZIONI SOGLIE JL ===\n";
+            cout << "Epsilon     Coppie       Percentuale\n";
 
+            for (size_t s = 0; s < soglie.size(); ++s) {
+                double percentuale = coppie
+                    ? 100.0 * violazioni[s] / coppie
+                    : 0.0;
+
+                cout << fixed
+                    << setprecision(2)
+                    << setw(7) << soglie[s]
+                    << setw(12) << violazioni[s]
+                    << setw(16) << percentuale << "%\n";
+            }
+            
             /*
             std::vector<std::size_t> c0, c1;
             for (std::size_t i = 0; i < label.size(); ++i) {
