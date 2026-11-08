@@ -3373,6 +3373,62 @@ namespace {
                 throw std::runtime_error("Dataset: X e label incompatibili");
 
             // Due liste di indici: X rimane l'unico dataset.
+
+            const int k = params.k; // se ti serve per report e controlli dimensionali
+
+            Mat A = matrix_random_jl(
+                params.k, 
+                params.d, 
+                JLMatrixDistribution::Gaussian,
+                static_cast<unsigned>(params.seed_A),
+                 3
+            );
+
+            Mat Y = matrix_prodotto_matrix(X, matrix_trasposta(A)); // vettori in riga
+
+            const double d2x = vector_distanza2(X[0], X[1]);
+            const double d2y = vector_distanza2(Y[0], Y[1]);
+
+            cout << "\n=== PRIMA PROIEZIONE JL ===\n";
+            cout << "D2 originale  = " << d2x << '\n';
+            cout << "D2 proiettata = " << d2y << '\n';
+            cout << "Rapporto R01  = " << d2y / d2x << '\n';
+            cout << "Distorsione   = " << std::abs(d2y / d2x - 1.0) << '\n';
+
+
+            double somma_delta = 0.0;
+            double max_delta = 0.0;
+            size_t i_max = 0, j_max = 0;
+            size_t coppie = 0;
+
+            for (size_t i = 0; i < X.size(); ++i) {
+                for (size_t j = i + 1; j < X.size(); ++j) {
+                    double dx2 = vector_distanza2(X[i], X[j]);
+                    if (dx2 == 0.0) continue;
+
+                    double dy2 = vector_distanza2(Y[i], Y[j]);
+                    double delta = std::abs(dy2 / dx2 - 1.0);
+
+                    somma_delta += delta;
+                    ++coppie;
+
+                    if (delta > max_delta) {
+                        max_delta = delta;
+                        i_max = i;
+                        j_max = j;
+                    }
+                }
+            }
+
+            cout << "\n=== DISTORSIONI JL ===\n";
+            cout << "Coppie valide:    " << coppie << '\n';
+            cout << "Distorsione media: "
+                << (coppie ? somma_delta / coppie : 0.0) << '\n';
+            cout << "Distorsione max:  " << max_delta << '\n';
+            cout << "Coppia peggiore:  (" << i_max << "," << j_max << ")\n";
+
+
+            /*
             std::vector<std::size_t> c0, c1;
             for (std::size_t i = 0; i < label.size(); ++i) {
                 if (label[i] == 0) c0.push_back(i);
@@ -3442,6 +3498,9 @@ namespace {
                         << "Media D2 intra totale:  " << intra << '\n'
                         << "Media D2 inter:         " << inter << '\n';
             }
+
+            */
+
             fcn_form::wait_report();
         }
     }

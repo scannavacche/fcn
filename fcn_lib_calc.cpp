@@ -1848,7 +1848,8 @@ Mat matrix_random_jl(
 
     switch (distribution) {
     case JLMatrixDistribution::Gaussian: {
-        // Var[N(0,1/sqrt(k))] = 1/k.
+        // std::normal_distribution riceve (media, deviazione standard).
+        // sigma = 1/sqrt(k), quindi Var(A_ij) = 1/k.
         std::normal_distribution<double> gauss(0.0, inv_sqrt_k);
         for (auto& row : A)
             for (double& v : row)

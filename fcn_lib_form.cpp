@@ -3894,15 +3894,25 @@ namespace JL_distanze_form {
 
 namespace JL_distanze_dataset_form {
     namespace {
-    constexpr std::size_t FIELD_COUNT = 3;
 
-    constexpr const char* labels[FIELD_COUNT] = {
-        "Numero osservazioni n", "Dimensione delle feature d", "Seed generatore"
+    constexpr std::size_t FIELD_COUNT = 5;
+
+    // UNICA sorgente dei limiti numerici: prepare() li trasferisce
+    // agli ENTRY; validate() NON li ricontrolla.
+    struct FieldDef {
+        const char* label;
+        const char* hint;
+        int length;
+        double lower;
+        double upper;
     };
-    constexpr const char* hints[FIELD_COUNT] = {
-        "n: numero totale di osservazioni [4..30]",
-        "d: numero di caratteristiche per osservazione [1..500]",
-        "seed: seme riproducibile del dataset [0..999999]"
+
+    constexpr FieldDef field_defs[FIELD_COUNT] = {
+        {"Numero osservazioni n", "Numero di punti del dataset",             4, 2, 9999},
+        {"Dimensione originale d", "Numero di feature per osservazione",    4, 2, 9999},
+        {"Dimensione ridotta k",  "Dimensione JL; deve essere minore di d",  4, 1, 9999},
+        {"Seed dataset X",       "Seme di genera_cluster(n,d,seed)",        9, 0, 999999999},
+        {"Seed proiezione A",    "Seme della matrice gaussiana JL",          9, 0, 999999999}
     };
 
     void mask(const GnFormContext& ctx, void*) {
@@ -3911,15 +3921,12 @@ namespace JL_distanze_dataset_form {
         gn_screen_clear();
         gn_screen_cursor_visible(0);
         fcn_form::write(l.header_top, 1,
-            " JL - distanze quadratiche tra osservazioni ",
-            width, GN_SCREEN_TITLE);
+            " JL - distorsioni del dataset ", width, GN_SCREEN_TITLE);
         fcn_form::write(l.header_top + 1, 3,
-            "Dataset a due cluster: confronti intra e inter cluster",
-            width - 3);
+            "Due cluster, proiezione JL gaussiana", width - 3);
         fcn_form::separator(l.top_separator_row, l.terminal_columns);
         fcn_form::write(l.viewport.top, 3,
-            "Generazione riproducibile: n righe, d feature, seed fissato.",
-            width - 3);
+            "X: n x d; A: k x d; Y = X A^T: n x k", width - 3);
         fcn_form::separator(l.bottom_separator_row, l.terminal_columns);
         fcn_form::separator(l.status_separator_row, l.terminal_columns);
     }
@@ -3927,22 +3934,25 @@ namespace JL_distanze_dataset_form {
     bool prepare(GnFormContext& ctx, void*) {
         if (!ctx.fields || !ctx.values || ctx.field_count != FIELD_COUNT)
             return false;
+
         const int col = std::min(54,
             std::max(43, ctx.layout.terminal_columns - 18));
-        const int right_col = col + 6 - 1;
-        const int row = ctx.layout.viewport.top + 3;
-        ctx.fields[0] = GnEntrySpec{
-            row, right_col - 3 + 1,
-            GN_FIELD_BOUNDED_NATURAL, 3, 4.0, 30.0, 1, ctx.layout.echo_row
-        };
-        ctx.fields[1] = GnEntrySpec{
-            row + 2, right_col - 3 + 1,
-            GN_FIELD_BOUNDED_NATURAL, 3, 1.0, 500.0, 1, ctx.layout.echo_row
-        };
-        ctx.fields[2] = GnEntrySpec{
-            row + 4, right_col - 6 + 1,
-            GN_FIELD_BOUNDED_NATURAL, 6, 0.0, 999999.0, 1, ctx.layout.echo_row
-        };
+        const int right_col = col + 9 - 1;
+        const int row = ctx.layout.viewport.top + 2;
+
+        for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+            const FieldDef& def = field_defs[i];
+            ctx.fields[i] = GnEntrySpec{
+                row + static_cast<int>(2 * i),
+                right_col - def.length + 1,
+                GN_FIELD_BOUNDED_NATURAL,
+                static_cast<std::size_t>(def.length),
+                def.lower,
+                def.upper,
+                1,
+                ctx.layout.echo_row
+            };
+        }
         return true;
     }
 
@@ -3950,11 +3960,12 @@ namespace JL_distanze_dataset_form {
         if (!ctx.fields || !ctx.values ||
             ctx.field_count != FIELD_COUNT || ctx.lab >= FIELD_COUNT)
             return;
+
         mask(ctx, data);
         for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
             const auto& f = ctx.fields[i];
             fcn_form::write(f.row, 5,
-                std::string(i == ctx.lab ? "> " : "  ") + labels[i],
+                std::string(i == ctx.lab ? "> " : "  ") + field_defs[i].label,
                 f.column - 6);
             fcn_form::write(f.row, f.column,
                 fcn_form::field_value(ctx.values[i], f.length),
@@ -3963,7 +3974,7 @@ namespace JL_distanze_dataset_form {
         gn_screen_clear_line(ctx.layout.echo_row);
         const int width = std::max(1, ctx.layout.terminal_columns - 1);
         fcn_form::write(ctx.layout.hint_row, 2,
-            hints[ctx.lab], width - 2, GN_SCREEN_MESSAGE);
+            field_defs[ctx.lab].hint, width - 2, GN_SCREEN_MESSAGE);
         fcn_form::write(ctx.layout.status_top, 2,
             "ESC Menu     F1 Help     F10 Esegui",
             width - 2, GN_SCREEN_STATUS);
@@ -3978,23 +3989,26 @@ namespace JL_distanze_dataset_form {
     }
 
     void help(const GnFormContext& ctx, void*) {
-        const std::vector<std::string> lines = {
-            "F1 HELP - JL: distanze quadratiche",
+        std::vector<std::string> lines{
+            "F1 HELP - JL: distorsioni delle distanze",
             "",
-            "genera_cluster(n,d,seed) costruisce due cluster.",
-            "Le righe di X sono osservazioni in R^d.",
+            "X e' un dataset con n righe (osservazioni), d colonne (feature).",
+            "A ha k righe, d colonne. Y = X A^T e' n x k.",
+            "Un'unica A e' applicata a tutte le osservazioni.",
             "",
-            "Parametri:",
-            std::string("  ") + hints[0],
-            std::string("  ") + hints[1],
-            std::string("  ") + hints[2],
-            "",
-            "Si stampano tutte le coppie intra 0, intra 1 e inter.",
-            "Si calcolano le relative medie di D2.",
-            "",
-            "F10 esegue; ESC torna al menu.",
-            "F1 / ENTER / ESC: ritorno al form"
+            "Parametri [min .. max]:"
         };
+        // Anche l'help ricava i limiti dalla stessa tabella, non li duplica.
+        for (const FieldDef& f : field_defs) {
+            std::ostringstream s;
+            s << " " << f.label << " [" << static_cast<long long>(f.lower)
+            << " .. " << static_cast<long long>(f.upper) << "]";
+            lines.push_back(s.str());
+        }
+        lines.emplace_back("Vincolo tra campi: k < d.");
+        lines.emplace_back("F10 esegue; ESC torna al menu.");
+        lines.emplace_back("F1 / ENTER / ESC: ritorno al form.");
+
         gn_screen_clear();
         gn_screen_cursor_visible(0);
         const int width = std::max(1, ctx.layout.terminal_columns - 1);
@@ -4022,23 +4036,22 @@ namespace JL_distanze_dataset_form {
     }
 
     bool validate(GnFormContext& ctx, void*) {
-        constexpr int minvals[] = {4, 1, 0};
-        constexpr int maxvals[] = {30, 500, 999999};
-        for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
-            try {
-                const std::string& raw = ctx.values[i];
-                std::size_t consumed = 0;
-                const int v = std::stoi(raw, &consumed);
-                if (consumed != raw.size() || v < minvals[i] || v > maxvals[i]) {
-                    ctx.lab = i;
-                    ctx.message = "Valore fuori intervallo";
-                    return false;
-                }
-            } catch (const std::exception&) {
-                ctx.lab = i;
-                ctx.message = "Inserire un numero intero valido";
+        // Soltanto validazione DI MERITO, fra due campi.
+        // Non ripetiamo i lower/upper delle GnEntrySpec.
+        try {
+            const int d = std::stoi(ctx.values[1]);
+            const int k = std::stoi(ctx.values[2]);
+            if (k >= d) {
+                ctx.lab = 2;
+                ctx.message = "La dimensione ridotta k deve essere < d";
                 return false;
             }
+        } catch (const std::exception&) {
+            // Gestione difensiva: sintassi e range del singolo campo
+            // restano responsabilita' dell'ENTRY.
+            ctx.lab = 2;
+            ctx.message = "Valore numerico non valido";
+            return false;
         }
         return true;
     }
@@ -4046,8 +4059,13 @@ namespace JL_distanze_dataset_form {
 
     bool prompt(JLDistanzeDatasetParams& p) {
         std::string values[FIELD_COUNT] = {
-            std::to_string(p.n), std::to_string(p.d), std::to_string(p.seed)
+            std::to_string(p.n),
+            std::to_string(p.d),
+            std::to_string(p.k),
+            std::to_string(p.seed),
+            std::to_string(p.seed_A)
         };
+
         GnFormRunSpec spec{};
         spec.layout_options.header_rows = 2;
         spec.layout_options.top_separator = true;
@@ -4055,7 +4073,7 @@ namespace JL_distanze_dataset_form {
         spec.layout_options.hint_line = true;
         spec.layout_options.echo_line = true;
         spec.layout_options.status_rows = 1;
-        spec.layout_options.min_viewport_rows = 12;
+        spec.layout_options.min_viewport_rows = 14;
         spec.layout_options.min_viewport_columns = 80;
         spec.values = values;
         spec.field_count = FIELD_COUNT;
@@ -4064,16 +4082,22 @@ namespace JL_distanze_dataset_form {
         spec.change = change;
         spec.help = help;
         spec.validate = validate;
+
         const GnFormRunResult result = gn_form_run_session(spec);
         if (result != GN_FORM_RUN_ACCEPT) {
             if (result == GN_FORM_RUN_ERROR)
                 std::cerr << "Impossibile aprire il form JL dataset.\n";
             return false;
         }
-        // Aggiornamento atomico al solo F10: ESC non modifica i parametri.
-        p.n = std::stoi(values[0]);
-        p.d = std::stoi(values[1]);
-        p.seed = std::stoi(values[2]);
+
+        // Commit dei parametri solo dopo F10; ESC lascia p invariato.
+        JLDistanzeDatasetParams new_params = p;
+        new_params.n = std::stoi(values[0]);
+        new_params.d = std::stoi(values[1]);
+        new_params.k = std::stoi(values[2]);
+        new_params.seed = std::stoi(values[3]);
+        new_params.seed_A = std::stoi(values[4]);
+        p = new_params;
         return true;
     }
 } // namespace JL_distanze_dataset_form

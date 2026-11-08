@@ -279,9 +279,11 @@ namespace JL_distanze_form {
 }
 
 struct JLDistanzeDatasetParams {
-    int n = 10;      // Numero totale di osservazioni
-    int d = 80;      // Feature per osservazione
-    int seed = 42;   // Seed riproducibile per std::mt19937
+    int n = 10;
+    int d = 80;
+    int k = 20;
+    int seed = 42;      // generatore dataset X
+    int seed_A = 12345; // generatore matrice JL A
 };
 
 namespace JL_distanze_dataset_form {
