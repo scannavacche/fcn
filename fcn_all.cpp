@@ -3187,7 +3187,7 @@ namespace {
         matrix_dump(A, "Diag dominant");
         Gershgorin_execute(A);
 
-        A = matrix_random_symmetric_diagonally_dominant(10);
+        A = matrix_random_diagonally_dominant_symmetric(10);
         matrix_dump(A, "Symmetric Diag  dominant");
         Gershgorin_execute(A);
 
@@ -3342,45 +3342,39 @@ namespace {
        }
     }
     
-
-    void sandbox(){
-        //
-        // variabili da personalizzare per gli input finali
-        //
-        double i_min = 0 , i_max = 5 , i_ini = 1, i_val = 0;
-        //
-        // variabili di servizio al loop
-        //
-        bool leave = false;
-        bool redo = false;
-        while (!leave) {
+    void JL_distanze() {
+        JLDistanceParams params{};
+        while (JL_distanze_form::prompt(params)) {
             clear_screen();
-
-
-
-            //
-            // loop finale con i prompt delle var
-            // se non ci sono variabili da cambiare, basta una wait
-            //
-            // wait_return_to_menu(false); 
-            //
-            redo = false;
-            while (!redo && !leave) {
-                cin_clear();
-                std::cout << "Inserire nuovo inizio [0 .. 100] (<q> per uscire) > ";
-                if (std::cin >> i_ini) { if (i_ini>=0 && i_ini<=100) redo=true;} else {cout << "Key: " << i_ini <<endl; leave=true;} ;
-                if (!leave) {
-                    std::cout << "Inserire nuovo valore finale [ini .. 1000] (<q> per uscire) > " ;
-                    if (std::cin >> i_max) { if (i_max>=i_min && i_max<=1000) redo=true;} else {cout << "Key: " << i_max <<endl; leave=true;} ;
-                    if (!leave) {
-                        std::cout << "Inserire nuovo parametro [0 .. 10] (<q> per uscire) > " ;
-                        if (std::cin >> i_val) { if (i_val>0 && i_val<=10) redo=true;} else {cout << "Key: " << i_val <<endl; leave=true;} ;
-                    };
-                };
-                cin_clear();
-            };
-        };
+            const Vec x{0.0, 0.0};
+            const Vec y{params.dx, params.dy};
+            const Vec traslazione{params.t, params.t};
+            const Vec xt{x[0] + traslazione[0], x[1] + traslazione[1]};
+            const Vec yt{y[0] + traslazione[0], y[1] + traslazione[1]};
+            const double prima = vector_distanza2(x, y);
+            const double dopo = vector_distanza2(xt, yt);
+            const double teorico = params.dx * params.dx + params.dy * params.dy;
+            cout << "JL - collaudo distanza quadratica\n\n";
+            cout << "D2(x,y)                    = " << prima << '\n';
+            cout << "D2(x+t,y+t)                = " << dopo << '\n';
+            cout << "dx^2 + dy^2                = " << teorico << '\n';
+            cout << "Scarto traslazione         = " << std::abs(dopo-prima) << '\n';
+            fcn_form::wait_report();
+        }
     }
+
+    void sandbox() {
+        SandboxParams params{};
+        while (sandbox_form::prompt(params)) {
+            clear_screen();
+            cout << "SANDBOX GNPORT\n";
+            cout << "Inizio     : " << params.i_ini << '\n';
+            cout << "Fine       : " << params.i_max << '\n';
+            cout << "Parametro  : " << params.i_val << '\n';
+            fcn_form::wait_report();
+        }
+    }
+
 
     /*
     * ============================================================
@@ -3419,6 +3413,7 @@ namespace {
             {"gg1",             gg1},
             {"gg2",             gg2},
             {"al_qr",           al_qr},
+            {"JL_dist",         JL_distanze},
             {"sandbox",         sandbox}
             };
         }

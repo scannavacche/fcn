@@ -211,6 +211,8 @@ void linear_QR_least_squares(
 // funzioni per la gestione di vettori e matrici
 //
 
+// matrix_build_cauchy
+
 /*
  * Costruisce un sistema triangolare per z'(t)=a(t)z(t)+f(t).
  * Griglia: n nodi equidistanti in [t0,T], h=(T-t0)/(n-1).
@@ -223,17 +225,8 @@ void linear_QR_least_squares(
  *
  * backw==false: schema forward (triangolare inferiore), z(t0)=z_bc;
  * backw==true:  schema backward (triangolare superiore), z(T)=z_bc.
- * Attenzione: z_bc NON si riferisce sempre all'estremo iniziale!
- *
- * Non modificare i puntatori a funzione quando si aggiunge il form GNPORT:
- * la loro scelta rimane nel chiamante, NON nel costruttore numerico.
+ * Attenzione: z_bc NON si riferisce sempre all'estremo iniziale, dipende dal verso.
  */
-// Incollare questo blocco immediatamente PRIMA della dichiarazione
-// di matrix_build_cauchy() in fcn_lib_calc.h.
-// Correggere anche il commento del parametro z_bc:
-// double z_bc,   // z(t0) se !backw, z(T) se backw
-// E il commento di f_arg:
-// double f_arg = 0, // usato se ft == &f_const
 
 void matrix_build_cauchy(
     int n, 
@@ -349,6 +342,10 @@ Mat matrix_estende_ridotta(
     int n, 
     bool bycol);
 
+void matrix_export_csv(
+    const Mat& A, 
+    const std::string& filename);
+
 Mat matrix_householder_reflector(
     const Vec& v);
 
@@ -390,9 +387,32 @@ Mat matrix_random_diagonally_dominant(
     int N,
     double margin = 1.0);
 
-Mat matrix_random_symmetric_diagonally_dominant(
+Mat matrix_random_diagonally_dominant_symmetric(
     int N,
     double margin = 1.0);
+
+// matrix_random_jl
+
+// Famiglie di matrici casuali per proiezioni Johnson-Lindenstrauss.
+// Convenzione: A e' k x d; x in R^d -> Ax in R^k.
+// Ogni elemento ha media 0 e varianza 1/k.
+
+enum class JLMatrixDistribution {
+    Gaussian,       // N(0, 1/k)
+    Rademacher,     // +/- 1/sqrt(k), equiprobabili
+    Sparse          // 0 con P=1-1/s; +/- sqrt(s/k) con P=1/(2s)
+};
+
+// s=3 recupera la distribuzione sparsa di Achlioptas 1/3 - 2/3 .
+// Il seed garantisce la riproducibilita' all'interno della stessa implementazione STL.
+// Non sostituisce matrix_random(N,seed), che resta quadrata N x N con N(0,1).
+
+Mat matrix_random_jl(
+    int k,
+    int d,
+    JLMatrixDistribution distribution,
+    unsigned seed = 42,
+    int sparse_s = 3);
 
 Mat matrix_random_symmetric(
     int N,
@@ -448,6 +468,10 @@ Vec vector_campiona_f_k(
     int k,                   // acceleratore di frequenza, es. k=1 per sin(t), k=2 per sin(2t), ecc.
     const Vec &x,            // vettore dei nodi di campionamento
     double (*ft)(double));   // funzione da  campionare 
+
+double vector_distanza2(
+    const Vec& x, 
+    const Vec& y);
 
 void vector_dump (
     Vec x, 

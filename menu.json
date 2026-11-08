@@ -46,6 +46,12 @@
           "enabled": true
         },
         {
+          "key": 7,
+          "label": "Tesi su Lemma Johnson-Lindenstrauss",
+          "submenu_id": "Tesi_JL",
+          "enabled": true
+        },
+        {
           "key": 12,
           "label": "Sandbox",
           "submenu_id": "sandbox",
@@ -239,6 +245,22 @@
         }
       ]
     },
+    {
+      "id": "Tesi_JL",
+      "title": "Tesi su Lemma Johnson-Lindenstrauss",
+      "layout": "program_list",
+      "rows": 8,
+      "columns": 1,
+      "items": [
+        {
+          "key": 1,
+          "label": "Test Distanza punti",
+          "action": "JL_dist",
+          "enabled": true
+        }
+      ]
+    },
+
     {
       "id": "sandbox",
       "title": "FCN - Sandbox",

@@ -3673,3 +3673,221 @@ namespace al_qr_form {
         return true;
     }
 } // namespace al_qr_form
+
+namespace fcn_three_form {
+    constexpr std::size_t COUNT = 3;
+
+    struct Field {
+        const char* label;
+        const char* hint;
+        double lower;
+        double upper;
+    };
+
+    struct Config {
+        const char* title;
+        const char* subtitle;
+        const char* description;
+        const char* explanation;
+        std::array<Field, COUNT> fields;
+        bool require_second_ge_first = false;
+    };
+
+    void mask(const GnFormContext& c, void* data) {
+        const auto& cfg = *static_cast<Config*>(data);
+        const auto& l = c.layout;
+        const int w = std::max(1, l.terminal_columns - 1);
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+        fcn_form::write(l.header_top, 1, cfg.title, w, GN_SCREEN_TITLE);
+        fcn_form::write(l.header_top + 1, 3, cfg.subtitle, w - 3);
+        fcn_form::separator(l.top_separator_row, l.terminal_columns);
+        fcn_form::write(l.viewport.top, 3, cfg.description, w - 3);
+        fcn_form::separator(l.bottom_separator_row, l.terminal_columns);
+        fcn_form::separator(l.status_separator_row, l.terminal_columns);
+    }
+
+    bool prepare(GnFormContext& c, void* data) {
+        if (!data || !c.fields || !c.values || c.field_count != COUNT)
+            return false;
+        const auto& cfg = *static_cast<Config*>(data);
+        const int first_col = std::min(
+            59, std::max(45, c.layout.terminal_columns - 23));
+        const int row = c.layout.viewport.top + 3;
+        constexpr int width = 12;
+        for (std::size_t i = 0; i < COUNT; ++i) {
+            c.fields[i] = GnEntrySpec{
+                row + static_cast<int>(2 * i), first_col,
+                GN_FIELD_BOUNDED_DECIMAL, width,
+                cfg.fields[i].lower, cfg.fields[i].upper,
+                1, c.layout.echo_row
+            };
+        }
+        return true;
+    }
+
+    void render(const GnFormContext& c, void* data) {
+        if (!data || !c.fields || !c.values ||
+            c.field_count != COUNT || c.lab >= COUNT) return;
+        const auto& cfg = *static_cast<Config*>(data);
+        mask(c, data);
+        for (std::size_t i = 0; i < COUNT; ++i) {
+            const auto& f = c.fields[i];
+            fcn_form::write(f.row, 5,
+                std::string(i == c.lab ? "> " : "  ") + cfg.fields[i].label,
+                f.column - 6);
+            fcn_form::write(f.row, f.column,
+                fcn_form::field_value(c.values[i], f.length),
+                static_cast<int>(f.length), GN_SCREEN_FIELD);
+        }
+        gn_screen_clear_line(c.layout.echo_row);
+        const int w = std::max(1, c.layout.terminal_columns - 1);
+        fcn_form::write(c.layout.hint_row, 2, cfg.fields[c.lab].hint,
+                        w - 2, GN_SCREEN_MESSAGE);
+        fcn_form::write(c.layout.status_top, 2,
+                        "ESC Menu    F1 Help    F10 Esegui",
+                        w - 2, GN_SCREEN_STATUS);
+        if (!c.message.empty())
+            fcn_form::write(c.layout.echo_row, 2, c.message,
+                            w - 2, GN_SCREEN_ERROR);
+        gn_screen_flush();
+    }
+
+    GnFormChangeResult change(GnEntryCommand cmd,
+                               GnFormContext& c, void*) {
+        return fcn_form::change_linear(cmd, c);
+    }
+
+    void help(const GnFormContext& c, void* data) {
+        const auto& cfg = *static_cast<Config*>(data);
+        std::vector<std::string> lines{
+            std::string("F1 HELP - ") + cfg.title,
+            "", cfg.explanation, "", "Parametri:"
+        };
+        for (const auto& f : cfg.fields)
+            lines.emplace_back(std::string("  ") + f.hint);
+        lines.emplace_back("");
+        lines.emplace_back("F10 esegue; ESC ritorna al menu.");
+        lines.emplace_back("F1 / ENTER / ESC: ritorno ai parametri.");
+
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+        const int w = std::max(1, c.layout.terminal_columns - 1);
+        int row = 1;
+        for (const auto& s : lines) {
+            if (row > c.layout.terminal_rows) break;
+            fcn_form::write(row, 2, s, w - 2,
+                            row == 1 ? GN_SCREEN_TITLE : GN_SCREEN_NORMAL);
+            ++row;
+        }
+        gn_screen_flush();
+        for (;;) {
+            GnKeyEvent event{};
+            const GnPollResult r = gn_pump_once(&event);
+            if (r == GN_POLL_EMPTY) {
+                gn_cooperative_pause();
+                continue;
+            }
+            if (r == GN_POLL_ERROR || event.code == GN_KEY_F1 ||
+                event.code == GN_KEY_ENTER || event.code == GN_KEY_ESCAPE)
+                return;
+            gn_screen_beep();
+        }
+    }
+
+    bool validate(GnFormContext& c, void* data) {
+        const auto& cfg = *static_cast<Config*>(data);
+        for (std::size_t i = 0; i < COUNT; ++i) {
+            if (c.values[i].empty()) {
+                c.lab = i;
+                c.message = "Campo obbligatorio";
+                return false;
+            }
+        }
+        if (cfg.require_second_ge_first) {
+            try {
+                if (std::stod(c.values[1]) < std::stod(c.values[0])) {
+                    c.lab = 1;
+                    c.message = "Il finale deve essere >= all'inizio";
+                    return false;
+                }
+            } catch (const std::exception&) {
+                c.message = "Valore numerico non valido";
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool run(Config& cfg, std::array<double, COUNT>& p) {
+        std::string values[COUNT];
+        for (std::size_t i = 0; i < COUNT; ++i) {
+            std::ostringstream out;
+            out << std::setprecision(10) << p[i];
+            values[i] = out.str();
+        }
+        GnFormRunSpec spec{};
+        spec.layout_options.header_rows = 2;
+        spec.layout_options.top_separator = true;
+        spec.layout_options.bottom_separator = true;
+        spec.layout_options.hint_line = true;
+        spec.layout_options.echo_line = true;
+        spec.layout_options.status_rows = 1;
+        spec.layout_options.min_viewport_rows = 12;
+        spec.layout_options.min_viewport_columns = 80;
+        spec.values = values;
+        spec.field_count = COUNT;
+        spec.user_data = &cfg;
+        spec.prepare = prepare;
+        spec.render = render;
+        spec.change = change;
+        spec.help = help;
+        spec.validate = validate;
+        const GnFormRunResult r = gn_form_run_session(spec);
+        if (r == GN_FORM_RUN_ERROR)
+            std::cerr << "Errore nella sessione form.\n";
+        if (r != GN_FORM_RUN_ACCEPT) return false;
+        // I parametri del chiamante sono aggiornati SOLO dopo F10.
+        for (std::size_t i = 0; i < COUNT; ++i)
+            p[i] = std::stod(values[i]);
+        return true;
+    }
+} // namespace fcn_three_form
+
+namespace sandbox_form {
+    bool prompt(SandboxParams& p) {
+        static fcn_three_form::Config cfg{
+            " Sandbox - form di prova ",
+            "Banco sperimentale generico",
+            "Tre parametri indipendenti dall'esperimento JL",
+            "Form di servizio per futuri collaudi GNPORT.",
+            {{{"Inizio", "Inizio: 0 .. 100", 0.0, 100.0},
+              {"Fine", "Fine: inizio .. 1000", 0.0, 1000.0},
+              {"Parametro", "Parametro: 0.001 .. 10", 0.001, 10.0}}},
+            true
+        };
+        std::array<double, 3> v{{p.i_ini, p.i_max, p.i_val}};
+        if (!fcn_three_form::run(cfg, v)) return false;
+        p.i_ini = v[0]; p.i_max = v[1]; p.i_val = v[2];
+        return true;
+    }
+}
+
+namespace JL_distanze_form {
+    bool prompt(JLDistanceParams& p) {
+        static fcn_three_form::Config cfg{
+            " JL - distanza euclidea al quadrato ",
+            "Test deterministico preliminare alla proiezione",
+            "x=(0,0), y=(dx,dy); traslazione comune (t,t)",
+            "Verifica D2(x,y) e l'invarianza per traslazione.",
+            {{{"Delta X", "dx: -100 .. 100", -100.0, 100.0},
+              {"Delta Y", "dy: -100 .. 100", -100.0, 100.0},
+              {"Traslazione", "t: -100 .. 100", -100.0, 100.0}}},
+            false
+        };
+        std::array<double, 3> v{{p.dx, p.dy, p.t}};
+        if (!fcn_three_form::run(cfg, v)) return false;
+        p.dx = v[0]; p.dy = v[1]; p.t = v[2];
+        return true;
+    }
+}

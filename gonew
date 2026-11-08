@@ -2,13 +2,17 @@
 
 GNPORT_DIR="../VBD2Cpp"
 
+# attiva benchmark su prodotto matrici  ottimizzato  per sparse a sinistra
+# -DFCN_BENCH_MATMUL
+
+
 CXX="g++"
-CXXFLAGS="-std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-unused-local-typedefs -Wpedantic -Wno-sign-compare -Wno-unused-function"
+CXXFLAGS="-std=c++17 -O2  -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-unused-local-typedefs -Wpedantic -Wno-sign-compare -Wno-unused-function"
 
 HDFLAGS="-I . -I ./alglib -I ${GNPORT_DIR}/include"
 
 LDFLAGS="-L/usr/local/lib -L. -L/usr/local/lib/Matplot++"
-#  
+#
 # versione wsl notebook
 #
 LDLIBS="-Wl,--start-group -lmatplot -lsvdqr -lnodesoup -lpng -ltiff -lz -ljpeg -lm -Wl,--end-group"

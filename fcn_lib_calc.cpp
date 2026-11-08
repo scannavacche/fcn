@@ -1403,6 +1403,23 @@ Mat matrix_estende_ridotta(
 
 }
 
+void matrix_export_csv(const Mat& A, const std::string& filename)
+{
+    std::ofstream out(filename);
+    if (!out)
+        throw std::runtime_error("Impossibile aprire " + filename);
+
+    out << std::setprecision(17);
+
+    for (const Vec& row : A) {
+        for (size_t j = 0; j < row.size(); ++j) {
+            if (j) out << ',';
+            out << row[j];
+        }
+        out << '\n';
+    }
+}
+
 Mat matrix_householder_reflector(
     const Vec& v)
 {
@@ -1557,6 +1574,10 @@ Mat matrix_prodotto_coeff(
     return C;
 };
 
+/*
+
+// verificare se per migliorare la perf su matrici sparse basta un if/zero/skip
+
 Mat matrix_prodotto_matrix(
     const Mat& A, 
     const Mat& B) 
@@ -1582,16 +1603,146 @@ Mat matrix_prodotto_matrix(
 
     Mat C(rowsA, Vec(colsB, 0.0));
 
-    for (int i = 0; i < rowsA; ++i) {
-        for (int j = 0; j < colsB; ++j) {
-            for (int k = 0; k < colsA; ++k) {
-                C[i][j] += A[i][k] * B[k][j];
-            }
-        }
-    }
+
 
     return C;
 };
+
+*/ 
+
+namespace {
+
+    Mat matmul_ijk(const Mat& A, const Mat& B,
+                int rowsA, int colsA, int colsB)
+    {
+        Mat C = matrix_build_zero(rowsA, colsB);
+
+        for (int i = 0; i < rowsA; ++i)
+            for (int j = 0; j < colsB; ++j)
+                for (int k = 0; k < colsA; ++k)
+                    C[i][j] += A[i][k] * B[k][j];
+
+        return C;
+    }
+
+    Mat matmul_ikj(const Mat& A, const Mat& B,
+                int rowsA, int colsA, int colsB)
+    {
+        Mat C = matrix_build_zero(rowsA, colsB);
+
+        // Prodotto esterno: (m x 1) * (1 x p)
+
+        if (colsA == 1) {
+
+            const Vec& rowB = B[0];
+
+            for (int i = 0; i < rowsA; ++i) {
+                const double aik = A[i][0];
+                Vec& rowC = C[i];
+
+                for (int j = 0; j < colsB; ++j)
+                    rowC[j] = aik * rowB[j];
+            }
+
+            return C;
+        }
+
+        // prodotto matriciale vero
+
+        for (int i = 0; i < rowsA; ++i) {
+            const Vec& rowA = A[i];
+            Vec& rowC = C[i];
+
+            for (int k = 0; k < colsA; ++k) {
+                const double aik = rowA[k];
+
+                if (aik == 0.0)
+                    continue;
+
+                const Vec& rowB = B[k];
+
+                for (int j = 0; j < colsB; ++j)
+                    rowC[j] += aik * rowB[j];
+            }
+        }
+
+        return C;
+    }
+
+} // namespace anonimo
+
+
+Mat matrix_prodotto_matrix(
+    const Mat& A, 
+    const Mat& B) 
+{
+
+    int rowsA = A.size();
+    int colsA = A[0].size();
+    int rowsB = B.size();
+    int colsB = B[0].size();
+
+    //
+    // nella versione di foglio 3 usa assert  per il controllo di compatibilita'
+    //     assert(colsA == rowsB);
+    // questa era ancora tipo pedestre, poi proveremo con assert visto che la importiamo
+    // 
+
+    if (colsA != rowsB) {
+        throw std::runtime_error(
+            "Dimensioni incompatibili per il prodotto matrici: A è " \
+            + std::to_string(rowsA) + "x" + std::to_string(colsA) \
+            + " e B è " + std::to_string(rowsB) + "x" + std::to_string(colsB)
+        );
+    }
+
+#ifdef FCN_BENCH_MATMUL
+
+    // Prima l'ottimizzata, poi l'originale
+    const auto t0 = std::chrono::steady_clock::now();
+    Mat C = matmul_ikj(A, B, rowsA, colsA, colsB);
+    const auto t1 = std::chrono::steady_clock::now();
+
+    Mat C_ref = matmul_ijk(A, B, rowsA, colsA, colsB);
+    const auto t2 = std::chrono::steady_clock::now();
+
+    const double dt_ikj =
+        std::chrono::duration<double, std::milli>(t1 - t0).count();
+
+    const double dt_ijk =
+        std::chrono::duration<double, std::milli>(t2 - t1).count();
+
+    double max_diff = 0.0;
+
+    for (size_t i = 0; i < C.size(); ++i)
+        for (size_t j = 0; j < C[i].size(); ++j)
+            max_diff = std::max(
+                max_diff,
+                std::abs(C_ref[i][j] - C[i][j])
+            );
+
+    std::cerr << "ijk: " << dt_ijk << " ms"
+              << "  ikj: " << dt_ikj << " ms"
+              << "  speedup: " << dt_ijk / dt_ikj
+              << "  max_diff: " << max_diff << '\n';
+
+    if (dt_ikj > dt_ijk ) {
+        std::cerr
+            << "A=" << rowsA << "x" << colsA
+            << " B=" << rowsB << "x" << colsB
+            << " C=" << rowsA << "x" << colsB
+            << '\n';
+    }
+
+    return C;
+
+#else
+
+    return matmul_ikj(A, B, rowsA, colsA, colsB);
+
+#endif
+}
+
 
 Vec matrix_prodotto_vector(
     const Mat& A, 
@@ -1658,7 +1809,7 @@ Mat matrix_random_diagonally_dominant(
     return A;
 }
 
-Mat matrix_random_symmetric_diagonally_dominant(
+Mat matrix_random_diagonally_dominant_symmetric(
     int N,
     double margin)
 {
@@ -1677,6 +1828,61 @@ Mat matrix_random_symmetric_diagonally_dominant(
 
     return A;
 }
+
+Mat matrix_random_jl(
+    int k,
+    int d,
+    JLMatrixDistribution distribution,
+    unsigned seed,
+    int sparse_s)
+{
+    if (k <= 0 || d <= 0)
+        throw std::invalid_argument("matrix_random_jl: k e d devono essere positivi");
+
+    if (distribution == JLMatrixDistribution::Sparse && sparse_s < 1)
+        throw std::invalid_argument("matrix_random_jl: sparse_s deve essere >= 1");
+
+    Mat A = matrix_build_zero(k, d);
+    std::mt19937 rng(seed);
+    const double inv_sqrt_k = 1.0 / std::sqrt(static_cast<double>(k));
+
+    switch (distribution) {
+    case JLMatrixDistribution::Gaussian: {
+        // Var[N(0,1/sqrt(k))] = 1/k.
+        std::normal_distribution<double> gauss(0.0, inv_sqrt_k);
+        for (auto& row : A)
+            for (double& v : row)
+                v = gauss(rng);
+        break;
+    }
+
+    case JLMatrixDistribution::Rademacher: {
+        std::bernoulli_distribution positive(0.5);
+        for (auto& row : A)
+            for (double& v : row)
+                v = positive(rng) ? inv_sqrt_k : -inv_sqrt_k;
+        break;
+    }
+
+    case JLMatrixDistribution::Sparse: {
+        // P(nonzero)=1/s; condizionatamente, i due segni sono equiprobabili.
+        // Il valore non nullo e' sqrt(s/k), quindi la varianza e' 1/k.
+        std::bernoulli_distribution nonzero(1.0 / sparse_s);
+        std::bernoulli_distribution positive(0.5);
+        const double amplitude = std::sqrt(static_cast<double>(sparse_s)) * inv_sqrt_k;
+        for (auto& row : A)
+            for (double& v : row)
+                v = !nonzero(rng) ? 0.0 : (positive(rng) ? amplitude : -amplitude);
+        break;
+    }
+
+    default:
+        throw std::invalid_argument("matrix_random_jl: distribuzione sconosciuta");
+    }
+
+    return A;
+}
+
 
 Mat matrix_random_symmetric(
     int N,
@@ -1931,7 +2137,26 @@ Vec vector_campiona_f_k(
         
         return phi;
     }
-    
+
+
+double vector_distanza2(const Vec& x, const Vec& y)
+{
+    if (x.size() != y.size())
+        throw std::invalid_argument(
+            "vector_distanza2: dimensioni incompatibili"
+        );
+
+    double somma = 0.0;
+
+    for (size_t i = 0; i < x.size(); ++i) {
+        const double diff = x[i] - y[i];
+        somma += diff * diff;
+    }
+
+    return somma;
+}
+
+
 void vector_dump (
     Vec x, 
     int colspan, 

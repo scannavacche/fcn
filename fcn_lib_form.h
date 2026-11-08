@@ -258,6 +258,27 @@ namespace al_qr_form {
     bool prompt(AlQRParams& params);
 }
 
+struct SandboxParams {
+    double i_ini = 1.0;
+    double i_max = 5.0;
+    double i_val = 1.0;  // valore iniziale ammesso nel range (0,10]
+};
+
+namespace sandbox_form {
+    bool prompt(SandboxParams& params);
+}
+
+struct JLDistanceParams {
+    double dx = 3.0;
+    double dy = 4.0;
+    double t = 2.0;
+};
+
+namespace JL_distanze_form {
+    bool prompt(JLDistanceParams& params);
+}
+
+
 // Ritorno dal rapporto stdio alla form dei parametri.
 namespace fcn_form
 {
