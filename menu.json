@@ -263,6 +263,12 @@
           "label": "Test Distanza punti in righe di dataset",
           "action": "JL_X_rand",
           "enabled": true
+        },
+        {
+          "key": 3,
+          "label": "Test Distanza punti variando matrice",
+          "action": "JL_A_rand",
+          "enabled": true
         }
       ]
     },

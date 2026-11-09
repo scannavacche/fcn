@@ -3895,166 +3895,166 @@ namespace JL_distanze_form {
 namespace JL_distanze_dataset_form {
     namespace {
 
-    constexpr std::size_t FIELD_COUNT = 5;
+        constexpr std::size_t FIELD_COUNT = 5;
 
-    // UNICA sorgente dei limiti numerici: prepare() li trasferisce
-    // agli ENTRY; validate() NON li ricontrolla.
-    struct FieldDef {
-        const char* label;
-        const char* hint;
-        int length;
-        double lower;
-        double upper;
-    };
-
-    constexpr FieldDef field_defs[FIELD_COUNT] = {
-        {"Numero osservazioni n", "Numero di punti del dataset",             4, 2, 9999},
-        {"Dimensione originale d", "Numero di feature per osservazione",    4, 2, 9999},
-        {"Dimensione ridotta k",  "Dimensione JL; deve essere minore di d",  4, 1, 9999},
-        {"Seed dataset X",       "Seme di genera_cluster(n,d,seed)",        9, 0, 999999999},
-        {"Seed proiezione A",    "Seme della matrice gaussiana JL",          9, 0, 999999999}
-    };
-
-    void mask(const GnFormContext& ctx, void*) {
-        const auto& l = ctx.layout;
-        const int width = std::max(1, l.terminal_columns - 1);
-        gn_screen_clear();
-        gn_screen_cursor_visible(0);
-        fcn_form::write(l.header_top, 1,
-            " JL - distorsioni del dataset ", width, GN_SCREEN_TITLE);
-        fcn_form::write(l.header_top + 1, 3,
-            "Due cluster, proiezione JL gaussiana", width - 3);
-        fcn_form::separator(l.top_separator_row, l.terminal_columns);
-        fcn_form::write(l.viewport.top, 3,
-            "X: n x d; A: k x d; Y = X A^T: n x k", width - 3);
-        fcn_form::separator(l.bottom_separator_row, l.terminal_columns);
-        fcn_form::separator(l.status_separator_row, l.terminal_columns);
-    }
-
-    bool prepare(GnFormContext& ctx, void*) {
-        if (!ctx.fields || !ctx.values || ctx.field_count != FIELD_COUNT)
-            return false;
-
-        const int col = std::min(54,
-            std::max(43, ctx.layout.terminal_columns - 18));
-        const int right_col = col + 9 - 1;
-        const int row = ctx.layout.viewport.top + 2;
-
-        for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
-            const FieldDef& def = field_defs[i];
-            ctx.fields[i] = GnEntrySpec{
-                row + static_cast<int>(2 * i),
-                right_col - def.length + 1,
-                GN_FIELD_BOUNDED_NATURAL,
-                static_cast<std::size_t>(def.length),
-                def.lower,
-                def.upper,
-                1,
-                ctx.layout.echo_row
-            };
-        }
-        return true;
-    }
-
-    void render(const GnFormContext& ctx, void* data) {
-        if (!ctx.fields || !ctx.values ||
-            ctx.field_count != FIELD_COUNT || ctx.lab >= FIELD_COUNT)
-            return;
-
-        mask(ctx, data);
-        for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
-            const auto& f = ctx.fields[i];
-            fcn_form::write(f.row, 5,
-                std::string(i == ctx.lab ? "> " : "  ") + field_defs[i].label,
-                f.column - 6);
-            fcn_form::write(f.row, f.column,
-                fcn_form::field_value(ctx.values[i], f.length),
-                static_cast<int>(f.length), GN_SCREEN_FIELD);
-        }
-        gn_screen_clear_line(ctx.layout.echo_row);
-        const int width = std::max(1, ctx.layout.terminal_columns - 1);
-        fcn_form::write(ctx.layout.hint_row, 2,
-            field_defs[ctx.lab].hint, width - 2, GN_SCREEN_MESSAGE);
-        fcn_form::write(ctx.layout.status_top, 2,
-            "ESC Menu     F1 Help     F10 Esegui",
-            width - 2, GN_SCREEN_STATUS);
-        if (!ctx.message.empty())
-            fcn_form::write(ctx.layout.echo_row, 2,
-                ctx.message, width - 2, GN_SCREEN_ERROR);
-        gn_screen_flush();
-    }
-
-    GnFormChangeResult change(GnEntryCommand cmd, GnFormContext& ctx, void*) {
-        return fcn_form::change_linear(cmd, ctx);
-    }
-
-    void help(const GnFormContext& ctx, void*) {
-        std::vector<std::string> lines{
-            "F1 HELP - JL: distorsioni delle distanze",
-            "",
-            "X e' un dataset con n righe (osservazioni), d colonne (feature).",
-            "A ha k righe, d colonne. Y = X A^T e' n x k.",
-            "Un'unica A e' applicata a tutte le osservazioni.",
-            "",
-            "Parametri [min .. max]:"
+        // UNICA sorgente dei limiti numerici: prepare() li trasferisce
+        // agli ENTRY; validate() NON li ricontrolla.
+        struct FieldDef {
+            const char* label;
+            const char* hint;
+            int length;
+            double lower;
+            double upper;
         };
-        // Anche l'help ricava i limiti dalla stessa tabella, non li duplica.
-        for (const FieldDef& f : field_defs) {
-            std::ostringstream s;
-            s << " " << f.label << " [" << static_cast<long long>(f.lower)
-            << " .. " << static_cast<long long>(f.upper) << "]";
-            lines.push_back(s.str());
-        }
-        lines.emplace_back("Vincolo tra campi: k < d.");
-        lines.emplace_back("F10 esegue; ESC torna al menu.");
-        lines.emplace_back("F1 / ENTER / ESC: ritorno al form.");
 
-        gn_screen_clear();
-        gn_screen_cursor_visible(0);
-        const int width = std::max(1, ctx.layout.terminal_columns - 1);
-        int row = 1;
-        for (const auto& line : lines) {
-            if (row > ctx.layout.terminal_rows) break;
-            fcn_form::write(row, 2, line, width - 2,
-                row == 1 ? GN_SCREEN_TITLE : GN_SCREEN_NORMAL);
-            ++row;
+        constexpr FieldDef field_defs[FIELD_COUNT] = {
+            {"Numero osservazioni n", "Numero di punti del dataset",             4, 2, 9999},
+            {"Dimensione originale d", "Numero di feature per osservazione",    4, 2, 9999},
+            {"Dimensione ridotta k",  "Dimensione JL; deve essere minore di d",  4, 1, 9999},
+            {"Seed dataset X",       "Seme di genera_cluster(n,d,seed)",        9, 0, 999999999},
+            {"Seed proiezione A",    "Seme della matrice gaussiana JL",          9, 0, 999999999}
+        };
+
+        void mask(const GnFormContext& ctx, void*) {
+            const auto& l = ctx.layout;
+            const int width = std::max(1, l.terminal_columns - 1);
+            gn_screen_clear();
+            gn_screen_cursor_visible(0);
+            fcn_form::write(l.header_top, 1,
+                " JL - distorsioni del dataset ", width, GN_SCREEN_TITLE);
+            fcn_form::write(l.header_top + 1, 3,
+                "Due cluster, proiezione JL gaussiana", width - 3);
+            fcn_form::separator(l.top_separator_row, l.terminal_columns);
+            fcn_form::write(l.viewport.top, 3,
+                "X: n x d; A: k x d; Y = X A^T: n x k", width - 3);
+            fcn_form::separator(l.bottom_separator_row, l.terminal_columns);
+            fcn_form::separator(l.status_separator_row, l.terminal_columns);
         }
-        gn_screen_flush();
-        for (;;) {
-            GnKeyEvent event{};
-            const GnPollResult r = gn_pump_once(&event);
-            if (r == GN_POLL_EMPTY) {
-                gn_cooperative_pause();
-                continue;
+
+        bool prepare(GnFormContext& ctx, void*) {
+            if (!ctx.fields || !ctx.values || ctx.field_count != FIELD_COUNT)
+                return false;
+
+            const int col = std::min(54,
+                std::max(43, ctx.layout.terminal_columns - 18));
+            const int right_col = col + 9 - 1;
+            const int row = ctx.layout.viewport.top + 2;
+
+            for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+                const FieldDef& def = field_defs[i];
+                ctx.fields[i] = GnEntrySpec{
+                    row + static_cast<int>(2 * i),
+                    right_col - def.length + 1,
+                    GN_FIELD_BOUNDED_NATURAL,
+                    static_cast<std::size_t>(def.length),
+                    def.lower,
+                    def.upper,
+                    1,
+                    ctx.layout.echo_row
+                };
             }
-            if (r == GN_POLL_ERROR ||
-                event.code == GN_KEY_F1 ||
-                event.code == GN_KEY_ENTER ||
-                event.code == GN_KEY_ESCAPE) return;
-            gn_screen_beep();
+            return true;
         }
-    }
 
-    bool validate(GnFormContext& ctx, void*) {
-        // Soltanto validazione DI MERITO, fra due campi.
-        // Non ripetiamo i lower/upper delle GnEntrySpec.
-        try {
-            const int d = std::stoi(ctx.values[1]);
-            const int k = std::stoi(ctx.values[2]);
-            if (k >= d) {
+        void render(const GnFormContext& ctx, void* data) {
+            if (!ctx.fields || !ctx.values ||
+                ctx.field_count != FIELD_COUNT || ctx.lab >= FIELD_COUNT)
+                return;
+
+            mask(ctx, data);
+            for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+                const auto& f = ctx.fields[i];
+                fcn_form::write(f.row, 5,
+                    std::string(i == ctx.lab ? "> " : "  ") + field_defs[i].label,
+                    f.column - 6);
+                fcn_form::write(f.row, f.column,
+                    fcn_form::field_value(ctx.values[i], f.length),
+                    static_cast<int>(f.length), GN_SCREEN_FIELD);
+            }
+            gn_screen_clear_line(ctx.layout.echo_row);
+            const int width = std::max(1, ctx.layout.terminal_columns - 1);
+            fcn_form::write(ctx.layout.hint_row, 2,
+                field_defs[ctx.lab].hint, width - 2, GN_SCREEN_MESSAGE);
+            fcn_form::write(ctx.layout.status_top, 2,
+                "ESC Menu     F1 Help     F10 Esegui",
+                width - 2, GN_SCREEN_STATUS);
+            if (!ctx.message.empty())
+                fcn_form::write(ctx.layout.echo_row, 2,
+                    ctx.message, width - 2, GN_SCREEN_ERROR);
+            gn_screen_flush();
+        }
+
+        GnFormChangeResult change(GnEntryCommand cmd, GnFormContext& ctx, void*) {
+            return fcn_form::change_linear(cmd, ctx);
+        }
+
+        void help(const GnFormContext& ctx, void*) {
+            std::vector<std::string> lines{
+                "F1 HELP - JL: distorsioni delle distanze",
+                "",
+                "X e' un dataset con n righe (osservazioni), d colonne (feature).",
+                "A ha k righe, d colonne. Y = X A^T e' n x k.",
+                "Un'unica A e' applicata a tutte le osservazioni.",
+                "",
+                "Parametri [min .. max]:"
+            };
+            // Anche l'help ricava i limiti dalla stessa tabella, non li duplica.
+            for (const FieldDef& f : field_defs) {
+                std::ostringstream s;
+                s << " " << f.label << " [" << static_cast<long long>(f.lower)
+                << " .. " << static_cast<long long>(f.upper) << "]";
+                lines.push_back(s.str());
+            }
+            lines.emplace_back("Vincolo tra campi: k < d.");
+            lines.emplace_back("F10 esegue; ESC torna al menu.");
+            lines.emplace_back("F1 / ENTER / ESC: ritorno al form.");
+
+            gn_screen_clear();
+            gn_screen_cursor_visible(0);
+            const int width = std::max(1, ctx.layout.terminal_columns - 1);
+            int row = 1;
+            for (const auto& line : lines) {
+                if (row > ctx.layout.terminal_rows) break;
+                fcn_form::write(row, 2, line, width - 2,
+                    row == 1 ? GN_SCREEN_TITLE : GN_SCREEN_NORMAL);
+                ++row;
+            }
+            gn_screen_flush();
+            for (;;) {
+                GnKeyEvent event{};
+                const GnPollResult r = gn_pump_once(&event);
+                if (r == GN_POLL_EMPTY) {
+                    gn_cooperative_pause();
+                    continue;
+                }
+                if (r == GN_POLL_ERROR ||
+                    event.code == GN_KEY_F1 ||
+                    event.code == GN_KEY_ENTER ||
+                    event.code == GN_KEY_ESCAPE) return;
+                gn_screen_beep();
+            }
+        }
+
+        bool validate(GnFormContext& ctx, void*) {
+            // Soltanto validazione DI MERITO, fra due campi.
+            // Non ripetiamo i lower/upper delle GnEntrySpec.
+            try {
+                const int d = std::stoi(ctx.values[1]);
+                const int k = std::stoi(ctx.values[2]);
+                if (k >= d) {
+                    ctx.lab = 2;
+                    ctx.message = "La dimensione ridotta k deve essere < d";
+                    return false;
+                }
+            } catch (const std::exception&) {
+                // Gestione difensiva: sintassi e range del singolo campo
+                // restano responsabilita' dell'ENTRY.
                 ctx.lab = 2;
-                ctx.message = "La dimensione ridotta k deve essere < d";
+                ctx.message = "Valore numerico non valido";
                 return false;
             }
-        } catch (const std::exception&) {
-            // Gestione difensiva: sintassi e range del singolo campo
-            // restano responsabilita' dell'ENTRY.
-            ctx.lab = 2;
-            ctx.message = "Valore numerico non valido";
-            return false;
+            return true;
         }
-        return true;
-    }
     } // namespace anonimo
 
     bool prompt(JLDistanzeDatasetParams& p) {
@@ -4101,4 +4101,232 @@ namespace JL_distanze_dataset_form {
         return true;
     }
 } // namespace JL_distanze_dataset_form
+
+namespace JL_distanze_dataMC_form {
+    namespace {
+
+        constexpr std::size_t FIELD_COUNT = 6;
+
+        // UNICA sorgente dei limiti numerici: prepare() li trasferisce
+        // agli ENTRY; validate() NON li ricontrolla.
+        struct FieldDef {
+            const char* label;
+            const char* hint;
+            int length;
+            double lower;
+            double upper;
+        };
+
+        constexpr FieldDef field_defs[FIELD_COUNT] = {
+            {"Numero osservazioni n", "Numero di punti del dataset",             4, 2, 9999},
+            {"Dimensione originale d", "Numero di feature per osservazione",    4, 2, 9999},
+            {"Dimensione ridotta k",  "Dimensione JL; deve essere minore di d",  4, 1, 9999},
+            {"Seed dataset X",       "Seme di genera_cluster vettore X",        9, 0, 999999999},
+            {"Seed proiezione A",    "Seme della matrice gaussiana JL",          9, 0, 999999999},
+            {"Numero proiezioni T",    "N di proiezioni con matrici diverse",          9, 1, 2000}
+        };
+
+        void mask(const GnFormContext& ctx, void*) {
+            const auto& l = ctx.layout;
+            const int width = std::max(1, l.terminal_columns - 1);
+            gn_screen_clear();
+            gn_screen_cursor_visible(0);
+            fcn_form::write(l.header_top, 1,
+                " JL - distorsioni del dataset con piu' matrici", width, GN_SCREEN_TITLE);
+            fcn_form::write(l.header_top + 1, 3,
+                "Due cluster, multiple proiezioni JL gaussiane", width - 3);
+            fcn_form::separator(l.top_separator_row, l.terminal_columns);
+            fcn_form::write(l.viewport.top, 3,
+                "X: n x d; A: k x d; Y = X A^T: n x k", width - 3);
+            fcn_form::separator(l.bottom_separator_row, l.terminal_columns);
+            fcn_form::separator(l.status_separator_row, l.terminal_columns);
+        }
+
+        bool prepare(GnFormContext& ctx, void*) {
+            if (!ctx.fields || !ctx.values || ctx.field_count != FIELD_COUNT)
+                return false;
+
+            const int col = std::min(54,
+                std::max(43, ctx.layout.terminal_columns - 18));
+            const int right_col = col + 9 - 1;
+            const int row = ctx.layout.viewport.top + 2;
+
+            for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+                const FieldDef& def = field_defs[i];
+                ctx.fields[i] = GnEntrySpec{
+                    row + static_cast<int>(2 * i),
+                    right_col - def.length + 1,
+                    GN_FIELD_BOUNDED_NATURAL,
+                    static_cast<std::size_t>(def.length),
+                    def.lower,
+                    def.upper,
+                    1,
+                    ctx.layout.echo_row
+                };
+            }
+            return true;
+        }
+
+        void render(const GnFormContext& ctx, void* data) {
+            if (!ctx.fields || !ctx.values ||
+                ctx.field_count != FIELD_COUNT || ctx.lab >= FIELD_COUNT)
+                return;
+
+            mask(ctx, data);
+            for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+                const auto& f = ctx.fields[i];
+                fcn_form::write(f.row, 5,
+                    std::string(i == ctx.lab ? "> " : "  ") + field_defs[i].label,
+                    f.column - 6);
+                fcn_form::write(f.row, f.column,
+                    fcn_form::field_value(ctx.values[i], f.length),
+                    static_cast<int>(f.length), GN_SCREEN_FIELD);
+            }
+            gn_screen_clear_line(ctx.layout.echo_row);
+            const int width = std::max(1, ctx.layout.terminal_columns - 1);
+            fcn_form::write(ctx.layout.hint_row, 2,
+                field_defs[ctx.lab].hint, width - 2, GN_SCREEN_MESSAGE);
+            fcn_form::write(ctx.layout.status_top, 2,
+                "ESC Menu     F1 Help     F10 Esegui",
+                width - 2, GN_SCREEN_STATUS);
+            if (!ctx.message.empty())
+                fcn_form::write(ctx.layout.echo_row, 2,
+                    ctx.message, width - 2, GN_SCREEN_ERROR);
+            gn_screen_flush();
+        }
+
+        GnFormChangeResult change(GnEntryCommand cmd, GnFormContext& ctx, void*) {
+            return fcn_form::change_linear(cmd, ctx);
+        }
+
+
+        void help(const GnFormContext& ctx, void*) {
+            std::vector<std::string> lines{
+                "F1 HELP - JL: esperimento Monte Carlo",
+                "",
+                "X e' un dataset con n osservazioni e d feature.",
+                "X viene generato UNA SOLA VOLTA.",
+                "Si generano T matrici gaussiane A di dimensione k x d.",
+                "Ogni matrice produce Y = X A^T.",
+                "",
+                "Si misurano le distorsioni delle coppie di punti.",
+                "Una proiezione fallisce per epsilon se almeno",
+                "una coppia supera la soglia.",
+                "",
+                "Seed_A iniziale: i trial usano seed consecutivi.",
+                "",
+                "Parametri [min .. max]:"
+            };
+            // Anche l'help ricava i limiti dalla stessa tabella, non li duplica.
+            for (const FieldDef& f : field_defs) {
+                std::ostringstream s;
+                s << " " << f.label << " [" << static_cast<long long>(f.lower)
+                << " .. " << static_cast<long long>(f.upper) << "]";
+                lines.push_back(s.str());
+            }
+            lines.emplace_back("Vincolo tra campi: k < d.");
+            lines.emplace_back("F10 esegue; ESC torna al menu.");
+            lines.emplace_back("F1 / ENTER / ESC: ritorno al form.");
+
+            gn_screen_clear();
+            gn_screen_cursor_visible(0);
+            const int width = std::max(1, ctx.layout.terminal_columns - 1);
+            int row = 1;
+            for (const auto& line : lines) {
+                if (row > ctx.layout.terminal_rows) break;
+                fcn_form::write(row, 2, line, width - 2,
+                    row == 1 ? GN_SCREEN_TITLE : GN_SCREEN_NORMAL);
+                ++row;
+            }
+            gn_screen_flush();
+            for (;;) {
+                GnKeyEvent event{};
+                const GnPollResult r = gn_pump_once(&event);
+                if (r == GN_POLL_EMPTY) {
+                    gn_cooperative_pause();
+                    continue;
+                }
+                if (r == GN_POLL_ERROR ||
+                    event.code == GN_KEY_F1 ||
+                    event.code == GN_KEY_ENTER ||
+                    event.code == GN_KEY_ESCAPE) return;
+                gn_screen_beep();
+            }
+        }
+
+        bool validate(GnFormContext& ctx, void*) {
+            // Soltanto validazione DI MERITO, fra due campi.
+            // Non ripetiamo i lower/upper delle GnEntrySpec.
+            try {
+                const int d = std::stoi(ctx.values[1]);
+                const int k = std::stoi(ctx.values[2]);
+                if (k >= d) {
+                    ctx.lab = 2;
+                    ctx.message = "La dimensione ridotta k deve essere < d";
+                    return false;
+                }
+            } catch (const std::exception&) {
+                // Gestione difensiva: sintassi e range del singolo campo
+                // restano responsabilita' dell'ENTRY.
+                ctx.lab = 2;
+                ctx.message = "Valore numerico non valido";
+                return false;
+            }
+            return true;
+        }
+    } // namespace anonimo
+
+
+    bool prompt(JLDistanzeMCParams& p) {
+        std::string values[FIELD_COUNT] = {
+            std::to_string(p.n),
+            std::to_string(p.d),
+            std::to_string(p.k),
+            std::to_string(p.seed),
+            std::to_string(p.seed_A),
+            std::to_string(p.T)
+        };
+
+        GnFormRunSpec spec{};
+        spec.layout_options.header_rows = 2;
+        spec.layout_options.top_separator = true;
+        spec.layout_options.bottom_separator = true;
+        spec.layout_options.hint_line = true;
+        spec.layout_options.echo_line = true;
+        spec.layout_options.status_rows = 1;
+        spec.layout_options.min_viewport_rows = 14;
+        spec.layout_options.min_viewport_columns = 80;
+
+        spec.values = values;
+        spec.field_count = FIELD_COUNT;
+        spec.prepare = prepare;
+        spec.render = render;
+        spec.change = change;
+        spec.help = help;
+        spec.validate = validate;
+
+        const GnFormRunResult result = gn_form_run_session(spec);
+
+        if (result != GN_FORM_RUN_ACCEPT) {
+            if (result == GN_FORM_RUN_ERROR)
+                std::cerr
+                    << "Impossibile aprire il form JL Monte Carlo.\n";
+            return false;
+        }
+
+        // Commit atomico solo dopo F10.
+        JLDistanzeMCParams new_params = p;
+
+        new_params.n      = std::stoi(values[0]);
+        new_params.d      = std::stoi(values[1]);
+        new_params.k      = std::stoi(values[2]);
+        new_params.seed   = std::stoi(values[3]);
+        new_params.seed_A = std::stoi(values[4]);
+        new_params.T      = std::stoi(values[5]);
+
+        p = new_params;
+        return true;
+    }
+} // namespace JL_distanze_dataMC_form
+
 

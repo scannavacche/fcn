@@ -3469,17 +3469,225 @@ namespace {
         }
     }
 
-    void sandbox() {
-        SandboxParams params{};
-        while (sandbox_form::prompt(params)) {
+    void JL_distanze_dataMC() {
+        JLDistanzeMCParams params{};
+
+        constexpr std::array<double, 6> soglie{
+            0.05, 0.10, 0.20, 0.30, 0.40, 0.50
+        };
+        constexpr size_t NS = soglie.size();
+
+        struct Coppia {
+            size_t i, j;
+            double dx2;
+        };
+
+        // Ripristina lo stato numerico di cout anche in caso
+        // di eccezione, tramite RAII.
+        struct CoutGuard {
+            std::ios saved{nullptr};
+            CoutGuard() { saved.copyfmt(std::cout); }
+            ~CoutGuard() { std::cout.copyfmt(saved); }
+        };
+
+        while (JL_distanze_dataMC_form::prompt(params)) {
             clear_screen();
-            cout << "SANDBOX GNPORT\n";
-            cout << "Inizio     : " << params.i_ini << '\n';
-            cout << "Fine       : " << params.i_max << '\n';
-            cout << "Parametro  : " << params.i_val << '\n';
+            const size_t T = static_cast<size_t>(params.T);
+            CoutGuard cout_guard;
+
+            if (params.n < 2 || params.d < 1 ||
+                params.k < 1 || params.k >= params.d)
+                throw std::runtime_error(
+                    "JL MC: dimensioni incompatibili");
+
+            // 1. Dataset generato una sola volta.
+            auto [X, label] =
+                genera_cluster(params.n, params.d, params.seed);
+
+            if (X.size() != label.size())
+                throw std::runtime_error(
+                    "JL MC: X e label incompatibili");
+
+            // 2. Distanze originali precalcolate.
+            std::vector<Coppia> coppie;
+            size_t coincidenti = 0;
+
+            for (size_t i = 0; i < X.size(); ++i) {
+                for (size_t j = i + 1; j < X.size(); ++j) {
+                    double dx2 = vector_distanza2(X[i], X[j]);
+
+                    if (dx2 == 0.0) {
+                        ++coincidenti;
+                        continue;
+                    }
+
+                    coppie.push_back({i, j, dx2});
+                }
+            }
+
+            const size_t M = coppie.size();
+            if (M == 0)
+                throw std::runtime_error(
+                    "JL MC: nessuna coppia valida");
+
+            // 3. Accumulatori Monte Carlo.
+            std::array<size_t, NS> proiezioni_fallite{};
+            std::array<std::uint64_t, NS> violazioni_totali{};
+
+            double somma_medie = 0.0;
+            double somma_massimi = 0.0;
+            double minimo_massimi =
+                std::numeric_limits<double>::infinity();
+            double massimo_massimi = 0.0;
+
+            size_t trial_migliore = 0;
+            size_t trial_peggiore = 0;
+
+            // Controllo preventivo overflow dei seed.
+            using Seed = unsigned;
+            const auto seed0 =
+                static_cast<std::uint64_t>(params.seed_A);
+
+            if (seed0 >
+                static_cast<std::uint64_t>(
+                    std::numeric_limits<Seed>::max()) - (T - 1))
+                throw std::runtime_error(
+                    "JL MC: intervallo seed_A non valido");
+
+            // 4. Ciclo Monte Carlo.
+            for (size_t t = 0; t < T; ++t) {
+                Seed seed_A =
+                    static_cast<Seed>(seed0 + t);
+
+                Mat A = matrix_random_jl(
+                    params.k,
+                    params.d,
+                    JLMatrixDistribution::Gaussian,
+                    seed_A,
+                    3
+                );
+
+                Mat Y = matrix_prodotto_matrix(
+                    X, matrix_trasposta(A));
+
+                std::array<size_t, NS> violazioni{};
+                double somma_delta = 0.0;
+                double max_delta = 0.0;
+
+                for (const auto& c : coppie) {
+                    double dy2 =
+                        vector_distanza2(Y[c.i], Y[c.j]);
+
+                    double delta =
+                        std::abs(dy2 / c.dx2 - 1.0);
+
+                    if (!std::isfinite(delta))
+                        throw std::runtime_error(
+                            "JL MC: distorsione non finita");
+
+                    somma_delta += delta;
+                    max_delta = std::max(max_delta, delta);
+
+                    for (size_t s = 0; s < NS; ++s) {
+                        if (delta > soglie[s])
+                            ++violazioni[s];
+                    }
+                }
+
+                const double media_delta =
+                    somma_delta / static_cast<double>(M);
+
+                if (t == 0) {
+                    std::cout << "\n=== CONTROLLO PRIMO TRIAL ===\n"
+                            << "Seed_A:           " << seed_A << '\n'
+                            << "Distorsione media: " << media_delta << '\n'
+                            << "Distorsione max:   " << max_delta << '\n';
+                }
+                somma_medie += media_delta;
+                somma_massimi += max_delta;
+
+                if (max_delta < minimo_massimi) {
+                    minimo_massimi = max_delta;
+                    trial_migliore = t;
+                }
+                if (max_delta > massimo_massimi) {
+                    massimo_massimi = max_delta;
+                    trial_peggiore = t;
+                }
+
+                for (size_t s = 0; s < NS; ++s) {
+                    violazioni_totali[s] += violazioni[s];
+
+                    if (violazioni[s] != 0)
+                        ++proiezioni_fallite[s];
+                }
+            }
+
+            // 5. Report.
+            std::cout
+                << "\n=== PARAMETRI JL MONTE CARLO ===\n"
+                << "Numero osservazioni n: " << params.n << '\n'
+                << "Dimensione originale d: " << params.d << '\n'
+                << "Dimensione ridotta  k: " << params.k << '\n'
+                << "Seed dataset X:        " << params.seed << '\n'
+                << "Seed_A iniziale:       " << params.seed_A << '\n'
+                << "Seed_A finale:         " << seed0 + T - 1 << '\n'
+                << "Distribuzione A:       Gaussiana\n"
+                << "Proiezioni T:          " << T << '\n'
+                << "Coppie valide:         " << M << '\n'
+                << "Coppie coincidenti:    " << coincidenti << '\n';
+
+            std::cout << "\n=== STATISTICHE DISTORSIONI ===\n"
+                << "Media delle distorsioni medie: "
+                << somma_medie / T << '\n'
+                << "Media delle distorsioni massime: "
+                << somma_massimi / T << '\n'
+                << "Minimo dei massimi: "
+                << minimo_massimi << '\n'
+                << "Massimo dei massimi: "
+                << massimo_massimi << '\n'
+                << "Seed migliore (max delta): "
+                << seed0 + trial_migliore << '\n'
+                << "Seed peggiore (max delta): "
+                << seed0 + trial_peggiore << '\n';
+
+            std::cout << "\n=== SOGLIE JL MONTE CARLO ===\n"
+                << "Epsilon    Coppie %    Fallimenti    Fall. %\n";
+
+            for (size_t s = 0; s < NS; ++s) {
+                double pct_coppie =
+                    100.0 * static_cast<double>(
+                        violazioni_totali[s]) /
+                    (static_cast<double>(T) * M);
+
+                double pct_fallimenti =
+                    100.0 * proiezioni_fallite[s] / T;
+
+                std::cout << std::fixed
+                    << std::setprecision(2)
+                    << std::setw(7) << soglie[s]
+                    << std::setw(12) << pct_coppie
+                    << std::setw(14) << proiezioni_fallite[s]
+                    << std::setw(12) << pct_fallimenti
+                    << "%\n";
+            }
+
+            std::cout << "\n";
             fcn_form::wait_report();
         }
     }
+
+    void sandbox() {
+            SandboxParams params{};
+            while (sandbox_form::prompt(params)) {
+                clear_screen();
+                cout << "SANDBOX GNPORT\n";
+                cout << "Inizio     : " << params.i_ini << '\n';
+                cout << "Fine       : " << params.i_max << '\n';
+                cout << "Parametro  : " << params.i_val << '\n';
+                fcn_form::wait_report();
+            }
+        }
 
 
     /*
@@ -3521,6 +3729,7 @@ namespace {
             {"al_qr",           al_qr},
             {"JL_dist",         JL_distanze}, 
             {"JL_X_rand",       JL_distanze_dataset}, 
+            {"JL_A_rand",       JL_distanze_dataMC}, 
             {"sandbox",         sandbox}
             };
         }

@@ -290,6 +290,18 @@ namespace JL_distanze_dataset_form {
     bool prompt(JLDistanzeDatasetParams& params);
 }
 
+struct JLDistanzeMCParams {
+    int n = 10;
+    int d = 80;
+    int k = 20;
+    int seed = 42;
+    int seed_A = 12345;
+    int T = 120;
+};
+
+namespace JL_distanze_dataMC_form {
+    bool prompt(JLDistanzeMCParams& params);
+}
 
 // Ritorno dal rapporto stdio alla form dei parametri.
 namespace fcn_form
