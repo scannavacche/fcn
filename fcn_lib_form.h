@@ -304,7 +304,7 @@ namespace JL_distanze_dataMC_form {
 }
 
 // Da aggiungere a fcn_lib_form.h, accanto alle altre struct JL.
-struct JLCoeffParams {
+struct JLCoeffNParams {
     int n_min = 10;
     int n_max = 100;
     int n_step = 10;       // passo lineare oppure fattore geometrico
@@ -319,8 +319,29 @@ struct JLCoeffParams {
     int success_pct = 95;
 };
 
-namespace JL_stima_coefficiente_form {
-    bool prompt(JLCoeffParams& params);
+namespace JL_stima_coeff_n_form {
+    bool prompt(JLCoeffNParams& params);
+}
+
+// Da aggiungere a fcn_lib_form.h, accanto alle altre struct JL.
+// Campagna complementare: n fisso, d in progressione.
+struct JLCoeffDParams {
+    int d_min = 500;
+    int d_max = 2000;
+    int d_step = 2;       // passo lineare oppure fattore geometrico
+    int d_mode = 2;       // 1=lineare, 2=geometrica
+    int eps_min_pct = 20; // 20 significa epsilon = 0.20
+    int eps_max_pct = 50;
+    int eps_step_pct = 5;
+    int n = 30;
+    int seed_X = 42;
+    int seed_A = 12345;
+    int T = 120;
+    int success_pct = 95;
+};
+
+namespace JL_stima_coeff_d_form {
+    bool prompt(JLCoeffDParams& params);
 }
 
 // Ritorno dal rapporto stdio alla form dei parametri.

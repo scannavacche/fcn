@@ -272,8 +272,14 @@
         },
         {
           "key": 4,
-          "label": "Test coeff di proporzionalita' di JL",
-          "action": "JL_K_C",
+          "label": "Test coeff per k di JL variando n, d fisso",
+          "action": "JL_K_C_n",
+          "enabled": true
+        },
+        {
+          "key": 5,
+          "label": "Test coeff per k di JL variando d, n fisso",
+          "action": "JL_K_C_d",
           "enabled": true
         }
       ]

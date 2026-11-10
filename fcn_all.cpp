@@ -4,16 +4,20 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <ctime>
+#include <filesystem>
 #include <fstream>
 #include <functional>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <iterator>
 #include <limits>   // per std::numeric_limits
+#include <locale>
 #include <map>
 #include <matplot/matplot.h>
 #include <random>
 #include <set>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -3691,8 +3695,20 @@ namespace {
     // ATTENZIONE: primo prototipo numerico. Il 'k trovato' e' il primo
     // successo OSSERVATO nella griglia campionata, non il minimo matematico.
 
-    void JL_stima_coefficiente() {
-        JLCoeffParams params{};
+// JL_stima_coeff_n() -- n variabile, d fisso. Da inserire in fcn_all.cpp.
+// Richiede la struct JLCoeffParams e JL_stima_coeff_n_form::prompt
+// gia' aggiunti in fcn_lib_form.h / fcn_lib_form.cpp.
+//
+// Include standard, se non gia' presenti:
+// <algorithm> <cmath> <cstdint> <fstream> <iomanip> <iostream>
+// <iterator> <limits> <map> <set> <stdexcept> <string> <utility> <vector>
+// <chrono> <ctime> <filesystem> <locale> <sstream>
+//
+// ATTENZIONE: primo prototipo numerico. Il 'k trovato' e' il primo
+// successo OSSERVATO nella griglia campionata, non il minimo matematico.
+
+    void JL_stima_coeff_n() {
+        JLCoeffNParams params{};
 
         struct Pair {
             std::size_t i;
@@ -3717,7 +3733,7 @@ namespace {
         constexpr int REFINE_STEPS = 3;
         constexpr std::size_t MAX_K_EVAL_PER_N = 28;
 
-        while (JL_stima_coefficiente_form::prompt(params)) {
+        while (JL_stima_coeff_n_form::prompt(params)) {
             clear_screen();
             CoutGuard cout_guard;
 
@@ -3753,22 +3769,52 @@ namespace {
             const int richiesti =
                 (params.T * params.success_pct + 99) / 100;
 
-            std::ofstream scan_csv("JL_coeff_scan.csv");
-            std::ofstream summary_csv("JL_coeff_summary.csv");
+            // Identificativo unico della campagna, condiviso dai due CSV.
+            // Se due esecuzioni coincidono nel millisecondo, aggiunge un suffisso.
+            const auto now = std::chrono::system_clock::now();
+            const std::time_t now_t = std::chrono::system_clock::to_time_t(now);
+            std::tm local_tm{};
+    #ifdef _WIN32
+            localtime_s(&local_tm, &now_t);
+    #else
+            localtime_r(&now_t, &local_tm);
+    #endif
+            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now.time_since_epoch()).count() % 1000;
+            std::ostringstream stamp;
+            stamp << std::put_time(&local_tm, "%Y%m%d_%H%M%S")
+                << '_' << std::setw(3) << std::setfill('0') << ms;
+            const std::string base_id = stamp.str();
+            std::string run_id;
+            std::string scan_name, summary_name;
+            for (int suffix = 0;; ++suffix) {
+                run_id = base_id + (suffix ? "_" + std::to_string(suffix) : "");
+                scan_name = "JL_coeff_n_scan_" + run_id + ".csv";
+                summary_name = "JL_coeff_n_summary_" + run_id + ".csv";
+                if (!std::filesystem::exists(scan_name) &&
+                    !std::filesystem::exists(summary_name)) break;
+            }
+
+            std::ofstream scan_csv(scan_name);
+            std::ofstream summary_csv(summary_name);
             if (!scan_csv || !summary_csv)
                 throw std::runtime_error("JL coefficiente: impossibile creare i CSV");
+            // CSV: separatore virgola e punto decimale indipendenti dal locale.
+            scan_csv.imbue(std::locale::classic());
+            summary_csv.imbue(std::locale::classic());
 
-            scan_csv << "n,d,k,epsilon,k0,T,seed_X,seed_A_start,"
-                        "successi,successo_pct,media_delta,media_massimi,"
-                        "successo_obiettivo_pct,n_min,n_max,n_step,n_mode,"
+            // Intestazioni CSV brevi e su UNA riga: adatte a parser e grafici.
+            scan_csv << "run_id,n,d,k,eps,k0,T,seed_X,seed_A_start,"
+                        "successi,successo_pct,media_delta,media_max,"
+                        "obiettivo_pct,n_min,n_max,n_step,n_mode,"
                         "eps_min_pct,eps_max_pct,eps_step_pct,distribuzione\n";
-            summary_csv << "n,d,epsilon,k0,k_non_successo,k_successo,"
-                        "C_empirico,successo_pct,T,seed_X,seed_A_start,"
-                        "k_valutati,esito,successo_obiettivo_pct,"
+            summary_csv << "run_id,n,d,eps,k0,k_non_successo,k_successo,"
+                        "C_hat,successo_pct,T,seed_X,seed_A_start,"
+                        "k_valutati,esito,obiettivo_pct,"
                         "n_min,n_max,n_step,n_mode,"
-                        "eps_min_pct,eps_max_pct,eps_step_pct,distribuzione\n";
-            scan_csv << std::setprecision(17);
-            summary_csv << std::setprecision(17);
+                        "eps_min_pct,eps_max_pct,eps_step_pct,distribuzione,"
+                        "k_max_valutato,best_successi,best_successo_pct,best_k,"
+                        "k_cap_testato,budget_esaurito,tempo_n_s\n";
 
             std::cout << "\n=== JL: STIMA COEFFICIENTE DI SCALA ===\n"
                     << "d = " << params.d
@@ -3784,10 +3830,12 @@ namespace {
                     << params.eps_step_pct << " punti percentuali\n"
                     << "n: " << n_values.size() << " valori; "
                     << "epsilon: " << eps_values.size() << " soglie\n"
-                    << "Scansione k geometrica, ancorata ai k0 (C=1),"
+                    << "ID campagna: " << run_id << '\n'
+                    << "Scansione k da min(k0), ancorata ai k0 (C=1),"
                         " e raffinamento locale.\n";
 
             for (const int n : n_values) {
+                const auto n_start = std::chrono::steady_clock::now();
                 auto [X, label] = genera_cluster(n, params.d, params.seed_X);
                 if (X.size() != label.size())
                     throw std::runtime_error("JL coefficiente: X e label incompatibili");
@@ -3861,23 +3909,25 @@ namespace {
                     return true;
                 };
 
-                const auto ok = [&](const MCResult& r, std::size_t e) {
-                    return r.successi[e] >= richiesti;
+                const auto ok = [&](int k, const MCResult& r, std::size_t e) {
+                    // Politica della campagna: per epsilon si valuta solo k>=k0.
+                    return k >= k0_values[e] && r.successi[e] >= richiesti;
                 };
                 const auto all_ok = [&]() {
                     if (cache.empty()) return false;
                     const MCResult& r = cache.rbegin()->second;
                     for (std::size_t e = 0; e < eps_values.size(); ++e)
-                        if (!ok(r, e)) return false;
+                        if (!ok(cache.rbegin()->first, r, e)) return false;
                     return true;
                 };
 
                 // Griglia grossolana in k: riferimento C=1 per ogni epsilon,
                 // piu' crescita geometrica 1.5x fino al limite k<d.
-                // Partenza sotto il k0 piu' piccolo per poter osservare C<1.
+                // Partenza dal piu' piccolo k0 (epsilon piu' grande):
+                // una scelta operativa, NON un limite inferiore del lemma.
                 std::set<int> coarse;
                 const int start = std::max(1,
-                    std::min(k_cap, k0_values.back() / 2));
+                    std::min(k_cap, k0_values.back()));
                 for (const int k0 : k0_values)
                     if (k0 >= 1 && k0 <= k_cap) coarse.insert(k0);
 
@@ -3900,34 +3950,49 @@ namespace {
                     for (int pass = 0; pass < REFINE_STEPS; ++pass) {
                         const auto upper = std::find_if(
                             cache.begin(), cache.end(),
-                            [&](const auto& v) { return ok(v.second, e); });
+                            [&](const auto& v) { return ok(v.first, v.second, e); });
                         if (upper == cache.end()) break;
 
-                        int low = 0;  // sentinel: nessuna dimensione inferiore studiata
-                        if (upper != cache.begin())
-                            low = std::prev(upper)->first;
+                        // Il limite k0-1 delimita la ricerca, ma NON e'
+                        // un fallimento osservato. Salta tutti i valori sotto k0.
+                        int low = k0_values[e] - 1;
+                        for (auto it = cache.begin(); it != upper; ++it)
+                            if (it->first >= k0_values[e] &&
+                                !ok(it->first, it->second, e))
+                                low = std::max(low, it->first);
+
                         const int high = upper->first;
                         if (high - low <= 1) break;
-
                         const int mid = low + (high - low) / 2;
                         if (!evaluate(mid)) break;
                     }
                 }
 
+                const double elapsed_s = std::chrono::duration<double>(
+                    std::chrono::steady_clock::now() - n_start).count();
+
                 std::cout << "\n\n n=" << n << "  coppie=" << pairs.size()
-                        << "  k valutati=" << cache.size() << '\n';
-                std::cout << " epsilon       k0    k_fallito    k_riuscito"
-                            "        C_hat     riuscita%\n";
+                        << "  k valutati=" << cache.size()
+                        << "  k massimo valutato=" << cache.rbegin()->first
+                        << "  k limite=" << k_cap
+                        << "  tempo=" << std::fixed << std::setprecision(2)
+                        << elapsed_s << " s" << '\n';
+                std::cout << "                k non   k con               riusc.\n"
+                            "     eps    k0    riusc.  riusc.    C_hat       %   esito\n";
 
                 // Esporta l'intera curva (n,k,epsilon), ordinata per k.
+                // Formattazione locale per CAMPO: niente 0.30000000000000004.
                 for (const auto& [k, r] : cache) {
                     for (std::size_t e = 0; e < eps_values.size(); ++e) {
-                        scan_csv << n << ',' << params.d << ',' << k << ','
+                        scan_csv << run_id << ',' << n << ',' << params.d << ','
+                                << k << ',' << std::fixed << std::setprecision(2)
                                 << eps_values[e] << ',' << k0_values[e] << ','
                                 << params.T << ',' << params.seed_X << ','
                                 << params.seed_A << ',' << r.successi[e] << ','
+                                << std::setprecision(2)
                                 << (100.0 * r.successi[e] / params.T) << ','
-                                << r.media_delta << ',' << r.media_massimi << ','
+                                << std::setprecision(6) << r.media_delta << ','
+                                << r.media_massimi << ','
                                 << params.success_pct << ','
                                 << params.n_min << ',' << params.n_max << ','
                                 << params.n_step << ',' << params.n_mode << ','
@@ -3937,70 +4002,547 @@ namespace {
                 }
 
                 // Cerca la prima dimensione CAMPIONATA con successo sufficiente.
+                // Il massimo k osservato e il migliore successo distinguono
+                // l'obiettivo non raggiunto dalla mancanza totale di successi.
                 for (std::size_t e = 0; e < eps_values.size(); ++e) {
                     const auto upper = std::find_if(
                         cache.begin(), cache.end(),
-                        [&](const auto& v) { return ok(v.second, e); });
+                        [&](const auto& v) { return ok(v.first, v.second, e); });
 
                     const bool found = (upper != cache.end());
-                    const bool exhausted =
-                        cache.size() >= MAX_K_EVAL_PER_N &&
-                        (cache.empty() || cache.rbegin()->first < k_cap);
+                    const bool at_cap = (cache.count(k_cap) != 0);
+                    const bool budget_full = cache.size() >= MAX_K_EVAL_PER_N;
+                    const char* status = found ? "SUCCESSO" :
+                        (k0_values[e] > k_cap ? "K0_FUORI_RANGE" :
+                        (at_cap ? "NON_RAGGIUNTA_CON_K<D" :
+                        (budget_full ? "BUDGET_ESAUTITO" : "GRIGLIA_INCOMPLETA")));
+
                     const int k_hit = found ? upper->first : -1;
-                    const int k_fail = (found && upper != cache.begin())
-                        ? std::prev(upper)->first : -1;
+                    // Riporta solo il piu' alto k<k_hit realmente fallito.
+                    int k_fail = -1;
+                    if (found) {
+                        for (auto it = cache.begin(); it != upper; ++it)
+                            if (it->first >= k0_values[e] &&
+                                !ok(it->first, it->second, e))
+                                k_fail = it->first;
+                    }
                     const double c_hat = found
                         ? static_cast<double>(k_hit) * eps_values[e] * eps_values[e] / log_n
                         : -1.0;
                     const double pct = found
                         ? 100.0 * upper->second.successi[e] / params.T : 0.0;
 
-                    std::cout << std::fixed << std::setprecision(2)
+                    int best_successi = -1;
+                    int best_k = -1;
+                    for (const auto& [k, r] : cache) {
+                        if (k < k0_values[e]) continue;
+                        if (r.successi[e] > best_successi || (r.successi[e] == best_successi && k > best_k)) {
+                            best_successi = r.successi[e];
+                            best_k = k;
+                        }
+                    }
+                    const double best_pct = best_successi >= 0
+                        ? 100.0 * best_successi / params.T : -1.0;
+
+                    std::cout << std::right << std::fixed << std::setprecision(2)
                             << std::setw(8) << eps_values[e]
-                            << std::setw(9) << k0_values[e];
+                            << std::setw(6) << k0_values[e];
                     if (found) {
-                        std::cout << std::setw(13) << k_fail
-                                << std::setw(13) << k_hit
-                                << std::setw(13) << c_hat
-                                << std::setw(13) << pct << "%\n";
+                        if (k_fail >= 0) std::cout << std::setw(9) << k_fail;
+                        else std::cout << std::setw(9) << "--";
+                        std::cout << std::setw(9) << k_hit
+                                << std::setw(9) << c_hat
+                                << std::setw(8) << pct << "%  " << status << '\n';
                     } else {
-                        std::cout << "       --       non trovato"
-                                << (exhausted ? " (budget esaurito)\n"
-                                                : " (nella griglia)\n");
+                        std::cout << std::setw(9) << "--"
+                                << std::setw(9) << "--"
+                                << std::setw(9) << "--";
+                        if (best_successi >= 0)
+                            std::cout << std::setw(8) << best_pct << '%';
+                        else
+                            std::cout << std::setw(9) << "--";
+                        std::cout << "  " << status << '\n';
+                        if (best_successi >= 0)
+                            std::cout << "         Migliore osservato con k>=k0: "
+                                    << best_successi << '/' << params.T
+                                    << " a k=" << best_k << '\n';
+                        std::cout << "         k_max_testato="
+                                << cache.rbegin()->first << '\n';
                     }
 
-                    summary_csv << n << ',' << params.d << ',' << eps_values[e]
-                                << ',' << k0_values[e] << ',';
+                    summary_csv << run_id << ',' << n << ',' << params.d
+                                << ',' << std::fixed << std::setprecision(2)
+                                << eps_values[e] << ',' << k0_values[e] << ',';
                     if (found) {
-                        summary_csv << k_fail << ',' << k_hit << ',' << c_hat
-                                    << ',' << pct;
+                        if (k_fail >= 0) summary_csv << k_fail;
+                        summary_csv << ',' << k_hit << ','
+                                    << std::setprecision(4) << c_hat << ','
+                                    << std::setprecision(2) << pct;
                     } else {
-                        // Campi vuoti = non misurato, non zero.
+                        // Quattro campi vuoti: assenza di misura, non zero.
                         summary_csv << ",,,";
                     }
                     summary_csv << ',' << params.T << ',' << params.seed_X
                                 << ',' << params.seed_A << ',' << cache.size()
-                                << ',' << (found ? "SUCCESSO" :
-                                    (exhausted ? "BUDGET_ESAUTITO" : "NON_TROVATO_GRIGLIA"))
+                                << ',' << status
                                 << ',' << params.success_pct << ','
                                 << params.n_min << ',' << params.n_max << ','
                                 << params.n_step << ',' << params.n_mode << ','
                                 << params.eps_min_pct << ',' << params.eps_max_pct << ','
-                                << params.eps_step_pct << ",Gaussian" << '\n';
+                                << params.eps_step_pct << ",Gaussian"
+                                << ',' << cache.rbegin()->first
+                                << ',';
+                    if (best_successi >= 0) summary_csv << best_successi;
+                    summary_csv << ',';
+                    if (best_pct >= 0.0) summary_csv << std::setprecision(2) << best_pct;
+                    summary_csv << ',';
+                    if (best_k >= 0) summary_csv << best_k;
+                    summary_csv
+                                << ',' << (at_cap ? 1 : 0)
+                                << ',' << (budget_full ? 1 : 0)
+                                << ',' << std::fixed << std::setprecision(3)
+                                << elapsed_s << '\n';
                 }
                 scan_csv.flush();
                 summary_csv.flush();
             }
 
-            std::cout << "\nCSV prodotti nella directory di lavoro:\n"
-                        "  JL_coeff_scan.csv\n"
-                        "  JL_coeff_summary.csv\n"
-                        "\nNota: C_hat e' una stima sulla griglia campionata;"
+            std::cout << "\nCSV prodotti nella directory di lavoro:\n  "
+                    << scan_name << "\n  " << summary_name << '\n'
+                    << "\nNota: C_hat e' una stima sulla griglia campionata;"
                         " non una costante universale JL.\n";
             // CoutGuard ripristina flags e precision dopo il report.
             fcn_form::wait_report();
         }
     }
+
+    // ATTENZIONE: campagna di controllo di indipendenza da d.
+    // Il dataset cambia dimensionalita' con d; il seed non garantisce
+    // annidamento delle righe tra dataset di d differenti.
+    // A parita' di n, k0 e' indipendente da d. Il k massimo esplorato e'
+    // d_min-1 per rendere confrontabile l'intervallo dei k tra tutti i d.
+    // Primo prototipo numerico. Il 'k trovato' e' il primo
+    // successo OSSERVATO nella griglia campionata, non il minimo matematico.
+
+    void JL_stima_coeff_d() {
+        JLCoeffDParams params{};
+
+        struct Pair {
+            std::size_t i;
+            std::size_t j;
+            double d2;
+        };
+
+        struct CoutGuard {
+            std::ios saved{nullptr};
+            CoutGuard() { saved.copyfmt(std::cout); }
+            ~CoutGuard() { std::cout.copyfmt(saved); }
+        };
+
+        struct MCResult {
+            std::vector<int> successi;  // numero di matrici che rispettano TUTTE le coppie
+            double media_delta = 0.0;
+            double media_massimi = 0.0;
+        };
+
+        // Basta modificare questi due valori per un diverso compromesso
+        // tra precisione della ricerca e costo computazionale.
+        constexpr int REFINE_STEPS = 3;
+        constexpr std::size_t MAX_K_EVAL_PER_D = 28;
+
+        while (JL_stima_coeff_d_form::prompt(params)) {
+            clear_screen();
+            CoutGuard cout_guard;
+
+            // Progressioni: rispettiamo esattamente min/max e il passo richiesto.
+            // Se il passo non raggiunge max, non inventiamo un ultimo punto.
+            std::vector<int> d_values;
+            for (std::int64_t d = params.d_min; d <= params.d_max;) {
+                d_values.push_back(static_cast<int>(d));
+                if (params.d_mode == 1) {
+                    d += params.d_step;
+                } else {
+                    d *= params.d_step;
+                }
+            }
+
+            std::vector<double> eps_values;
+            for (int e = params.eps_min_pct;
+                e <= params.eps_max_pct;
+                e += params.eps_step_pct) {
+                eps_values.push_back(static_cast<double>(e) / 100.0);
+            }
+
+            if (d_values.empty() || eps_values.empty())
+                throw std::runtime_error("JL coefficiente: campagna senza valori");
+
+            const std::int64_t last_seed =
+                static_cast<std::int64_t>(params.seed_A) + params.T - 1;
+            if (last_seed > std::numeric_limits<unsigned>::max())
+                throw std::runtime_error("JL coefficiente: seed_A finale fuori gamma");
+
+            // Confronto discreto esatto con il successo richiesto in percentuale.
+            const int richiesti =
+                (params.T * params.success_pct + 99) / 100;
+
+            // Identificativo unico della campagna, condiviso dai due CSV.
+            // Se due esecuzioni coincidono nel millisecondo, aggiunge un suffisso.
+            const auto now = std::chrono::system_clock::now();
+            const std::time_t now_t = std::chrono::system_clock::to_time_t(now);
+            std::tm local_tm{};
+    #ifdef _WIN32
+            localtime_s(&local_tm, &now_t);
+    #else
+            localtime_r(&now_t, &local_tm);
+    #endif
+            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now.time_since_epoch()).count() % 1000;
+            std::ostringstream stamp;
+            stamp << std::put_time(&local_tm, "%Y%m%d_%H%M%S")
+                << '_' << std::setw(3) << std::setfill('0') << ms;
+            const std::string base_id = stamp.str();
+            std::string run_id;
+            std::string scan_name, summary_name;
+            for (int suffix = 0;; ++suffix) {
+                run_id = base_id + (suffix ? "_" + std::to_string(suffix) : "");
+                scan_name = "JL_coeff_d_scan_" + run_id + ".csv";
+                summary_name = "JL_coeff_d_summary_" + run_id + ".csv";
+                if (!std::filesystem::exists(scan_name) &&
+                    !std::filesystem::exists(summary_name)) break;
+            }
+
+            std::ofstream scan_csv(scan_name);
+            std::ofstream summary_csv(summary_name);
+            if (!scan_csv || !summary_csv)
+                throw std::runtime_error("JL coefficiente: impossibile creare i CSV");
+            // CSV: separatore virgola e punto decimale indipendenti dal locale.
+            scan_csv.imbue(std::locale::classic());
+            summary_csv.imbue(std::locale::classic());
+
+            // Intestazioni CSV brevi e su UNA riga: adatte a parser e grafici.
+            scan_csv << "run_id,n,d,k,eps,k0,T,seed_X,seed_A_start,"
+                        "successi,successo_pct,media_delta,media_max,"
+                        "obiettivo_pct,d_min,d_max,d_step,d_mode,"
+                        "eps_min_pct,eps_max_pct,eps_step_pct,distribuzione\n";
+            summary_csv << "run_id,n,d,eps,k0,k_non_successo,k_successo,"
+                        "C_hat,successo_pct,T,seed_X,seed_A_start,"
+                        "k_valutati,esito,obiettivo_pct,"
+                        "d_min,d_max,d_step,d_mode,"
+                        "eps_min_pct,eps_max_pct,eps_step_pct,distribuzione,"
+                        "k_max_valutato,best_successi,best_successo_pct,best_k,"
+                        "k_cap_testato,budget_esaurito,tempo_d_s\n";
+
+            std::cout << "\n=== JL: STIMA COEFFICIENTE DI SCALA ===\n"
+                    << "n = " << params.n
+                    << "  T = " << params.T
+                    << "  successo richiesto = " << params.success_pct << "%\n"
+                    << "seed X = " << params.seed_X
+                    << "  seed A iniziale = " << params.seed_A << "\n"
+                    << "d da " << params.d_min << " a " << params.d_max
+                    << " con passo/fattore=" << params.d_step
+                    << " e modo=" << params.d_mode << '\n'
+                    << "epsilon da " << params.eps_min_pct << "% a "
+                    << params.eps_max_pct << "% con passo "
+                    << params.eps_step_pct << " punti percentuali\n"
+                    << "d: " << d_values.size() << " valori; "
+                    << "epsilon: " << eps_values.size() << " soglie\n"
+                    << "ID campagna: " << run_id << '\n'
+                    << "Intervallo k comune: 1.." << (params.d_min - 1) << '\n'
+                    << "Scansione k>=k0(eps), condivisa fra le soglie,"
+                        " con raffinamento locale.\n";
+
+            const int n = params.n;
+            const double log_n = std::log(static_cast<double>(n));
+
+            // Stesso dominio di k per TUTTI i valori di d: confronto controllato.
+            // Il vincolo comune e' k < d_min; cambiare d non amplia la griglia.
+            const int k_cap_common = params.d_min - 1;
+
+            for (const int d : d_values) {
+                const auto d_start = std::chrono::steady_clock::now();
+                const int k_cap = k_cap_common;
+                auto [X, label] = genera_cluster(n, d, params.seed_X);
+                if (X.size() != label.size())
+                    throw std::runtime_error("JL coefficiente: X e label incompatibili");
+
+                std::vector<Pair> pairs;
+                for (std::size_t i = 0; i < X.size(); ++i) {
+                    for (std::size_t j = i + 1; j < X.size(); ++j) {
+                        const double d2 = vector_distanza2(X[i], X[j]);
+                        if (!std::isfinite(d2) || d2 < 0.0)
+                            throw std::runtime_error("JL coefficiente: distanza iniziale non valida");
+                        if (d2 > 0.0) pairs.push_back({i, j, d2});
+                    }
+                }
+                if (pairs.empty())
+                    throw std::runtime_error("JL coefficiente: nessuna coppia distinta");
+
+                std::vector<int> k0_values;
+                k0_values.reserve(eps_values.size());
+                for (double eps : eps_values)
+                    k0_values.push_back(static_cast<int>(
+                        std::ceil(log_n / (eps * eps))));
+
+                // Calcoli effettuati: la chiave k evita ogni Monte Carlo duplicato.
+                std::map<int, MCResult> cache;
+
+                auto evaluate = [&](int k) -> bool {
+                    if (k < 1 || k > k_cap) return false;
+                    if (cache.find(k) != cache.end()) return true;
+                    if (cache.size() >= MAX_K_EVAL_PER_D) return false;
+
+                    std::cout << "\r d=" << std::setw(5) << d
+                            << "  k=" << std::setw(5) << k
+                            << "  MC=" << (cache.size() + 1)
+                            << "/" << MAX_K_EVAL_PER_D << "   " << std::flush;
+
+                    MCResult result;
+                    result.successi.assign(eps_values.size(), 0);
+                    double sum_medie = 0.0;
+                    double sum_max = 0.0;
+
+                    for (int t = 0; t < params.T; ++t) {
+                        const unsigned seed_A = static_cast<unsigned>(
+                            static_cast<std::uint64_t>(params.seed_A) + t);
+                        Mat A = matrix_random_jl(
+                            k, d, JLMatrixDistribution::Gaussian,
+                            seed_A, 3);
+                        Mat Y = matrix_prodotto_matrix(X, matrix_trasposta(A));
+
+                        double sum_delta = 0.0;
+                        double max_delta = 0.0;
+                        for (const Pair& p : pairs) {
+                            const double dy2 = vector_distanza2(Y[p.i], Y[p.j]);
+                            const double delta = std::abs(dy2 / p.d2 - 1.0);
+                            if (!std::isfinite(delta))
+                                throw std::runtime_error("JL coefficiente: distorsione non finita");
+                            sum_delta += delta;
+                            max_delta = std::max(max_delta, delta);
+                        }
+                        sum_medie += sum_delta / static_cast<double>(pairs.size());
+                        sum_max += max_delta;
+                        for (std::size_t e = 0; e < eps_values.size(); ++e) {
+                            if (max_delta <= eps_values[e])
+                                ++result.successi[e];
+                        }
+                    }
+
+                    result.media_delta = sum_medie / params.T;
+                    result.media_massimi = sum_max / params.T;
+                    cache.emplace(k, std::move(result));
+                    return true;
+                };
+
+                const auto ok = [&](int k, const MCResult& r, std::size_t e) {
+                    // Politica della campagna: nessun k inferiore al proprio k0.
+                    return k >= k0_values[e] && r.successi[e] >= richiesti;
+                };
+                const auto all_ok = [&]() {
+                    if (cache.empty()) return false;
+                    const MCResult& r = cache.rbegin()->second;
+                    for (std::size_t e = 0; e < eps_values.size(); ++e)
+                        if (!ok(cache.rbegin()->first, r, e)) return false;
+                    return true;
+                };
+
+                // Griglia grossolana in k: riferimento C=1 per ogni epsilon,
+                // piu' crescita geometrica 1.5x fino al limite k<d.
+                // Partenza dal piu' piccolo k0 (epsilon piu' grande):
+                // una scelta operativa, NON un limite inferiore del lemma.
+                std::set<int> coarse;
+                const int start = std::max(1,
+                    std::min(k_cap, k0_values.back()));
+                for (const int k0 : k0_values)
+                    if (k0 >= 1 && k0 <= k_cap) coarse.insert(k0);
+
+                for (int k = start;;) {
+                    coarse.insert(k);
+                    if (k == k_cap) break;
+                    const int next = std::max(k + 1,
+                        static_cast<int>(std::ceil(1.5 * k)));
+                    k = std::min(k_cap, next);
+                }
+                for (const int k : coarse) {
+                    if (!evaluate(k)) break;
+                    if (all_ok()) break;
+                }
+
+                // Raffina gli intervalli osservati [fallimento, successo].
+                // Per ciascun epsilon usa la cache condivisa; non ripete mai
+                // un Monte Carlo sullo stesso k.
+                for (std::size_t e = eps_values.size(); e-- > 0;) {
+                    for (int pass = 0; pass < REFINE_STEPS; ++pass) {
+                        const auto upper = std::find_if(
+                            cache.begin(), cache.end(),
+                            [&](const auto& v) { return ok(v.first, v.second, e); });
+                        if (upper == cache.end()) break;
+
+                        // Il limite iniziale NON e' un fallimento osservato:
+                        // impedisce soltanto la ricerca sotto il k0 di epsilon.
+                        int low = k0_values[e] - 1;
+                        for (auto it = cache.begin(); it != upper; ++it)
+                            if (it->first >= k0_values[e] &&
+                                !ok(it->first, it->second, e))
+                                low = std::max(low, it->first);
+
+                        const int high = upper->first;
+                        if (high - low <= 1) break;
+                        const int mid = low + (high - low) / 2;
+                        if (!evaluate(mid)) break;
+                    }
+                }
+
+                const double elapsed_s = std::chrono::duration<double>(
+                    std::chrono::steady_clock::now() - d_start).count();
+
+                std::cout << "\n\n d=" << d << "  coppie=" << pairs.size()
+                        << "  k valutati=" << cache.size()
+                        << "  k massimo valutato=" << cache.rbegin()->first
+                        << "  k limite comune=" << k_cap
+                        << "  tempo=" << std::fixed << std::setprecision(2)
+                        << elapsed_s << " s" << '\n';
+                std::cout << "                k non   k con               riusc.\n"
+                            "     eps    k0    riusc.  riusc.    C_hat       %   esito\n";
+
+                // Esporta l'intera curva (n,k,epsilon), ordinata per k.
+                // Formattazione locale per CAMPO: niente 0.30000000000000004.
+                for (const auto& [k, r] : cache) {
+                    for (std::size_t e = 0; e < eps_values.size(); ++e) {
+                        scan_csv << run_id << ',' << n << ',' << d << ','
+                                << k << ',' << std::fixed << std::setprecision(2)
+                                << eps_values[e] << ',' << k0_values[e] << ','
+                                << params.T << ',' << params.seed_X << ','
+                                << params.seed_A << ',' << r.successi[e] << ','
+                                << std::setprecision(2)
+                                << (100.0 * r.successi[e] / params.T) << ','
+                                << std::setprecision(6) << r.media_delta << ','
+                                << r.media_massimi << ','
+                                << params.success_pct << ','
+                                << params.d_min << ',' << params.d_max << ','
+                                << params.d_step << ',' << params.d_mode << ','
+                                << params.eps_min_pct << ',' << params.eps_max_pct << ','
+                                << params.eps_step_pct << ",Gaussian" << '\n';
+                    }
+                }
+
+                // Cerca la prima dimensione CAMPIONATA con successo sufficiente.
+                // Il massimo k osservato e il migliore successo distinguono
+                // l'obiettivo non raggiunto dalla mancanza totale di successi.
+                for (std::size_t e = 0; e < eps_values.size(); ++e) {
+                    const auto upper = std::find_if(
+                        cache.begin(), cache.end(),
+                        [&](const auto& v) { return ok(v.first, v.second, e); });
+
+                    const bool found = (upper != cache.end());
+                    const bool at_cap = (cache.count(k_cap) != 0);
+                    const bool budget_full = cache.size() >= MAX_K_EVAL_PER_D;
+                    const char* status = found ? "SUCCESSO" :
+                        (k0_values[e] > k_cap ? "K0_FUORI_RANGE" :
+                        (at_cap ? "NON_RAGGIUNTA_ENTRO_K_COMUNE" :
+                        (budget_full ? "BUDGET_ESAUTITO" : "GRIGLIA_INCOMPLETA")));
+
+                    const int k_hit = found ? upper->first : -1;
+                    // k_non_successo deve essere un FALLIMENTO OSSERVATO,
+                    // non semplicemente il k precedente nella mappa.
+                    int k_fail = -1;
+                    if (found) {
+                        for (auto it = cache.begin(); it != upper; ++it)
+                            if (it->first >= k0_values[e] &&
+                                !ok(it->first, it->second, e))
+                                k_fail = it->first;
+                    }
+                    const double c_hat = found
+                        ? static_cast<double>(k_hit) * eps_values[e] * eps_values[e] / log_n
+                        : -1.0;
+                    const double pct = found
+                        ? 100.0 * upper->second.successi[e] / params.T : 0.0;
+
+                    int best_successi = -1;
+                    int best_k = -1;
+                    for (const auto& [k, r] : cache) {
+                        if (k < k0_values[e]) continue;
+                        if (r.successi[e] > best_successi) {
+                            best_successi = r.successi[e];
+                            best_k = k;
+                        }
+                    }
+                    const double best_pct = best_successi >= 0
+                        ? 100.0 * best_successi / params.T : -1.0;
+
+                    std::cout << std::right << std::fixed << std::setprecision(2)
+                            << std::setw(8) << eps_values[e]
+                            << std::setw(6) << k0_values[e];
+                    if (found) {
+                        if (k_fail >= 0) std::cout << std::setw(9) << k_fail;
+                        else std::cout << std::setw(9) << "--";
+                        std::cout << std::setw(9) << k_hit
+                                << std::setw(9) << c_hat
+                                << std::setw(8) << pct << "%  " << status << '\n';
+                    } else {
+                        std::cout << std::setw(9) << "--"
+                                << std::setw(9) << "--"
+                                << std::setw(9) << "--";
+                        if (best_successi >= 0)
+                            std::cout << std::setw(8) << best_pct << '%';
+                        else
+                            std::cout << std::setw(9) << "--";
+                        std::cout << "  " << status << '\n';
+                        if (best_successi >= 0)
+                            std::cout << "         Migliore osservato con k>=k0: "
+                                    << best_successi << '/' << params.T
+                                    << " a k=" << best_k << '\n';
+                        std::cout << "         k_max_testato="
+                                << cache.rbegin()->first << '\n';
+                    }
+
+                    summary_csv << run_id << ',' << n << ',' << d
+                                << ',' << std::fixed << std::setprecision(2)
+                                << eps_values[e] << ',' << k0_values[e] << ',';
+                    if (found) {
+                        if (k_fail >= 0) summary_csv << k_fail;
+                        summary_csv << ',' << k_hit << ','
+                                    << std::setprecision(4) << c_hat << ','
+                                    << std::setprecision(2) << pct;
+                    } else {
+                        // Quattro campi vuoti: assenza di misura, non zero.
+                        summary_csv << ",,,";
+                    }
+                    summary_csv << ',' << params.T << ',' << params.seed_X
+                                << ',' << params.seed_A << ',' << cache.size()
+                                << ',' << status
+                                << ',' << params.success_pct << ','
+                                << params.d_min << ',' << params.d_max << ','
+                                << params.d_step << ',' << params.d_mode << ','
+                                << params.eps_min_pct << ',' << params.eps_max_pct << ','
+                                << params.eps_step_pct << ",Gaussian"
+                                << ',' << cache.rbegin()->first
+                                << ',';
+                    if (best_successi >= 0) summary_csv << best_successi;
+                    summary_csv
+                                << ',';
+                    if (best_pct >= 0.0) summary_csv << std::setprecision(2) << best_pct;
+                    summary_csv
+                                << ',';
+                    if (best_k >= 0) summary_csv << best_k;
+                    summary_csv
+                                << ',' << (at_cap ? 1 : 0)
+                                << ',' << (budget_full ? 1 : 0)
+                                << ',' << std::fixed << std::setprecision(3)
+                                << elapsed_s << '\n';
+                }
+                scan_csv.flush();
+                summary_csv.flush();
+            }
+
+            std::cout << "\nCSV prodotti nella directory di lavoro:\n  "
+                    << scan_name << "\n  " << summary_name << '\n'
+                    << "\nNota: C_hat e' una stima sulla griglia campionata;"
+                        " non una costante universale JL.\n";
+            // CoutGuard ripristina flags e precision dopo il report.
+            fcn_form::wait_report();
+        }
+    }
+
 
     void sandbox() {
             SandboxParams params{};
@@ -4055,7 +4597,8 @@ namespace {
             {"JL_dist",         JL_distanze}, 
             {"JL_X_rand",       JL_distanze_dataset}, 
             {"JL_A_rand",       JL_distanze_dataMC}, 
-            {"JL_K_C",          JL_stima_coefficiente},
+            {"JL_K_C_n",          JL_stima_coeff_n},
+            {"JL_K_C_d",          JL_stima_coeff_d},
             {"sandbox",         sandbox}
             };
         }
