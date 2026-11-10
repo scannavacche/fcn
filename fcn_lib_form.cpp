@@ -4329,4 +4329,312 @@ namespace JL_distanze_dataMC_form {
     }
 } // namespace JL_distanze_dataMC_form
 
+namespace JL_stima_coefficiente_form {
+    namespace {
+        constexpr std::size_t FIELD_COUNT = 12;
+
+        struct FieldDef {
+            int poslab;             // label logica della posizione, NON indice
+            const char* label;      // etichetta breve, sulla riga del valore
+            const char* hint;       // spiegazione completa del campo attivo
+            int length;
+            double lower;
+            double upper;
+        };
+
+        // Unica sorgente dei limiti numerici: prepare() li passa a ENTRY.
+        constexpr FieldDef field_defs[FIELD_COUNT] = {
+            {10, "n min",    "Minimo numero di osservazioni",                  4, 2, 9999},
+            {11, "n max",    "Massimo numero di osservazioni",                 4, 2, 9999},
+            {12, "Passo/x",  "Passo n lineare o fattore n geometrico",         4, 1, 9999},
+            {13, "Modo",     "1 = progressione lineare; 2 = geometrica",       1, 1, 2},
+            {20, "eps min",  "Soglia epsilon minima in percentuale",           2, 1, 99},
+            {21, "eps max",  "Soglia epsilon massima in percentuale",          2, 1, 99},
+            {22, "Passo",    "Passo epsilon in punti percentuali",             2, 1, 99},
+            {30, "d",        "Dimensione originale, fissata per la campagna",  4, 2, 9999},
+            {31, "Seed X",   "Seme per la generazione dei dataset",            9, 0, 999999999},
+            {40, "Seed A",   "Seme iniziale delle matrici JL",                 9, 0, 999999999},
+            {41, "T",        "Numero di proiezioni per ogni k",                4, 1, 2000},
+            {42, "Succ.%",   "Frequenza percentuale richiesta per il successo", 3, 1, 100}
+        };
+
+        constexpr int cell_col[4] = {3, 22, 41, 60};
+        constexpr int cell_right[4] = {19, 38, 57, 76};
+
+        int field_row(const GnFormContext& ctx, int poslab) {
+            return ctx.layout.viewport.top + 2 + 3 * (poslab / 10 - 1);
+        }
+
+        void mask(const GnFormContext& ctx, void*) {
+            const auto& l = ctx.layout;
+            const int width = std::max(1, l.terminal_columns - 1);
+            gn_screen_clear();
+            gn_screen_cursor_visible(0);
+            fcn_form::write(l.header_top, 1,
+                " JL - stima sperimentale coefficiente C ", width, GN_SCREEN_TITLE);
+            fcn_form::write(l.header_top + 1, 3,
+                "Ricerca k per n ed epsilon, a probabilita' obiettivo", width - 3);
+            fcn_form::separator(l.top_separator_row, l.terminal_columns);
+            fcn_form::write(l.viewport.top, 3,
+                "Progressioni di n ed epsilon; k e' cercato internamente", width - 3);
+
+            const int top = l.viewport.top;
+            fcn_form::write(top + 1, 3, "OSSERVAZIONI n (modo 1: +passo; 2: x fattore)", width - 3);
+            fcn_form::write(top + 4, 3, "SOGLIE epsilon (valori percentuali: 20 = 0.20)", width - 3);
+            fcn_form::write(top + 7, 3, "DATASET (dimensione d e seed di X)", width - 3);
+            fcn_form::write(top + 10, 3, "MONTE CARLO (seed di A, T e successo richiesto)", width - 3);
+
+            fcn_form::separator(l.bottom_separator_row, l.terminal_columns);
+            fcn_form::separator(l.status_separator_row, l.terminal_columns);
+        }
+
+        bool prepare(GnFormContext& ctx, void*) {
+            if (!ctx.fields || !ctx.values || ctx.field_count != FIELD_COUNT)
+                return false;
+            for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+                const FieldDef& def = field_defs[i];
+                const int slot = def.poslab % 10;
+                ctx.fields[i] = GnEntrySpec{
+                    field_row(ctx, def.poslab),
+                    cell_right[slot] - def.length + 1,
+                    GN_FIELD_BOUNDED_NATURAL,
+                    static_cast<std::size_t>(def.length),
+                    def.lower,
+                    def.upper,
+                    1,
+                    ctx.layout.echo_row
+                };
+            }
+            return true;
+        }
+
+        void render(const GnFormContext& ctx, void* data) {
+            if (!ctx.fields || !ctx.values ||
+                ctx.field_count != FIELD_COUNT || ctx.lab >= FIELD_COUNT)
+                return;
+            mask(ctx, data);
+            for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+                const auto& f = ctx.fields[i];
+                const int left = cell_col[field_defs[i].poslab % 10];
+                const int width = f.column - left - 1;
+                fcn_form::write(f.row, left,
+                    std::string(i == ctx.lab ? "> " : "  ") + field_defs[i].label,
+                    width);
+                fcn_form::write(f.row, f.column,
+                    fcn_form::field_value(ctx.values[i], f.length),
+                    static_cast<int>(f.length), GN_SCREEN_FIELD);
+            }
+            gn_screen_clear_line(ctx.layout.echo_row);
+            const int width = std::max(1, ctx.layout.terminal_columns - 1);
+            fcn_form::write(ctx.layout.hint_row, 2,
+                field_defs[ctx.lab].hint, width - 2, GN_SCREEN_MESSAGE);
+            fcn_form::write(ctx.layout.status_top, 2,
+                "ESC Menu  F1 Help  HOME/END Form  CTRL+frecce Bordi  F10 Esegui",
+                width - 2, GN_SCREEN_STATUS);
+            if (!ctx.message.empty())
+                fcn_form::write(ctx.layout.echo_row, 2,
+                    ctx.message, width - 2, GN_SCREEN_ERROR);
+            gn_screen_flush();
+        }
+
+        // La rotta bidimensionale usa poslab per la geometria e ctx.lab
+        // esclusivamente come indice negli array del runner GNPORT.
+        GnFormChangeResult move_grid(GnEntryCommand cmd, GnFormContext& ctx) {
+            const int pos = field_defs[ctx.lab].poslab;
+            const int row = pos / 10;
+            const int col = pos % 10;
+            std::size_t next = ctx.lab;
+            int best_primary = std::numeric_limits<int>::max();
+            int best_secondary = std::numeric_limits<int>::max();
+
+            for (std::size_t i = 0; i < FIELD_COUNT; ++i) {
+                const int p = field_defs[i].poslab;
+                const int r = p / 10;
+                const int c = p % 10;
+                int primary = 0, secondary = 0;
+                bool eligible = true;
+
+                switch (cmd) {
+                    case GN_ENTRY_LEFT:
+                        eligible = (r == row && c < col); primary = col - c; break;
+                    case GN_ENTRY_RIGHT:
+                        eligible = (r == row && c > col); primary = c - col; break;
+                    case GN_ENTRY_UP:
+                        eligible = (r < row && c == col);
+                        primary = row - r;
+                        break;
+                    case GN_ENTRY_DOWN:
+                        eligible = (r > row && c == col);
+                        primary = r - row;
+                        break;                    
+                    case GN_ENTRY_CTRL_LEFT:
+                        eligible = (r == row); primary = c; break;
+                    case GN_ENTRY_CTRL_RIGHT:
+                        eligible = (r == row); primary = -c; break;
+                    case GN_ENTRY_CTRL_UP:
+                        eligible = (c == col); primary = r; break;
+                    case GN_ENTRY_CTRL_DOWN:
+                        eligible = (c == col); primary = -r; break;
+                    case GN_ENTRY_HOME:
+                        primary = p; break;
+                    case GN_ENTRY_END:
+                        primary = -p; break;
+                    default:
+                        eligible = false; break;
+                }
+                if (eligible && (primary < best_primary ||
+                                 (primary == best_primary && secondary < best_secondary))) {
+                    best_primary = primary;
+                    best_secondary = secondary;
+                    next = i;
+                }
+            }
+            if (next == ctx.lab) gn_screen_beep();
+            else ctx.lab = next;
+            return GN_FORM_CHANGE_CONTINUE;
+        }
+
+        GnFormChangeResult change(GnEntryCommand cmd, GnFormContext& ctx, void*) {
+            switch (cmd) {
+                case GN_ENTRY_LEFT: case GN_ENTRY_RIGHT:
+                case GN_ENTRY_UP: case GN_ENTRY_DOWN:
+                case GN_ENTRY_CTRL_LEFT: case GN_ENTRY_CTRL_RIGHT:
+                case GN_ENTRY_CTRL_UP: case GN_ENTRY_CTRL_DOWN:
+                case GN_ENTRY_HOME: case GN_ENTRY_END:
+                    return move_grid(cmd, ctx);
+                case GN_ENTRY_PAGE_UP: case GN_ENTRY_PAGE_DOWN:
+                case GN_ENTRY_CTRL_PAGE_UP: case GN_ENTRY_CTRL_PAGE_DOWN:
+                    // Form monopagina: paging rinviato, nessuna falsa rotta lineare.
+                    gn_screen_beep();
+                    return GN_FORM_CHANGE_CONTINUE;
+                default:
+                    return fcn_form::change_linear(cmd, ctx);
+            }
+        }
+
+        void help(const GnFormContext& ctx, void*) {
+            std::vector<std::string> lines {
+                "F1 HELP - JL: stima coefficiente",
+                "",
+                "Progressione di n: modo 1 = lineare, modo 2 = geometrico.",
+                "Epsilon e successo richiesto sono percentuali intere.",
+                "HOME/END: primo/ultimo campo del form.",
+                "CTRL+SX/DX: inizio/fine riga; CTRL+SU/GIU: testa/coda colonna.",
+                "",
+                "Parametri [min .. max]:"
+            };
+            for (const auto& f : field_defs) {
+                std::ostringstream s;
+                s << f.label << " [" << static_cast<long long>(f.lower)
+                  << " .. " << static_cast<long long>(f.upper) << "]";
+                lines.push_back(s.str());
+            }
+            lines.emplace_back("F10 esegue, ESC annulla. F1/ENTER/ESC chiude l'help.");
+            gn_screen_clear();
+            gn_screen_cursor_visible(0);
+            const int width = std::max(1, ctx.layout.terminal_columns - 1);
+            int row = 1;
+            for (const auto& line : lines) {
+                if (row > ctx.layout.terminal_rows) break;
+                fcn_form::write(row, 2, line, width - 2,
+                    row == 1 ? GN_SCREEN_TITLE : GN_SCREEN_NORMAL);
+                ++row;
+            }
+            gn_screen_flush();
+            for (;;) {
+                GnKeyEvent event{};
+                const GnPollResult r = gn_pump_once(&event);
+                if (r == GN_POLL_EMPTY) {
+                    gn_cooperative_pause();
+                    continue;
+                }
+                if (r == GN_POLL_ERROR || event.code == GN_KEY_F1 ||
+                    event.code == GN_KEY_ENTER || event.code == GN_KEY_ESCAPE)
+                    return;
+                gn_screen_beep();
+            }
+        }
+
+        bool validate(GnFormContext& ctx, void*) {
+            // Solo vincoli fra campi: i singoli range sono autoritativi in ENTRY.
+            try {
+                const int n_min = std::stoi(ctx.values[0]);
+                const int n_max = std::stoi(ctx.values[1]);
+                const int n_step = std::stoi(ctx.values[2]);
+                const int n_mode = std::stoi(ctx.values[3]);
+                const int eps_min = std::stoi(ctx.values[4]);
+                const int eps_max = std::stoi(ctx.values[5]);
+                if (n_min > n_max) {
+                    ctx.lab = 1;
+                    ctx.message = "n massimo deve essere >= n minimo";
+                    return false;
+                }
+                if (n_mode == 2 && n_step < 2) {
+                    ctx.lab = 2;
+                    ctx.message = "Progressione geometrica: fattore >= 2";
+                    return false;
+                }
+                if (eps_min > eps_max) {
+                    ctx.lab = 5;
+                    ctx.message = "epsilon massimo deve essere >= epsilon minimo";
+                    return false;
+                }
+            } catch (const std::exception&) {
+                // Difesa sui dati non interpretabili, non sostituisce ENTRY.
+                ctx.message = "Valore numerico non interpretabile";
+                return false;
+            }
+            return true;
+        }
+    } // namespace anonimo
+
+    bool prompt(JLCoeffParams& p) {
+        std::string values[FIELD_COUNT] = {
+            std::to_string(p.n_min), std::to_string(p.n_max),
+            std::to_string(p.n_step), std::to_string(p.n_mode),
+            std::to_string(p.eps_min_pct), std::to_string(p.eps_max_pct),
+            std::to_string(p.eps_step_pct), std::to_string(p.d),
+            std::to_string(p.seed_X), std::to_string(p.seed_A),
+            std::to_string(p.T), std::to_string(p.success_pct)
+        };
+        GnFormRunSpec spec{};
+        spec.layout_options.header_rows = 2;
+        spec.layout_options.top_separator = true;
+        spec.layout_options.bottom_separator = true;
+        spec.layout_options.hint_line = true;
+        spec.layout_options.echo_line = true;
+        spec.layout_options.status_rows = 1;
+        spec.layout_options.min_viewport_rows = 14;
+        spec.layout_options.min_viewport_columns = 80;
+        spec.values = values;
+        spec.field_count = FIELD_COUNT;
+        spec.prepare = prepare;
+        spec.render = render;
+        spec.change = change;
+        spec.help = help;
+        spec.validate = validate;
+
+        const GnFormRunResult result = gn_form_run_session(spec);
+        if (result != GN_FORM_RUN_ACCEPT) {
+            if (result == GN_FORM_RUN_ERROR)
+                std::cerr << "Impossibile aprire il form JL coefficiente.\n";
+            return false;
+        }
+        JLCoeffParams updated = p;
+        updated.n_min = std::stoi(values[0]);
+        updated.n_max = std::stoi(values[1]);
+        updated.n_step = std::stoi(values[2]);
+        updated.n_mode = std::stoi(values[3]);
+        updated.eps_min_pct = std::stoi(values[4]);
+        updated.eps_max_pct = std::stoi(values[5]);
+        updated.eps_step_pct = std::stoi(values[6]);
+        updated.d = std::stoi(values[7]);
+        updated.seed_X = std::stoi(values[8]);
+        updated.seed_A = std::stoi(values[9]);
+        updated.T = std::stoi(values[10]);
+        updated.success_pct = std::stoi(values[11]);
+        p = updated;  // Commit soltanto dopo F10.
+        return true;
+    }
+} // namespace JL_stima_coefficiente_form
 

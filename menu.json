@@ -269,6 +269,12 @@
           "label": "Test Distanza punti variando matrice",
           "action": "JL_A_rand",
           "enabled": true
+        },
+        {
+          "key": 4,
+          "label": "Test coeff di proporzionalita' di JL",
+          "action": "JL_K_C",
+          "enabled": true
         }
       ]
     },
