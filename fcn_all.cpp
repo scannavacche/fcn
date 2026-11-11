@@ -5322,6 +5322,332 @@ namespace {
         fcn_form::wait_report();
     }
 
+// ============================================================================
+// PCA_JL_K_MC: effetto di k sullo spettro PCA (Gaussian JL, trial accoppiati).
+// STEP successivo al commit con JL_effetto_PCA_MC(): aggiungere a fcn_all.cpp,
+// SENZA modificare JL_effetto_PCA() ne' JL_effetto_PCA_MC().
+// Riusa: JL_estrai_bilanciato(), JL_PCA_spettro(), JL_PCA_id_campagna(),
+// genera_cluster(), matrix_random_jl(), matrix_prodotto_matrix(),
+// matrix_trasposta(), matrix_calcola_media(), matrix_centra_su_media(),
+// vector_distanza2(), fcn_form::wait_report().
+// Standard: algorithm, chrono, cmath, fstream, iomanip, iostream,
+// sstream, stdexcept, string, utility, vector.
+// ============================================================================
+
+void JL_effetto_PCA_K_MC()
+{
+    constexpr int n = 160;
+    constexpr int d = 1000;
+    constexpr int n_max = 160;
+    constexpr int seed_X = 42;
+    constexpr double eps = 0.50;       // La medesima soglia per TUTTI i k
+    constexpr int primi = 6;
+    constexpr unsigned seed_A_start = 70000u;
+    constexpr bool prova_rapida = false;
+    constexpr int T = prova_rapida ? 1 : 5;
+    const std::vector<int> k_values = {202, 304, 502, 800};
+    constexpr const char* baseline_id = "20261111_203831_386";
+    const std::string baseline_file =
+        std::string("JL_PCA_originale_") + baseline_id + ".csv";
+
+    if (n < primi+1 || n > n_max || n%2 || T <= 0 ||
+        !(eps > 0.0 && eps < 1.0) || k_values.empty())
+        throw std::invalid_argument("PCA_JL_K_MC: parametri non validi");
+    for (std::size_t j=0; j<k_values.size(); ++j)
+        if (k_values[j] <= 0 || k_values[j] > d ||
+            (j && k_values[j] <= k_values[j-1]))
+            throw std::invalid_argument("PCA_JL_K_MC: k non ordinati/validi");
+    const int K = k_values.back();
+
+    // 1) Riferimento: PCA originale gia' calcolata, senza ripetere la SVD.
+    std::ifstream base(baseline_file);
+    if (!base)
+        throw std::runtime_error("PCA_JL_K_MC: manca " + baseline_file);
+    auto split = [](const std::string& line) {
+        std::vector<std::string> row;
+        std::istringstream in(line);
+        std::string value;
+        while (std::getline(in,value,',')) row.push_back(value);
+        return row;
+    };
+    std::string line;
+    if (!std::getline(base,line))
+        throw std::runtime_error("PCA_JL_K_MC: CSV originale vuoto");
+    const auto columns = split(line);
+    auto field = [&columns](const std::vector<std::string>& row,
+                             const std::string& name) -> std::string {
+        const auto it = std::find(columns.begin(),columns.end(),name);
+        if (it == columns.end())
+            throw std::runtime_error("PCA_JL_K_MC: colonna mancante " + name);
+        const std::size_t index = static_cast<std::size_t>(it-columns.begin());
+        if (index >= row.size() || row[index].empty())
+            throw std::runtime_error("PCA_JL_K_MC: campo mancante " + name);
+        return row[index];
+    };
+
+    JLPCA_Spettro sx;
+    bool found = false;
+    while (std::getline(base,line)) {
+        if (line.empty()) continue;
+        const auto row = split(line);
+        if (std::stoi(field(row,"n")) != n) continue;
+        if (found || std::stoi(field(row,"d")) != d ||
+            std::stoi(field(row,"seed_X")) != seed_X ||
+            std::stoi(field(row,"cluster0")) != n/2 ||
+            std::stoi(field(row,"cluster1")) != n/2 ||
+            field(row,"campagna") != baseline_id)
+            throw std::runtime_error("PCA_JL_K_MC: baseline incoerente");
+        sx.tempo_s = std::stod(field(row,"tempo_pca_s"));
+        for (int j=1; j<=primi; ++j)
+            sx.sigma.push_back(std::stod(field(row,"sigma"+std::to_string(j))));
+        const double ve1 = std::stod(field(row,"var_spiegata1"));
+        if (!(ve1 > 0.0 && ve1 <= 1.0))
+            throw std::runtime_error("PCA_JL_K_MC: quota PC1 non valida");
+        sx.energia = sx.sigma.front()*sx.sigma.front()/ve1;
+        found = true;
+    }
+    if (!found || !(sx.energia > 0.0))
+        throw std::runtime_error("PCA_JL_K_MC: baseline n=160 assente");
+    for (double s : sx.sigma)
+        if (!(s > 0.0) || !std::isfinite(s))
+            throw std::runtime_error("PCA_JL_K_MC: sigma X non validi");
+
+    const auto [Xmaster, lmaster] = genera_cluster(n_max,d,seed_X);
+    const auto [X, labels] = JL_estrai_bilanciato(Xmaster,lmaster,n);
+    Vec mean_col(d,0.0), mean_row(n,0.0);
+    matrix_calcola_media(X,mean_col,mean_row);
+    const Mat Xc = matrix_centra_su_media(X,mean_col);
+    double energia_verificata = 0.0;
+    for (const auto& row : Xc)
+        for (double x : row) energia_verificata += x*x;
+    if (std::abs(energia_verificata/sx.energia-1.0) > 1e-5)
+        throw std::runtime_error("PCA_JL_K_MC: dataset diverso dalla baseline");
+
+    double energia_top6_X = 0.0;
+    for (double s : sx.sigma) energia_top6_X += s*s;
+    const double energia_coda_X = sx.energia-energia_top6_X;
+    if (!(energia_coda_X > 0.0))
+        throw std::runtime_error("PCA_JL_K_MC: energia coda originale nulla");
+    const double var1_X = sx.sigma[0]*sx.sigma[0]/sx.energia;
+    const double var2_X = sx.sigma[1]*sx.sigma[1]/sx.energia;
+    const double coda_X = energia_coda_X/sx.energia;
+
+    struct Pair { std::size_t i,j; double d2; };
+    std::vector<Pair> pairs;
+    pairs.reserve(static_cast<std::size_t>(n)*(n-1)/2);
+    for (std::size_t i=0;i<X.size();++i)
+        for (std::size_t j=i+1;j<X.size();++j) {
+            const double d2 = vector_distanza2(X[i],X[j]);
+            if (!(d2 > 0.0) || !std::isfinite(d2))
+                throw std::runtime_error("PCA_JL_K_MC: distanza X non valida");
+            pairs.push_back({i,j,d2});
+        }
+
+    const std::string id = JL_PCA_id_campagna();
+    const std::string trial_file = "JL_PCA_K_trial_" + id + ".csv";
+    const std::string stats_file = "JL_PCA_K_stat_" + id + ".csv";
+    std::ofstream detail(trial_file), stats(stats_file);
+    if (!detail || !stats)
+        throw std::runtime_error("PCA_JL_K_MC: apertura CSV fallita");
+    detail << std::fixed << std::setprecision(9);
+    stats << std::fixed << std::setprecision(9);
+    detail << "campagna,baseline,trial,seed_A,n,d,k,K_master,eps,coppie,"
+              "violazioni,delta_media,delta_max,JL_ok,"
+              "sigma1_Y_su_X,sigma2_Y_su_X,Q2,"
+              "var1_X,var1_Y,var2_X,var2_Y,"
+              "energia_Y_su_X,coda6_Y_su_X,coda6_quota_X,coda6_quota_Y,"
+              "tempo_A_master_s,tempo_proiezione_master_s,"
+              "tempo_estrazione_k_s,tempo_PCA_k_s";
+    for (int j=1;j<=primi;++j) detail << ",sigmaY" << j;
+    for (int j=3;j<=primi;++j) detail << ",Q" << j;
+    detail << '\n';
+    stats << "campagna,baseline,n,d,k,K_master,eps,T,metrica,"
+             "campioni,media,dev_std_campionaria,min,max\n";
+
+    struct Acc {
+        int good=0, sigma2_up=0, q2_down=0;
+        std::vector<double> s1,s2,q2,var1,var2,energia,coda_ratio,coda_quota;
+        std::vector<double> delta,tempo_pca;
+        std::vector<double> Q[5];
+    };
+    std::vector<Acc> data(k_values.size());
+    struct Stat { double avg=0.0, sd=0.0, lo=0.0, hi=0.0; };
+    auto stat = [](const std::vector<double>& v)->Stat {
+        Stat a;
+        if (v.empty()) return a;
+        a.lo = *std::min_element(v.begin(),v.end());
+        a.hi = *std::max_element(v.begin(),v.end());
+        for (double x:v) a.avg += x;
+        a.avg /= static_cast<double>(v.size());
+        for (double x:v) a.sd += (x-a.avg)*(x-a.avg);
+        a.sd = v.size()>1 ? std::sqrt(a.sd/(v.size()-1)) : 0.0;
+        return a;
+    };
+    auto elapsed = [](auto a,auto b) {
+        return std::chrono::duration<double>(b-a).count();
+    };
+
+    std::cout << "\n=== JL + PCA: STABILITA' SPETTRALE AL VARIARE DI k ===\n"
+              << "Campagna: " << id << "  baseline: " << baseline_file << '\n'
+              << "n=" << n << " d=" << d << " eps=" << eps << " T=" << T
+              << "  k=";
+    for (int k:k_values) std::cout << k << ' ';
+    std::cout << "\nseed_A=" << seed_A_start << ".."
+              << seed_A_start+T-1 << "  coppie=" << pairs.size() << '\n'
+              << "Accoppiamento: stesse prime righe gaussiane, scala 1/sqrt(k).\n"
+              << "PC1 X=" << var1_X << "  PC2 X=" << var2_X
+              << "  coda (j>=7) X=" << coda_X << "\n";
+    if (prova_rapida)
+        std::cout << "COLLAUDO RAPIDO: solo trial=1 e k=202.\n";
+
+    for (int t=0;t<T;++t) {
+        const unsigned seed_A = seed_A_start + static_cast<unsigned>(t);
+        const auto a0 = std::chrono::steady_clock::now();
+        const Mat Amax = matrix_random_jl(
+            K,d,JLMatrixDistribution::Gaussian,seed_A,3);
+        const auto a1 = std::chrono::steady_clock::now();
+        if (Amax.size() != static_cast<std::size_t>(K) ||
+            Amax.front().size() != static_cast<std::size_t>(d))
+            throw std::runtime_error("PCA_JL_K_MC: Amax malformata");
+        // Ymax_ij e' la proiezione sulla riga gaussiana j, scalata 1/sqrt(K).
+        const Mat Ymax = matrix_prodotto_matrix(X,matrix_trasposta(Amax));
+        const auto a2 = std::chrono::steady_clock::now();
+        if (Ymax.size() != static_cast<std::size_t>(n) ||
+            Ymax.front().size() != static_cast<std::size_t>(K))
+            throw std::runtime_error("PCA_JL_K_MC: Ymax malformata");
+        const double tempo_A = elapsed(a0,a1);
+        const double tempo_proiezione = elapsed(a1,a2);
+
+        for (std::size_t ik=0;ik<k_values.size();++ik) {
+            const int k = k_values[ik];
+            if (prova_rapida && k != 202) continue;
+            const auto b0 = std::chrono::steady_clock::now();
+            const double scala = std::sqrt(static_cast<double>(K)/k);
+            Mat Y(n,Vec(k));
+            for (int i=0;i<n;++i)
+                for (int j=0;j<k;++j)
+                    Y[i][j] = Ymax[i][j]*scala;
+            const auto b1 = std::chrono::steady_clock::now();
+            const JLPCA_Spettro sy = JL_PCA_spettro(Y);
+            if (sy.sigma.size()<primi || !(sy.energia>0.0))
+                throw std::runtime_error("PCA_JL_K_MC: SVD invalida");
+
+            double delta_sum=0.0,delta_max=0.0;
+            std::size_t violations=0;
+            for (const auto& p:pairs) {
+                const double d2 = vector_distanza2(Y[p.i],Y[p.j]);
+                const double delta = std::abs(d2/p.d2-1.0);
+                if (!std::isfinite(delta))
+                    throw std::runtime_error("PCA_JL_K_MC: delta non finito");
+                delta_sum+=delta;
+                delta_max=std::max(delta_max,delta);
+                if (delta>eps) ++violations;
+            }
+            const bool ok = (violations==0);
+            double ey6=0.0;
+            for (int j=0;j<primi;++j) ey6+=sy.sigma[j]*sy.sigma[j];
+            // Protezione da arrotondamenti numerici minuscoli sul residuo.
+            const double tail_Y = sy.energia-ey6;
+            if (tail_Y < -1e-8*sy.energia)
+                throw std::runtime_error("PCA_JL_K_MC: energia coda negativa");
+            const double r1=sy.sigma[0]/sx.sigma[0];
+            const double r2=sy.sigma[1]/sx.sigma[1];
+            const double Q2=r1/r2;
+            const double var1_Y=sy.sigma[0]*sy.sigma[0]/sy.energia;
+            const double var2_Y=sy.sigma[1]*sy.sigma[1]/sy.energia;
+            const double rEnergia=sy.energia/sx.energia;
+            const double rTail=std::max(0.0,tail_Y)/energia_coda_X;
+            const double vTail=std::max(0.0,tail_Y)/sy.energia;
+            const double time_pca=sy.tempo_s;
+
+            Acc& acc=data[ik];
+            if (ok) ++acc.good;
+            if (r2>1.0) ++acc.sigma2_up;
+            if (Q2<1.0) ++acc.q2_down;
+            acc.s1.push_back(r1);acc.s2.push_back(r2);acc.q2.push_back(Q2);
+            acc.var1.push_back(var1_Y);acc.var2.push_back(var2_Y);
+            acc.energia.push_back(rEnergia);acc.coda_ratio.push_back(rTail);
+            acc.coda_quota.push_back(vTail);acc.delta.push_back(delta_max);
+            acc.tempo_pca.push_back(time_pca);
+            double Q[5];
+            for (int j=1;j<primi;++j) {
+                if (!(sy.sigma[j]>0.0))
+                    throw std::runtime_error("PCA_JL_K_MC: sigma Y nullo");
+                Q[j-1]=(sy.sigma[0]/sy.sigma[j]) /
+                       (sx.sigma[0]/sx.sigma[j]);
+                acc.Q[j-1].push_back(Q[j-1]);
+            }
+            detail << id << ',' << baseline_id << ',' << t+1 << ','
+                   << seed_A << ',' << n << ',' << d << ',' << k << ',' << K << ','
+                   << eps << ',' << pairs.size() << ',' << violations << ','
+                   << delta_sum/pairs.size() << ',' << delta_max << ',' << (ok?1:0)
+                   << ',' << r1 << ',' << r2 << ',' << Q2
+                   << ',' << var1_X << ',' << var1_Y
+                   << ',' << var2_X << ',' << var2_Y
+                   << ',' << rEnergia << ',' << rTail
+                   << ',' << coda_X << ',' << vTail
+                   << ',' << tempo_A << ',' << tempo_proiezione
+                   << ',' << elapsed(b0,b1) << ',' << time_pca;
+            for (int j=0;j<primi;++j) detail << ',' << sy.sigma[j];
+            for (int j=1;j<5;++j) detail << ',' << Q[j];
+            detail << '\n';
+            detail.flush();
+            std::cout << "trial=" << std::setw(2) << t+1 << " k=" << std::setw(3)
+                      << k << " seed=" << seed_A
+                      << " JL=" << (ok?"OK":"VIOLATO")
+                      << " dmax=" << std::fixed << std::setprecision(4) << delta_max
+                      << " s1/X=" << r1 << " s2/X=" << r2 << " Q2=" << Q2
+                      << " tail6/X=" << rTail << " PCA="
+                      << std::setprecision(3) << time_pca << " s\n";
+        }
+    }
+
+    auto emit_stat=[&](int k,const char* metric,const std::vector<double>& v) {
+        if (v.empty()) return;
+        const auto s=stat(v);
+        stats << id << ',' << baseline_id << ',' << n << ',' << d << ',' << k
+              << ',' << K << ',' << eps << ',' << T << ',' << metric << ','
+              << v.size() << ',' << s.avg << ',' << s.sd << ','
+              << s.lo << ',' << s.hi << '\n';
+    };
+    std::cout << "\n--- RIEPILOGO (medie +/- dev.std campionaria) ---\n";
+    for (std::size_t ik=0;ik<k_values.size();++ik) {
+        const int k=k_values[ik];
+        const Acc& a=data[ik];
+        if (a.q2.empty()) continue;
+        emit_stat(k,"sigma1_Y_su_X",a.s1);
+        emit_stat(k,"sigma2_Y_su_X",a.s2);
+        for (int j=0;j<5;++j) {
+            const auto name="Q"+std::to_string(j+2);
+            emit_stat(k,name.c_str(),a.Q[j]);
+        }
+        emit_stat(k,"var1_Y",a.var1);
+        emit_stat(k,"var2_Y",a.var2);
+        emit_stat(k,"energia_Y_su_X",a.energia);
+        emit_stat(k,"energia_coda6_Y_su_X",a.coda_ratio);
+        emit_stat(k,"quota_coda6_Y",a.coda_quota);
+        emit_stat(k,"delta_max",a.delta);
+        emit_stat(k,"tempo_PCA_s",a.tempo_pca);
+        const auto r2=stat(a.s2), q=stat(a.q2), tail=stat(a.coda_ratio);
+        std::cout << "k=" << std::setw(3) << k << " JL=" << a.good
+                  << '/' << a.q2.size() << " s2/X=" << std::setprecision(5)
+                  << r2.avg << " +/- " << r2.sd
+                  << " Q2=" << q.avg << " +/- " << q.sd
+                  << " coda6/X=" << tail.avg
+                  << " s2>1:" << a.sigma2_up
+                  << " Q2<1:" << a.q2_down << '\n';
+    }
+    stats.flush();
+    std::cout << "\nCSV trial: " << trial_file
+              << "\nCSV statistiche: " << stats_file
+              << "\nNOTA: le matrici per diversi k condividono gli stessi coefficienti"
+                 " gaussiani (righe iniziali).\n"
+              << "Il confronto temporale misura la PCA per ciascun k; la"
+                 " creazione/proiezione master e' un costo condiviso.\n"
+              << "Non aspettarsi monotonia rigorosa trial-per-trial.\n";
+    fcn_form::wait_report();
+}
+
     void sandbox() {
             SandboxParams params{};
             while (sandbox_form::prompt(params)) {
@@ -5379,6 +5705,7 @@ namespace {
             {"JL_K_C_d",        JL_stima_coeff_d},      // form ok
             {"PCA_JL",          JL_effetto_PCA},        //straight
             {"PCA_JL_MC",       JL_effetto_PCA_MC},     //straight
+            {"PCA_JL_K_MC",     JL_effetto_PCA_K_MC},   //straight
             {"sandbox",         sandbox}
             };
         }

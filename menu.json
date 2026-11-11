@@ -293,6 +293,12 @@
           "label": "Monte Carlo stabilita' spettrale JL+PCA",
           "action": "PCA_JL_MC",
           "enabled": true
+        },
+        {
+          "key": 8,
+          "label": "JL+PCA - Stabilita' spettrale variando k",
+          "action": "PCA_JL_K_MC",
+          "enabled": true
         }
       ]
     },
