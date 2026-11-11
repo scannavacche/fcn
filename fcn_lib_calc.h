@@ -780,6 +780,15 @@ figure_handle matplot_table_init (
     const int ylab) ;
 
 //
+// specifiche per Johnson-Lindenstrauss
+//
+struct JLPCA_Spettro {
+    Vec sigma;                  // ordinati decrescenti
+    double energia = 0.0;      // somma dei sigma^2 = ||X centrata||_F^2
+    double tempo_s = 0.0;      // centratura + bidiagonalizzazione + SVD
+};
+
+//
 // gestione menu principale
 // 
 

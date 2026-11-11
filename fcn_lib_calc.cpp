@@ -3636,6 +3636,7 @@ figure_handle matplot_table_init (
     return fig;
 }
 
+
 // questa la teniamo sino ad implementazione di entry per i form delle procedure
 
 void wait_return_to_menu(bool bypass_waitakey) {

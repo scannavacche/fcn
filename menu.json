@@ -281,6 +281,12 @@
           "label": "Test coeff per k di JL variando d, n fisso",
           "action": "JL_K_C_d",
           "enabled": true
+        },
+        {
+          "key": 6,
+          "label": "Confronto PCA diretta e con pre JL",
+          "action": "PCA_JL",
+          "enabled": true
         }
       ]
     },

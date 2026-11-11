@@ -594,6 +594,104 @@ namespace {
         fig->draw();
     }
 
+    //
+    // Per Johnson-Lindenstrauss
+    //
+    
+    // Prende per ogni cluster le prime n/2 osservazioni dal medesimo master.
+    // X_10 e' un sottoinsieme di X_20, ecc. (come insieme di righe).
+    static std::pair<Mat, std::vector<int>>
+    JL_estrai_bilanciato(const Mat& master,
+                        const std::vector<int>& label_master,
+                        int n)
+    {
+        if (n < 2 || n % 2 != 0)
+            throw std::invalid_argument("JL_estrai_bilanciato: n deve essere pari e >= 2");
+        if (master.size() != label_master.size())
+            throw std::invalid_argument("JL_estrai_bilanciato: X e label incoerenti");
+        if (static_cast<std::size_t>(n) > master.size())
+            throw std::invalid_argument("JL_estrai_bilanciato: n > dimensione master");
+
+        Mat X;
+        std::vector<int> label;
+        X.reserve(static_cast<std::size_t>(n));
+        label.reserve(static_cast<std::size_t>(n));
+
+        for (int classe = 0; classe < 2; ++classe) {
+            int presi = 0;
+            for (std::size_t i = 0;
+                i < master.size() && presi < n/2; ++i) {
+                if (label_master[i] == classe) {
+                    X.push_back(master[i]);
+                    label.push_back(classe);
+                    ++presi;
+                }
+            }
+            if (presi != n/2)
+                throw std::invalid_argument("JL_estrai_bilanciato: cluster troppo piccolo");
+        }
+        return {std::move(X), std::move(label)};
+    }
+
+
+    static JLPCA_Spettro JL_PCA_spettro(const Mat& X)
+    {
+        if (X.size() < 2 || X.front().empty())
+            throw std::invalid_argument("JL_PCA_spettro: matrice vuota o n<2");
+        const std::size_t d = X.front().size();
+        for (const auto& r : X)
+            if (r.size() != d)
+                throw std::invalid_argument("JL_PCA_spettro: matrice non rettangolare");
+
+        const auto start = std::chrono::steady_clock::now();
+
+        Vec avg_col(d, 0.0), avg_row(X.size(), 0.0);
+        matrix_calcola_media(X, avg_col, avg_row);
+        Mat Xtilde = matrix_centra_su_media(X, avg_col);
+
+        Mat U0, B, V0;
+        trmatrix_bidiagonalizza(Xtilde, U0, B, V0, bidiag_mode, false);
+
+        Mat Ub, Vb_t;
+        Vec sigma;
+        if (svd_bidiagonale(B, Ub, Vb_t, sigma) != 0)
+            throw std::runtime_error("JL_PCA_spettro: SVD non convergente");
+
+        const auto end = std::chrono::steady_clock::now();
+        std::sort(sigma.begin(), sigma.end(), std::greater<double>{});
+        const std::size_t expected = std::min(X.size(), d);
+        if (sigma.size() < expected)
+            throw std::runtime_error("JL_PCA_spettro: numero valori singolari insufficiente");
+        JLPCA_Spettro result;
+        result.sigma = std::move(sigma);
+        for (double s : result.sigma) {
+            if (!std::isfinite(s) || s < 0.0)
+                throw std::runtime_error("JL_PCA_spettro: valore singolare non valido");
+            result.energia += s*s;
+        }
+        result.tempo_s = std::chrono::duration<double>(end-start).count();
+        return result;
+    }
+
+    static std::string JL_PCA_id_campagna()
+    {
+        const auto now = std::chrono::system_clock::now();
+        const auto t = std::chrono::system_clock::to_time_t(now);
+        const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now.time_since_epoch()).count() % 1000;
+        std::tm tm{};
+    #if defined(_WIN32)
+        localtime_s(&tm, &t);
+    #else
+        localtime_r(&t, &tm);
+    #endif
+        std::ostringstream out;
+        out << std::put_time(&tm, "%Y%m%d_%H%M%S")
+            << '_' << std::setw(3) << std::setfill('0') << ms;
+        return out.str();
+    }
+
+
     void Gershgorin_execute(Mat& A){
 
         auto rows = linear_gershgorin_disks_rows(A);
@@ -3688,17 +3786,6 @@ namespace {
         }
     }
 
-    // Include standard, se non gia' presenti:
-    // <algorithm> <cmath> <cstdint> <fstream> <iomanip> <iostream>
-    // <iterator> <limits> <map> <set> <stdexcept> <string> <utility> <vector>
-    //
-    // ATTENZIONE: primo prototipo numerico. Il 'k trovato' e' il primo
-    // successo OSSERVATO nella griglia campionata, non il minimo matematico.
-
-// JL_stima_coeff_n() -- n variabile, d fisso. Da inserire in fcn_all.cpp.
-// Richiede la struct JLCoeffParams e JL_stima_coeff_n_form::prompt
-// gia' aggiunti in fcn_lib_form.h / fcn_lib_form.cpp.
-//
 // Include standard, se non gia' presenti:
 // <algorithm> <cmath> <cstdint> <fstream> <iomanip> <iostream>
 // <iterator> <limits> <map> <set> <stdexcept> <string> <utility> <vector>
@@ -4121,6 +4208,7 @@ namespace {
     // annidamento delle righe tra dataset di d differenti.
     // A parita' di n, k0 e' indipendente da d. Il k massimo esplorato e'
     // d_min-1 per rendere confrontabile l'intervallo dei k tra tutti i d.
+
     // Primo prototipo numerico. Il 'k trovato' e' il primo
     // successo OSSERVATO nella griglia campionata, non il minimo matematico.
 
@@ -4544,6 +4632,392 @@ namespace {
     }
 
 
+    void JL_effetto_PCA()
+    {
+        constexpr int d = 1000;
+        constexpr int n_max = 160;
+        constexpr int seed_X = 42;
+        constexpr int first_values = 6;
+
+        // Primo collaudo: n=10, epsilon=0.40.
+        // Mettere false per eseguire tutte le 25 combinazioni.
+        constexpr bool prova_rapida = false;
+
+        const std::vector<int> n_values = {10, 20, 40, 80, 160};
+        const std::vector<int> eps_percent = {30, 35, 40, 45, 50};
+
+        // k riusciti nella campagna 20261110_204027_870.
+        // Righe: n. Colonne: epsilon.
+        const std::vector<std::vector<int>> k_values = {
+            {258, 165, 135, 107,  95},
+            {288, 201, 175, 140, 116},
+            {388, 264, 207, 191, 150},
+            {413, 308, 249, 201, 157},
+            {502, 387, 304, 237, 202}
+        };
+
+        const std::string baseline_file =
+            "JL_PCA_originale_20261111_203831_386.csv";
+
+        // --------------------------------------------------------
+        // 1. Recupero spettri PCA originali, gia' calcolati.
+        // --------------------------------------------------------
+
+        const auto split_csv = [](const std::string& line) {
+            std::vector<std::string> fields;
+            std::istringstream input(line);
+            std::string field;
+
+            while (std::getline(input, field, ','))
+                fields.push_back(field);
+
+            return fields;
+        };
+
+        std::ifstream baseline(baseline_file);
+        if (!baseline)
+            throw std::runtime_error(
+                "PCA_JL: CSV originale non trovato: " + baseline_file);
+
+        std::string line;
+        if (!std::getline(baseline, line))
+            throw std::runtime_error("PCA_JL: CSV originale vuoto");
+
+        std::map<std::string, std::size_t> columns;
+        const auto header = split_csv(line);
+
+        for (std::size_t i = 0; i < header.size(); ++i)
+            columns[header[i]] = i;
+
+        const auto get_field = [&](const std::vector<std::string>& row,
+                                const std::string& name) -> std::string {
+            const auto it = columns.find(name);
+            if (it == columns.end() || it->second >= row.size())
+                throw std::runtime_error(
+                    "PCA_JL: colonna CSV mancante: " + name);
+            return row[it->second];
+        };
+
+        std::map<int, JLPCA_Spettro> originali;
+
+        while (std::getline(baseline, line)) {
+            if (line.empty()) continue;
+
+            const auto row = split_csv(line);
+
+            const int n = std::stoi(get_field(row, "n"));
+            const int cd = std::stoi(get_field(row, "d"));
+            const int cs = std::stoi(get_field(row, "seed_X"));
+            const int c0 = std::stoi(get_field(row, "cluster0"));
+            const int c1 = std::stoi(get_field(row, "cluster1"));
+
+            if (cd != d || cs != seed_X ||
+                c0 != n / 2 || c1 != n / 2)
+                throw std::runtime_error(
+                    "PCA_JL: baseline incompatibile con il dataset");
+
+            JLPCA_Spettro s;
+            s.tempo_s = std::stod(get_field(row, "tempo_pca_s"));
+
+            for (int j = 1; j <= first_values; ++j)
+                s.sigma.push_back(
+                    std::stod(get_field(row, "sigma" + std::to_string(j))));
+
+            const double ve1 = std::stod(
+                get_field(row, "var_spiegata1"));
+
+            if (ve1 <= 0.0 || s.sigma[0] <= 0.0)
+                throw std::runtime_error(
+                    "PCA_JL: energia originale non valida");
+
+            // Ricostruzione dell'energia totale dalla quota PC1.
+            s.energia = s.sigma[0] * s.sigma[0] / ve1;
+
+            if (!originali.emplace(n, std::move(s)).second)
+                throw std::runtime_error(
+                    "PCA_JL: n duplicato nel CSV originale");
+        }
+
+        for (int n : n_values)
+            if (originali.count(n) != 1)
+                throw std::runtime_error(
+                    "PCA_JL: baseline assente per n=" + std::to_string(n));
+
+        // --------------------------------------------------------
+        // 2. Dataset master e CSV della nuova campagna.
+        // --------------------------------------------------------
+
+        const auto [X_master, label_master] =
+            genera_cluster(n_max, d, seed_X);
+
+        const std::string id = JL_PCA_id_campagna();
+
+        const std::string summary_name =
+            "JL_PCA_confronto_" + id + ".csv";
+
+        const std::string spectra_name =
+            "JL_PCA_spettri_" + id + ".csv";
+
+        std::ofstream summary(summary_name);
+        std::ofstream spectra(spectra_name);
+
+        if (!summary || !spectra)
+            throw std::runtime_error(
+                "PCA_JL: impossibile creare i CSV");
+
+        summary
+            << "campagna,baseline,n,d,eps,k,seed_X,seed_A,"
+            << "coppie,violazioni,delta_media,delta_max,JL_ok,"
+            << "tempo_A_s,tempo_proiezione_s,tempo_PCA_JL_s,"
+            << "tempo_totale_s,tempo_PCA_X_s,speedup_PCA,"
+            << "var1_X,var1_JL\n";
+
+        spectra
+            << "campagna,n,d,eps,k,seed_A,indice,"
+            << "sigma_X,sigma_JL,rapporto_X,rapporto_JL,Q,"
+            << "var_X,var_JL,var_diff\n";
+
+        summary << std::fixed << std::setprecision(9);
+        spectra << std::fixed << std::setprecision(9);
+
+        std::cout
+            << "\n=== JL + PCA: CONFRONTO SPETTRALE ===\n"
+            << "Campagna: " << id << '\n'
+            << "Baseline: " << baseline_file << '\n'
+            << "Dataset master: n=" << n_max << " d=" << d << '\n'
+            << "seed_X=" << seed_X << '\n'
+            << "Distribuzione JL: Gaussiana\n"
+            << "Modalita': "
+            << (prova_rapida ? "COLLAUDO" : "COMPLETA")
+            << "\n\n";
+
+        struct Pair {
+            std::size_t i;
+            std::size_t j;
+            double d2;
+        };
+
+        const auto seconds = [](auto start, auto end) {
+            return std::chrono::duration<double>(end - start).count();
+        };
+
+        // --------------------------------------------------------
+        // 3. Ciclo sui dataset annidati.
+        // --------------------------------------------------------
+
+        for (std::size_t ni = 0; ni < n_values.size(); ++ni) {
+            const int n = n_values[ni];
+
+            if (prova_rapida && ni != 0)
+                continue;
+
+            const auto [X, labels] =
+                JL_estrai_bilanciato(X_master, label_master, n);
+
+            const JLPCA_Spettro& sx = originali.at(n);
+
+            // Distanze originali: calcolate una volta per n.
+            std::vector<Pair> pairs;
+            pairs.reserve(static_cast<std::size_t>(n) * (n - 1) / 2);
+
+            for (std::size_t i = 0; i < X.size(); ++i) {
+                for (std::size_t j = i + 1; j < X.size(); ++j) {
+                    const double dx2 = vector_distanza2(X[i], X[j]);
+                    if (!(dx2 > 0.0) || !std::isfinite(dx2))
+                        throw std::runtime_error(
+                            "PCA_JL: distanza originale non valida");
+
+                    pairs.push_back({i, j, dx2});
+                }
+            }
+
+            std::cout << "n=" << n
+                    << "  d=" << d
+                    << "  coppie=" << pairs.size()
+                    << "  PCA originale="
+                    << std::fixed << std::setprecision(3)
+                    << sx.tempo_s << " s\n";
+
+            // ----------------------------------------------------
+            // 4. Ciclo epsilon: JL + PCA.
+            // ----------------------------------------------------
+
+            for (std::size_t ei = 0; ei < eps_percent.size(); ++ei) {
+                if (prova_rapida && ei != 2)
+                    continue;
+
+                const double eps = eps_percent[ei] / 100.0;
+                const int k = k_values[ni][ei];
+
+                if (k <= 0 || k >= d)
+                    throw std::runtime_error(
+                        "PCA_JL: dimensione k non valida");
+
+                // Seed nuovi, distinti da quelli della ricerca MC.
+                const unsigned seed_A =
+                    50000u + static_cast<unsigned>(ni * 10 + ei);
+
+                const auto t0 = std::chrono::steady_clock::now();
+
+                Mat A = matrix_random_jl(
+                    k, d, JLMatrixDistribution::Gaussian, seed_A, 3);
+
+                const auto t1 = std::chrono::steady_clock::now();
+
+                Mat Y = matrix_prodotto_matrix(
+                    X, matrix_trasposta(A));
+
+                const auto t2 = std::chrono::steady_clock::now();
+
+                const double t_A = seconds(t0, t1);
+                const double t_JL = seconds(t1, t2);
+
+                if (Y.size() != X.size() ||
+                    Y.empty() ||
+                    Y.front().size() != static_cast<std::size_t>(k))
+                    throw std::runtime_error(
+                        "PCA_JL: dimensioni Y inattese");
+
+                // PCA con lo stesso algoritmo della baseline.
+                const JLPCA_Spettro sy = JL_PCA_spettro(Y);
+
+                if (sy.sigma.size() < first_values)
+                    throw std::runtime_error(
+                        "PCA_JL: spettro proiettato insufficiente");
+
+                // ------------------------------------------------
+                // 5. Controllo geometrico della proiezione.
+                // ------------------------------------------------
+
+                double delta_sum = 0.0;
+                double delta_max = 0.0;
+                std::size_t violazioni = 0;
+
+                for (const Pair& p : pairs) {
+                    const double dy2 = vector_distanza2(
+                        Y[p.i], Y[p.j]);
+
+                    const double delta = std::abs(dy2 / p.d2 - 1.0);
+
+                    if (!std::isfinite(delta))
+                        throw std::runtime_error(
+                            "PCA_JL: distorsione non finita");
+
+                    delta_sum += delta;
+                    delta_max = std::max(delta_max, delta);
+
+                    if (delta > eps)
+                        ++violazioni;
+                }
+
+                const double delta_media =
+                    delta_sum / static_cast<double>(pairs.size());
+
+                const bool jl_ok = (violazioni == 0);
+
+                // ------------------------------------------------
+                // 6. Confronto dei sei valori singolari.
+                // ------------------------------------------------
+
+                const double tempo_totale =
+                    t_A + t_JL + sy.tempo_s;
+
+                const double speedup =
+                    tempo_totale > 0.0
+                    ? sx.tempo_s / tempo_totale : 0.0;
+
+                const double var1_X =
+                    sx.sigma[0] * sx.sigma[0] / sx.energia;
+
+                const double var1_JL =
+                    sy.sigma[0] * sy.sigma[0] / sy.energia;
+
+                std::cout
+                    << "  eps=" << std::setprecision(2) << eps
+                    << " k=" << k
+                    << " seed_A=" << seed_A
+                    << " JL=" << (jl_ok ? "OK" : "VIOLATO")
+                    << " delta_max=" << std::setprecision(4)
+                    << delta_max << '\n';
+
+                std::cout
+                    << "    tempo A=" << std::setprecision(3) << t_A
+                    << "  proiezione=" << t_JL
+                    << "  PCA/JL=" << sy.tempo_s
+                    << "  totale=" << tempo_totale << " s\n";
+
+                std::cout
+                    << "    varianza PC1: "
+                    << std::setprecision(5)
+                    << var1_X << " -> " << var1_JL
+                    << "\n    Q(2..6):";
+
+                for (int j = 0; j < first_values; ++j) {
+                    if (sx.sigma[j] <= 0.0 ||
+                        sy.sigma[j] <= 0.0)
+                        throw std::runtime_error(
+                            "PCA_JL: denominatore spettrale nullo");
+
+                    const double ratio_X =
+                        sx.sigma[0] / sx.sigma[j];
+
+                    const double ratio_JL =
+                        sy.sigma[0] / sy.sigma[j];
+
+                    const double Q = ratio_JL / ratio_X;
+
+                    const double var_X =
+                        sx.sigma[j] * sx.sigma[j] / sx.energia;
+
+                    const double var_JL =
+                        sy.sigma[j] * sy.sigma[j] / sy.energia;
+
+                    spectra
+                        << id << ',' << n << ',' << d << ','
+                        << eps << ',' << k << ',' << seed_A << ','
+                        << j + 1 << ','
+                        << sx.sigma[j] << ',' << sy.sigma[j] << ','
+                        << ratio_X << ',' << ratio_JL << ',' << Q << ','
+                        << var_X << ',' << var_JL << ','
+                        << (var_JL - var_X) << '\n';
+
+                    if (j > 0)
+                        std::cout << ' ' << Q;
+                }
+
+                std::cout << "\n\n";
+
+                summary
+                    << id << ",20261111_203831_386,"
+                    << n << ',' << d << ',' << eps << ','
+                    << k << ',' << seed_X << ',' << seed_A << ','
+                    << pairs.size() << ',' << violazioni << ','
+                    << delta_media << ',' << delta_max << ','
+                    << (jl_ok ? 1 : 0) << ','
+                    << t_A << ',' << t_JL << ',' << sy.tempo_s << ','
+                    << tempo_totale << ',' << sx.tempo_s << ','
+                    << speedup << ',' << var1_X << ',' << var1_JL
+                    << '\n';
+
+                summary.flush();
+                spectra.flush();
+            }
+        }
+
+        summary.close();
+        spectra.close();
+
+        std::cout
+            << "CSV prodotti:\n"
+            << "  " << summary_name << '\n'
+            << "  " << spectra_name << '\n'
+            << "\nNota: una singola proiezione per ogni (n,epsilon)."
+            << "\nI k sono quelli della precedente campagna Monte Carlo."
+            << "\nIl successo JL va verificato sul dataset attuale.\n";
+
+        fcn_form::wait_report();
+    }
+
     void sandbox() {
             SandboxParams params{};
             while (sandbox_form::prompt(params)) {
@@ -4586,19 +5060,20 @@ namespace {
             {"f3_svd_test",     f3_svd_test},           // form ok
             {"f3_svd_pca",      f3_svd_pca},            // form ok 
             {"f3_svd_an",       f3_svd_an},             // form ok
-            {"sym_cauchy",      sym_cauchy},
-            {"sym_hhalpha",     sym_hhalpha},
+            {"sym_cauchy",      sym_cauchy},            // form ok
+            {"sym_hhalpha",     sym_hhalpha},           // form ok
             {"ode_euler",       ode_euler},             // form ok
             {"ode_osc2d",       ode_osc2d},             // form ok
             {"ode_lotkav",      ode_lotkav},            // form ok
             {"gg1",             gg1},
             {"gg2",             gg2},
-            {"al_qr",           al_qr},
-            {"JL_dist",         JL_distanze}, 
-            {"JL_X_rand",       JL_distanze_dataset}, 
-            {"JL_A_rand",       JL_distanze_dataMC}, 
-            {"JL_K_C_n",          JL_stima_coeff_n},
-            {"JL_K_C_d",          JL_stima_coeff_d},
+            {"al_qr",           al_qr},                 // form ok
+            {"JL_dist",         JL_distanze},           // form ok
+            {"JL_X_rand",       JL_distanze_dataset},   // form ok
+            {"JL_A_rand",       JL_distanze_dataMC},    // form ok
+            {"JL_K_C_n",        JL_stima_coeff_n},      // form ok
+            {"JL_K_C_d",        JL_stima_coeff_d},      // form ok
+            {"PCA_JL",          JL_effetto_PCA},
             {"sandbox",         sandbox}
             };
         }
