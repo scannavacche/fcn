@@ -287,6 +287,12 @@
           "label": "Confronto PCA diretta e con pre JL",
           "action": "PCA_JL",
           "enabled": true
+        },
+        {
+          "key": 7,
+          "label": "Monte Carlo stabilita' spettrale JL+PCA",
+          "action": "PCA_JL_MC",
+          "enabled": true
         }
       ]
     },

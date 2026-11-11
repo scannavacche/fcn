@@ -5018,6 +5018,310 @@ namespace {
         fcn_form::wait_report();
     }
 
+    // ============================================================================
+    // PCA_JL_MC -- replica Monte Carlo del confronto spettrale JL + PCA
+    // Aggiungere questa funzione a fcn_all.cpp, SENZA sostituire JL_effetto_PCA().
+    // Riutilizza JL_estrai_bilanciato(), JL_PCA_spettro(), JL_PCA_id_campagna()
+    // gia' integrate e collaudate. Nessuna modifica a dataset.hpp.
+    //
+    // Header standard: <algorithm>, <chrono>, <cmath>, <fstream>, <iomanip>,
+    // <iostream>, <numeric>, <sstream>, <stdexcept>, <string>, <vector>.
+    // ============================================================================
+
+    void JL_effetto_PCA_MC()
+    {
+        // Prima prova: caso della campagna completa con n=160, eps=0.50.
+        constexpr int n = 160;
+        constexpr int d = 1000;
+        constexpr int k = 202;
+        constexpr double eps = 0.50;
+        constexpr int T = 20;                  // Numero di nuove proiezioni
+        constexpr int seed_X = 42;
+        constexpr unsigned seed_A_iniziale = 60000u;
+        constexpr int primi = 6;
+        constexpr const char* baseline_id = "20261111_203831_386";
+        const std::string baseline_file =
+            std::string("JL_PCA_originale_") + baseline_id + ".csv";
+
+        if (k <= 0 || k >= d || T <= 0 || n < primi + 1 || !(eps > 0.0 && eps < 1.0))
+            throw std::invalid_argument("PCA_JL_MC: parametri non validi");
+
+        // 1. Legge il riferimento PCA, senza ripetere la SVD originale.
+        std::ifstream base(baseline_file);
+        if (!base)
+            throw std::runtime_error("PCA_JL_MC: non trovo " + baseline_file);
+
+        auto split_csv = [](const std::string& line) {
+            std::vector<std::string> v;
+            std::istringstream is(line);
+            std::string cell;
+            while (std::getline(is, cell, ',')) v.push_back(cell);
+            return v;
+        };
+        std::string line;
+        if (!std::getline(base, line))
+            throw std::runtime_error("PCA_JL_MC: baseline vuota");
+        const auto intestazione = split_csv(line);
+
+        auto field = [&intestazione](const std::vector<std::string>& row,
+                                    const std::string& name) -> std::string {
+            auto it = std::find(intestazione.begin(), intestazione.end(), name);
+            if (it == intestazione.end())
+                throw std::runtime_error("PCA_JL_MC: colonna mancante: " + name);
+            std::size_t i = static_cast<std::size_t>(it - intestazione.begin());
+            if (i >= row.size() || row[i].empty())
+                throw std::runtime_error("PCA_JL_MC: campo vuoto: " + name);
+            return row[i];
+        };
+
+        JLPCA_Spettro sx;
+        bool trovato = false;
+        while (std::getline(base, line)) {
+            if (line.empty()) continue;
+            auto row = split_csv(line);
+            int n_csv = std::stoi(field(row, "n"));
+            if (n_csv != n) continue;
+            if (trovato)
+                throw std::runtime_error("PCA_JL_MC: n duplicato nella baseline");
+            if (std::stoi(field(row, "d")) != d ||
+                std::stoi(field(row, "seed_X")) != seed_X ||
+                std::stoi(field(row, "cluster0")) != n/2 ||
+                std::stoi(field(row, "cluster1")) != n/2 ||
+                field(row, "campagna") != baseline_id)
+                throw std::runtime_error("PCA_JL_MC: riferimento incompatibile");
+
+            sx.tempo_s = std::stod(field(row, "tempo_pca_s"));
+            for (int j = 1; j <= primi; ++j)
+                sx.sigma.push_back(std::stod(field(row, "sigma" + std::to_string(j))));
+            const double ve1 = std::stod(field(row, "var_spiegata1"));
+            if (!(ve1 > 0.0 && ve1 <= 1.0) || sx.sigma[0] <= 0.0)
+                throw std::runtime_error("PCA_JL_MC: spettro baseline non valido");
+            sx.energia = sx.sigma[0] * sx.sigma[0] / ve1;
+            trovato = true;
+        }
+        if (!trovato)
+            throw std::runtime_error("PCA_JL_MC: n richiesto assente dalla baseline");
+        for (double s : sx.sigma)
+            if (!std::isfinite(s) || s <= 0.0)
+                throw std::runtime_error("PCA_JL_MC: valori singolari originali non validi");
+
+        // 2. Ricostruisce ESATTAMENTE il master della campagna originale.
+        const auto [X_master, label_master] = genera_cluster(n, d, seed_X);
+        const auto [X, labels] = JL_estrai_bilanciato(X_master, label_master, n);
+
+        // Controllo ulteriore del riferimento: energia Frobenius della matrice
+        // centrata, senza eseguire nuovamente la costosa SVD originale.
+        Vec avg_col(d, 0.0), avg_row(n, 0.0);
+        matrix_calcola_media(X, avg_col, avg_row);
+        const Mat Xc = matrix_centra_su_media(X, avg_col);
+        double energia_dati = 0.0;
+        for (const auto& row : Xc)
+            for (double x : row) energia_dati += x*x;
+        if (!(sx.energia > 0.0) ||
+            std::abs(energia_dati / sx.energia - 1.0) > 1e-5)
+            throw std::runtime_error(
+                "PCA_JL_MC: energia della baseline diversa da quella del master");
+
+        // Distanze originarie calcolate UNA sola volta per tutti i trial.
+        struct Coppia { std::size_t i, j; double d2; };
+        std::vector<Coppia> coppie;
+        coppie.reserve(static_cast<std::size_t>(n)*(n-1)/2);
+        for (std::size_t i = 0; i < X.size(); ++i)
+            for (std::size_t j = i+1; j < X.size(); ++j) {
+                double d2 = vector_distanza2(X[i], X[j]);
+                if (!(d2 > 0.0) || !std::isfinite(d2))
+                    throw std::runtime_error("PCA_JL_MC: distanza originale non valida");
+                coppie.push_back({i,j,d2});
+            }
+
+        // 3. Output separati: dettaglio di ogni trial + statistiche finali.
+        const std::string id = JL_PCA_id_campagna();
+        const std::string trial_file = "JL_PCA_MC_trial_" + id + ".csv";
+        const std::string stat_file  = "JL_PCA_MC_stat_" + id + ".csv";
+        std::ofstream trial_csv(trial_file);
+        std::ofstream stat_csv(stat_file);
+        if (!trial_csv || !stat_csv)
+            throw std::runtime_error("PCA_JL_MC: impossibile creare i CSV");
+        trial_csv << std::fixed << std::setprecision(9);
+        stat_csv << std::fixed << std::setprecision(9);
+
+        trial_csv << "campagna,baseline,trial,n,d,k,eps,seed_X,seed_A,"
+                << "coppie,violazioni,delta_media,delta_max,JL_ok,"
+                << "tempo_A_s,tempo_proiezione_s,tempo_PCA_s,tempo_totale_s,"
+                << "tempo_PCA_X_s,speedup_indicativo,"
+                << "sigma1_su_X,sigma2_su_X,var1_X,var1_Y,energia_Y_su_X";
+        for (int j = 1; j <= primi; ++j) trial_csv << ",sigmaY" << j;
+        for (int j = 2; j <= primi; ++j) trial_csv << ",Q" << j;
+        trial_csv << '\n';
+
+        // Le serie seguenti alimentano le statistiche descrittive.
+        std::vector<double> s1ratio, s2ratio, q2, q2_solo_ok, var1, energia_ratio;
+        std::vector<double> delta_max_values, tempi, speedups, indicatori_ok;
+        std::vector<double> q[primi-1];
+        int successi = 0;
+        int sigma2_cresciuto = 0;
+        int q2_sotto_uno = 0;
+
+        const auto tempo = [](auto a, auto b) {
+            return std::chrono::duration<double>(b-a).count();
+        };
+
+        std::cout << "\n=== JL + PCA: MONTE CARLO SPETTRALE ===\n"
+                << "Campagna: " << id << '\n'
+                << "Baseline: " << baseline_file << '\n'
+                << "n=" << n << " d=" << d << " k=" << k
+                << " epsilon=" << eps << " T=" << T << '\n'
+                << "seed_X=" << seed_X << " seed_A=" << seed_A_iniziale
+                << ".." << seed_A_iniziale+T-1 << '\n'
+                << "Coppie: " << coppie.size() << '\n';
+
+        // 4. Monte Carlo: stessa X, matrice A differente in ogni trial.
+        for (int t = 0; t < T; ++t) {
+            unsigned seed_A = seed_A_iniziale + static_cast<unsigned>(t);
+            auto start = std::chrono::steady_clock::now();
+            Mat A = matrix_random_jl(k, d, JLMatrixDistribution::Gaussian, seed_A, 3);
+            auto after_A = std::chrono::steady_clock::now();
+            Mat Y = matrix_prodotto_matrix(X, matrix_trasposta(A));
+            auto after_projection = std::chrono::steady_clock::now();
+            if (Y.size() != X.size() || Y.empty() ||
+                Y.front().size() != static_cast<std::size_t>(k))
+                throw std::runtime_error("PCA_JL_MC: dimensioni di Y non valide");
+
+            JLPCA_Spettro sy = JL_PCA_spettro(Y);
+            if (sy.sigma.size() < primi || !(sy.energia > 0.0))
+                throw std::runtime_error("PCA_JL_MC: spettro proiettato non valido");
+
+            std::size_t violazioni = 0;
+            double delta_somma = 0.0;
+            double delta_max = 0.0;
+            for (const auto& p : coppie) {
+                double dy2 = vector_distanza2(Y[p.i], Y[p.j]);
+                double delta = std::abs(dy2 / p.d2 - 1.0);
+                if (!std::isfinite(delta))
+                    throw std::runtime_error("PCA_JL_MC: distorsione non finita");
+                delta_somma += delta;
+                delta_max = std::max(delta_max, delta);
+                if (delta > eps) ++violazioni;
+            }
+            const bool ok = (violazioni == 0);
+            if (ok) ++successi;
+            double delta_media = delta_somma / coppie.size();
+
+            const double r1 = sy.sigma[0] / sx.sigma[0];
+            const double r2 = sy.sigma[1] / sx.sigma[1];
+            const double ve1_orig = sx.sigma[0]*sx.sigma[0] / sx.energia;
+            const double ve1_Y = sy.sigma[0]*sy.sigma[0] / sy.energia;
+            const double r_energia = sy.energia / sx.energia;
+            double Q[primi-1];
+            for (int j = 1; j < primi; ++j) {
+                if (!(sy.sigma[j] > 0.0))
+                    throw std::runtime_error("PCA_JL_MC: valore singolare nullo");
+                Q[j-1] = (sy.sigma[0] / sy.sigma[j]) /
+                        (sx.sigma[0] / sx.sigma[j]);
+                q[j-1].push_back(Q[j-1]);
+            }
+            if (r2 > 1.0) ++sigma2_cresciuto;
+            if (Q[0] < 1.0) ++q2_sotto_uno;
+            if (ok) q2_solo_ok.push_back(Q[0]);
+
+            const double t_A = tempo(start, after_A);
+            const double t_proj = tempo(after_A, after_projection);
+            const double t_pca = sy.tempo_s;
+            const double t_tot = t_A+t_proj+t_pca;
+            const double speedup = t_tot > 0 ? sx.tempo_s/t_tot : 0.0;
+
+            s1ratio.push_back(r1);
+            s2ratio.push_back(r2);
+            q2.push_back(Q[0]);
+            var1.push_back(ve1_Y);
+            energia_ratio.push_back(r_energia);
+            delta_max_values.push_back(delta_max);
+            tempi.push_back(t_tot);
+            speedups.push_back(speedup);
+            indicatori_ok.push_back(ok ? 1.0 : 0.0);
+
+            trial_csv << id << ',' << baseline_id << ',' << t+1 << ','
+                    << n << ',' << d << ',' << k << ',' << eps << ','
+                    << seed_X << ',' << seed_A << ',' << coppie.size() << ','
+                    << violazioni << ',' << delta_media << ',' << delta_max << ','
+                    << (ok?1:0) << ',' << t_A << ',' << t_proj << ','
+                    << t_pca << ',' << t_tot << ',' << sx.tempo_s << ','
+                    << speedup << ',' << r1 << ',' << r2 << ','
+                    << ve1_orig << ',' << ve1_Y << ',' << r_energia;
+            for (int j=0; j<primi; ++j) trial_csv << ',' << sy.sigma[j];
+            for (int j=0; j<primi-1; ++j) trial_csv << ',' << Q[j];
+            trial_csv << '\n';
+            trial_csv.flush(); // conserva anche i trial completi in caso di stop
+
+            std::cout << "trial=" << std::setw(2) << t+1
+                    << " seed=" << seed_A
+                    << " JL=" << (ok ? "OK" : "VIOLATO")
+                    << " delta_max=" << std::fixed << std::setprecision(4)
+                    << delta_max << "  s1/X=" << r1
+                    << "  s2/X=" << r2 << "  Q2=" << Q[0]
+                    << "  var1=" << ve1_Y
+                    << "  tempo=" << std::setprecision(3) << t_tot << " s\n";
+        }
+
+        // 5. Tabelle statistiche; dev. standard campionaria (T-1).
+        stat_csv << "campagna,baseline,n,d,k,eps,T,metrica,campioni,media,"
+                    "dev_std_campionaria,min,max\n";
+        struct Stat { double media=0, ds=0, minimo=0, massimo=0; };
+        auto statistica = [](const std::vector<double>& v) -> Stat {
+            if (v.empty()) return {};
+            Stat a;
+            a.minimo = *std::min_element(v.begin(),v.end());
+            a.massimo = *std::max_element(v.begin(),v.end());
+            for (double x : v) a.media += x;
+            a.media /= v.size();
+            for (double x : v) a.ds += (x-a.media)*(x-a.media);
+            a.ds = v.size()>1 ? std::sqrt(a.ds/(v.size()-1)) : 0.0;
+            return a;
+        };
+        auto write_stat = [&](const char* name, const std::vector<double>& v) {
+            if (v.empty()) return;
+            Stat a = statistica(v);
+            stat_csv << id << ',' << baseline_id << ',' << n << ',' << d
+                    << ',' << k << ',' << eps << ',' << T << ',' << name
+                    << ',' << v.size() << ',' << a.media << ',' << a.ds
+                    << ',' << a.minimo << ',' << a.massimo << '\n';
+        };
+        write_stat("JL_ok_01",indicatori_ok);
+        write_stat("delta_max",delta_max_values);
+        write_stat("sigma1_Y_su_X",s1ratio);
+        write_stat("sigma2_Y_su_X",s2ratio);
+        for (int j=0; j<primi-1; ++j) {
+            const std::string name = "Q" + std::to_string(j+2);
+            write_stat(name.c_str(),q[j]);
+        }
+        write_stat("Q2_solo_JL_ok",q2_solo_ok);
+        write_stat("var1_Y",var1);
+        write_stat("energia_Y_su_X",energia_ratio);
+        write_stat("tempo_totale_s",tempi);
+        write_stat("speedup_indicativo",speedups);
+
+        Stat a1 = statistica(s1ratio), a2 = statistica(s2ratio);
+        Stat aq = statistica(q2), av = statistica(var1);
+        std::cout << "\n--- RISULTATI MONTE CARLO ---\n"
+                << "JL riuscite: " << successi << '/' << T << " ("
+                << std::setprecision(2) << 100.0*successi/T << "%)\n"
+                << "sigma1(Y)/sigma1(X): " << std::setprecision(5)
+                << a1.media << " +/- " << a1.ds << '\n'
+                << "sigma2(Y)/sigma2(X): " << a2.media << " +/- " << a2.ds
+                << "  [>1 in " << sigma2_cresciuto << '/' << T << "]\n"
+                << "Q2: " << aq.media << " +/- " << aq.ds
+                << "  [<1 in " << q2_sotto_uno << '/' << T << "]\n"
+                << "Varianza PC1 originale: "
+                << sx.sigma[0]*sx.sigma[0]/sx.energia
+                << "  dopo JL (media): " << av.media << '\n'
+                << "CSV trial: " << trial_file << '\n'
+                << "CSV statistiche: " << stat_file << '\n'
+                << "Nota: 20 trial forniscono frequenze e dispersioni descrittive,"
+                    " non una stima precisa della probabilita' di successo.\n";
+
+        fcn_form::wait_report();
+    }
+
     void sandbox() {
             SandboxParams params{};
             while (sandbox_form::prompt(params)) {
@@ -5073,7 +5377,8 @@ namespace {
             {"JL_A_rand",       JL_distanze_dataMC},    // form ok
             {"JL_K_C_n",        JL_stima_coeff_n},      // form ok
             {"JL_K_C_d",        JL_stima_coeff_d},      // form ok
-            {"PCA_JL",          JL_effetto_PCA},
+            {"PCA_JL",          JL_effetto_PCA},        //straight
+            {"PCA_JL_MC",       JL_effetto_PCA_MC},     //straight
             {"sandbox",         sandbox}
             };
         }
