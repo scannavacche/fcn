@@ -24,7 +24,7 @@
 #include <utility>
 #include <vector>
 
-#include "dataset.hpp"
+#include "dataset_JL_centroidi_parametrici.hpp"
 #include "svd_qr.cpp" // magari basta solo un header visto che e' compilato nella lib statica
 #include "fcn_lib_calc.h"
 
@@ -601,9 +601,10 @@ namespace {
     // Prende per ogni cluster le prime n/2 osservazioni dal medesimo master.
     // X_10 e' un sottoinsieme di X_20, ecc. (come insieme di righe).
     static std::pair<Mat, std::vector<int>>
-    JL_estrai_bilanciato(const Mat& master,
-                        const std::vector<int>& label_master,
-                        int n)
+    JL_estrai_bilanciato(
+        const Mat& master,
+        const std::vector<int>& label_master,
+        int n)
     {
         if (n < 2 || n % 2 != 0)
             throw std::invalid_argument("JL_estrai_bilanciato: n deve essere pari e >= 2");
@@ -792,7 +793,8 @@ namespace {
         return result;
     }
 
-    static JLCL_ClassMetrics JLCL_evaluate(const std::vector<JLCL_Point>& P,const std::vector<int>& labels)
+    static JLCL_ClassMetrics JLCL_evaluate(
+        const std::vector<JLCL_Point>& P,const std::vector<int>& labels)
     {
         const std::size_t n=P.size();
         if (n!=labels.size() || n<4)
@@ -859,8 +861,7 @@ namespace {
 
     static JLCL_Alignment JLCL_align(
         const std::vector<JLCL_Point>& X,const JLCL_ClassMetrics& cx,
-        const std::vector<JLCL_Point>& Y,const JLCL_ClassMetrics& cy
-        )
+        const std::vector<JLCL_Point>& Y,const JLCL_ClassMetrics& cy)
     {
         if (X.size()!=Y.size())
             throw std::invalid_argument("JLCL_align: dati non accoppiati");
@@ -6006,9 +6007,16 @@ namespace {
         std::cout << "\n=== JL + PCA: CLASSIFICAZIONE E OVERLAY CLUSTER ===\n"
                 << "Dataset: n="<<n<<" d="<<d<<" seed_X="<<seed_X<<'\n'
                 << "k="<<k<<" seed_A="<<seed_A<<" epsilon="<<eps<<"\n";
-        // n<=160: mantiene esattamente i punti della baseline costruiti
-        // estraendo dai 160 punti master; nuovi n,d,seed_X restano liberi.
-        const auto [master,labelMaster]=genera_cluster(master_n,d,seed_X);
+        // n<=160: mantiene il campionamento bilanciato dai 160 punti master
+        // (la geometria resta quella storica soltanto in modo Federico).
+        // Usa anche i default di JLConfigCentroidi definiti in dataset.hpp.
+        // La chiamata a TRE argomenti usa SEMPRE Federico, ignorando cfg.
+        const JLConfigCentroidi cfg{};
+        std::cout << "Modello centroidi: "
+                << (cfg.modo==JLScalaCentroidi::Federico ? "Federico" : "LeggeDiPotenza")
+                << " D_ref=" << cfg.distanza_ref
+                << " d_ref=" << cfg.d_ref << " alfa=" << cfg.alfa << '\n';
+        const auto [master,labelMaster]=genera_cluster(master_n,d,seed_X,cfg);
         const auto [X,labels]=JL_estrai_bilanciato(master,labelMaster,n);
         const auto t0=std::chrono::steady_clock::now();
         JLCL_PCA2 Xp=JLCL_pca2_gram(X);
@@ -6017,7 +6025,11 @@ namespace {
         // Controllo indipendente contro la SVD originale del commit c089613.
         // Se presente, il CSV permette di rilevare qualunque errore di convenzione.
         {
-            const bool reference_family = (n<=160 && d==1000 && seed_X==42);
+            // La SVD storica appartiene esclusivamente ai dati originali
+            // di Federico: i parametri di dimensione e seed non bastano.
+            const bool reference_family =
+                (cfg.modo==JLScalaCentroidi::Federico &&
+                n<=160 && d==1000 && seed_X==42);
             std::ifstream base;
             if (reference_family) base.open(baseline_file);
             if (base.is_open()) {
@@ -6056,8 +6068,9 @@ namespace {
                     std::cout << "PCA originale: n assente dal CSV, riferimento "
                                 "calcolato nel nuovo test.\n";
             } else {
-                std::cout << "PCA originale: riferimento dinamico (nuovi n,d o seed X; "
-                            "oppure CSV non disponibile).\n";
+                std::cout << "PCA originale: riferimento ricalcolato sul dataset "
+                            "corrente (baseline storica non applicabile oppure "
+                            "CSV assente).\n";
             }
         }
 
@@ -6103,7 +6116,8 @@ namespace {
             "accuratezza_LOO_X,accuratezza_LOO_Y,"
             "margine_min_LOO_X,margine_min_LOO_Y,"
             "angolo_allineamento_deg,riflessione_trasversale,rms_spostamento_plot,"
-            "tempo_PCA_X_s,tempo_proiezione_s,tempo_PCA_Y_s\n";
+            "tempo_PCA_X_s,tempo_proiezione_s,tempo_PCA_Y_s,"
+            "modo_centroidi,D_ref,d_ref,alfa\n";
         out << run<<','<<n<<','<<d<<','<<k<<','<<seed_X<<','<<seed_A<<','
             <<eps<<','<<pairs<<','<<violations<<','<<delta_sum/pairs<<','<<delta_max<<','
             <<Xp.sigma1<<','<<Xp.sigma2<<','<<Yp.sigma1<<','<<Yp.sigma2<<','
@@ -6120,7 +6134,9 @@ namespace {
             <<alignment.rms_displacement<<','
             <<std::chrono::duration<double>(t1-t0).count()<<','
             <<std::chrono::duration<double>(a1-a0).count()<<','
-            <<std::chrono::duration<double>(a2-a1).count()<<'\n';
+            <<std::chrono::duration<double>(a2-a1).count()<<','
+            <<(cfg.modo==JLScalaCentroidi::Federico?"Federico":"LeggeDiPotenza")<<','
+            <<cfg.distanza_ref<<','<<cfg.d_ref<<','<<cfg.alfa<<'\n';
         perpoint << "campagna,id,label,PC1_X,PC2_X,PC1_JL_raw,PC2_JL_raw,"
                     "PC1_JL_aligned,PC2_JL_aligned,pred_LOO_X,pred_LOO_JL,"
                     "margin_LOO_X,margin_LOO_JL\n";
