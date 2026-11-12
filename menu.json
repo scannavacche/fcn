@@ -249,7 +249,7 @@
       "id": "Tesi_JL",
       "title": "Tesi su Lemma Johnson-Lindenstrauss",
       "layout": "program_list",
-      "rows": 8,
+      "rows": 9,
       "columns": 1,
       "items": [
         {
@@ -298,6 +298,12 @@
           "key": 8,
           "label": "JL+PCA - Stabilita' spettrale variando k",
           "action": "PCA_JL_K_MC",
+          "enabled": true
+        },
+        {
+          "key": 9,
+          "label": "JJL + PCA - Classificazione e overlay dei cluster",
+          "action": "PCA_JL_CLASS",
           "enabled": true
         }
       ]

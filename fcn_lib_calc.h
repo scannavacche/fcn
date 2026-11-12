@@ -788,6 +788,33 @@ struct JLPCA_Spettro {
     double tempo_s = 0.0;      // centratura + bidiagonalizzazione + SVD
 };
 
+struct JLCL_Point {
+    double x=0.0, y=0.0;
+};
+
+
+struct JLCL_PCA2 {
+    std::vector<JLCL_Point> score; // n score in PC1/PC2
+    double sigma1=0.0, sigma2=0.0, energia=0.0;
+};
+
+struct JLCL_ClassMetrics {
+    JLCL_Point centroid[2];
+    double radius[2]={0.0,0.0}; // RMS distanza al centroide, nel piano
+    double separation=0.0, sep_ratio=0.0, signed_gap=0.0;
+    int train_errors=0, loo_errors=0;
+    double loo_min_margin=0.0,loo_mean_margin=0.0;
+    std::vector<int> loo_prediction;
+    std::vector<double> loo_margin;
+};
+
+struct JLCL_Alignment {
+    std::vector<JLCL_Point> Yaligned;
+    bool reflected=false;
+    double angle_deg=0.0, rms_displacement=0.0;
+};
+
+
 //
 // gestione menu principale
 // 

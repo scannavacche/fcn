@@ -344,6 +344,35 @@ namespace JL_stima_coeff_d_form {
     bool prompt(JLCoeffDParams& params);
 }
 
+// FCN Lab - due form GNPORT per PCA/JL (12-11-2026)
+// INCOLLARE in fcn_lib_form.h, accanto alle altre struct e namespace dei form.
+// Parametri del dataset EDITABILI; default coerenti con il dataset Federico.
+// Il generatore originario usa centri uniformi [-1,1]^d e rumore N(0,0.3^2);
+// questi due parametri del MODELLO saranno configurabili in un passo futuro.
+// Tutti i limiti dei singoli ENTRY risiedono esclusivamente in prepare().
+
+struct JLPCAKMCParams {
+    int n = 160, d = 1000, seed_X = 42;
+    int k1 = 202, k2 = 304, k3 = 502, k4 = 800;
+    int k_count = 4;              // quante k iniziali eseguire
+    int T = 5;                    // numero di matrici gaussiane
+    int eps_pct = 50;             // 50 -> epsilon = 0.50
+    int seed_A = 70000;
+};
+namespace JL_PCA_K_MC_form {
+    bool prompt(JLPCAKMCParams& p);
+}
+
+struct JLClassPCAParams {
+    int n = 160, d = 1000, seed_X = 42;
+    int k = 202;
+    int eps_pct = 50;             // 50 -> epsilon = 0.50
+    int seed_A = 80000;
+};
+namespace JL_CLASS_PCA_form {
+    bool prompt(JLClassPCAParams& p);
+}
+
 // Ritorno dal rapporto stdio alla form dei parametri.
 namespace fcn_form
 {

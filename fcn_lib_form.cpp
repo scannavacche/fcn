@@ -4941,3 +4941,487 @@ namespace JL_stima_coeff_d_form {
         return true;
     }
 } // namespace JL_stima_coeff_d_form
+
+// FCN Lab - due form GNPORT (12-11-2026)
+// INCOLLARE in fcn_lib_form.cpp; non compilare questo .inc autonomamente.
+// Richiede le struct dichiarate in fcn_lib_form.h e i consueti include GNPORT.
+// Range numerici SOLO nelle GnEntrySpec, non replicati nel validate().
+// ESC annulla, F10 accetta; HOME/END e frecce seguono poslab.
+
+namespace JL_PCA_K_MC_form {
+    namespace {
+        constexpr std::size_t FIELD_COUNT=11;
+        constexpr const char* HELP_TITLE="JL PCA - Monte Carlo con k variabile - HELP";
+        struct FieldDef {
+            int poslab;
+            const char* label;
+            const char* hint;
+            int length;
+            double lower,upper;
+        };
+        constexpr FieldDef field_defs[FIELD_COUNT]={
+            {10, "k 1", "Prima dimensione proiettata (almeno 6 per lo spettro)", 4, 6, 5000},
+            {11, "k 2", "Seconda dimensione, se N k >= 2", 4, 6, 5000},
+            {12, "k 3", "Terza dimensione, se N k >= 3", 4, 6, 5000},
+            {13, "k 4", "Quarta dimensione, se N k = 4", 4, 6, 5000},
+            {20, "N k", "Numero di valori k utilizzati (prime N k caselle)", 1, 1, 4},
+            {21, "T", "Numero di matrici gaussiane indipendenti per k", 3, 1, 100},
+            {22, "eps %", "Soglia JL in percentuale: 50=0.50", 2, 1, 99},
+            {23, "Seed A", "Seed iniziale delle matrici gaussiane annidate", 9, 0, 999999999},
+            {30, "n", "Numero punti del dataset (pari, almeno 8)", 4, 8, 1000},
+            {31, "d", "Numero feature (almeno 7 per misurare la coda6)", 4, 7, 5000},
+            {32, "Seed X", "Seed del dataset; modello Federico invariato", 9, 0, 999999999},
+        };
+        constexpr int cell_left[4]={3,22,41,60};
+        constexpr int cell_right[4]={19,38,57,76};
+        int field_row(const GnFormContext& ctx,int poslab) {
+            return ctx.layout.viewport.top+2+3*(poslab/10-1);
+        }
+        void mask(const GnFormContext& ctx,void*) {
+            const auto& l=ctx.layout;
+            const int width=std::max(1,l.terminal_columns-1);
+            gn_screen_clear();gn_screen_cursor_visible(0);
+            fcn_form::write(l.header_top,1," JL PCA - Monte Carlo con k variabile ",width,GN_SCREEN_TITLE);
+            fcn_form::write(l.header_top+1,3,"Matrici gaussiane annidate; ESC annulla, F10 esegue",width-3);
+            fcn_form::separator(l.top_separator_row,l.terminal_columns);
+            fcn_form::write(l.viewport.top,3,
+                "Dataset Federico: centri U[-1,1]^d; rumore N(0,0.3^2)",width-3);
+            const int top=l.viewport.top;
+            fcn_form::write(top+1,3,"DIMENSIONI JL - solo le prime N k sono attive",width-3);
+            fcn_form::write(top+4,3,"CAMPAGNA - quanti k, repliche, soglia, seed A",width-3);
+            fcn_form::write(top+7,3,"DATASET - n, d, seed X",width-3);
+            fcn_form::separator(l.bottom_separator_row,l.terminal_columns);
+            fcn_form::separator(l.status_separator_row,l.terminal_columns);
+        }
+        bool prepare(GnFormContext& ctx,void*) {
+            if(!ctx.fields || !ctx.values || ctx.field_count!=FIELD_COUNT) return false;
+            for(std::size_t i=0;i<FIELD_COUNT;++i) {
+                const auto& def=field_defs[i];
+                const int slot=def.poslab%10;
+                ctx.fields[i]=GnEntrySpec{
+                    field_row(ctx,def.poslab),
+                    cell_right[slot]-def.length+1,
+                    GN_FIELD_BOUNDED_NATURAL,
+                    static_cast<std::size_t>(def.length),
+                    def.lower,def.upper,1,ctx.layout.echo_row
+                };
+            }
+            return true;
+        }
+        void render(const GnFormContext& ctx,void* data) {
+            if(!ctx.fields || !ctx.values || ctx.field_count!=FIELD_COUNT ||
+               ctx.lab>=FIELD_COUNT) return;
+            mask(ctx,data);
+            for(std::size_t i=0;i<FIELD_COUNT;++i) {
+                const auto& f=ctx.fields[i];
+                const int left=cell_left[field_defs[i].poslab%10];
+                const int width=f.column-left-1;
+                fcn_form::write(f.row,left,
+                    std::string(i==ctx.lab?"> ":"  ")+field_defs[i].label,width);
+                fcn_form::write(f.row,f.column,
+                    fcn_form::field_value(ctx.values[i],f.length),
+                    static_cast<int>(f.length),GN_SCREEN_FIELD);
+            }
+            gn_screen_clear_line(ctx.layout.echo_row);
+            const int width=std::max(1,ctx.layout.terminal_columns-1);
+            fcn_form::write(ctx.layout.hint_row,2,
+                field_defs[ctx.lab].hint,width-2,GN_SCREEN_MESSAGE);
+            fcn_form::write(ctx.layout.status_top,2,
+                "ESC Menu  F1 Help  HOME/END Form  CTRL+frecce Bordi  F10 Esegui",
+                width-2,GN_SCREEN_STATUS);
+            if(!ctx.message.empty())
+                fcn_form::write(ctx.layout.echo_row,2,
+                    ctx.message,width-2,GN_SCREEN_ERROR);
+            gn_screen_flush();
+        }
+
+        GnFormChangeResult move_grid(GnEntryCommand cmd, GnFormContext& ctx) {
+            const int pos=field_defs[ctx.lab].poslab;
+            const int row=pos/10, col=pos%10;
+            std::size_t next=ctx.lab;
+            int best_p=std::numeric_limits<int>::max();
+            int best_s=std::numeric_limits<int>::max();
+            for (std::size_t i=0;i<FIELD_COUNT;++i) {
+                const int p=field_defs[i].poslab,r=p/10,c=p%10;
+                int primary=0,secondary=0;
+                bool eligible=true;
+                switch (cmd) {
+                    case GN_ENTRY_LEFT:  eligible=r==row && c<col; primary=col-c; break;
+                    case GN_ENTRY_RIGHT: eligible=r==row && c>col; primary=c-col; break;
+                    case GN_ENTRY_UP:    eligible=r<row; primary=row-r; secondary=std::abs(c-col); break;
+                    case GN_ENTRY_DOWN:  eligible=r>row; primary=r-row; secondary=std::abs(c-col); break;
+                    case GN_ENTRY_CTRL_LEFT:  eligible=r==row; primary=c; break;
+                    case GN_ENTRY_CTRL_RIGHT: eligible=r==row; primary=-c; break;
+                    case GN_ENTRY_CTRL_UP:    eligible=c==col; primary=r; break;
+                    case GN_ENTRY_CTRL_DOWN:  eligible=c==col; primary=-r; break;
+                    case GN_ENTRY_HOME: primary=p; break;
+                    case GN_ENTRY_END:  primary=-p; break;
+                    default: eligible=false;
+                }
+                if (eligible && (primary<best_p ||
+                    (primary==best_p && secondary<best_s))) {
+                    best_p=primary;best_s=secondary;next=i;
+                }
+            }
+            if (next==ctx.lab) gn_screen_beep();
+            else ctx.lab=next;
+            return GN_FORM_CHANGE_CONTINUE;
+        }
+        GnFormChangeResult change(GnEntryCommand cmd,GnFormContext& ctx,void*) {
+            switch(cmd) {
+                case GN_ENTRY_LEFT: case GN_ENTRY_RIGHT:
+                case GN_ENTRY_UP: case GN_ENTRY_DOWN:
+                case GN_ENTRY_CTRL_LEFT: case GN_ENTRY_CTRL_RIGHT:
+                case GN_ENTRY_CTRL_UP: case GN_ENTRY_CTRL_DOWN:
+                case GN_ENTRY_HOME: case GN_ENTRY_END:
+                    return move_grid(cmd,ctx);
+                case GN_ENTRY_PAGE_UP: case GN_ENTRY_PAGE_DOWN:
+                case GN_ENTRY_CTRL_PAGE_UP: case GN_ENTRY_CTRL_PAGE_DOWN:
+                    gn_screen_beep();
+                    return GN_FORM_CHANGE_CONTINUE;
+                default: return fcn_form::change_linear(cmd,ctx);
+            }
+        }
+        void help(const GnFormContext& ctx,void*) {
+            std::vector<std::string> lines {
+                HELP_TITLE,
+                "",
+                "HOME/END: primo/ultimo campo del form.",
+                "CTRL+SX/DX: inizio/fine riga; CTRL+SU/GIU: colonna.",
+                "F10 esegue; ESC annulla e torna al menu.",
+                "",
+                "Limiti ENTRY (min..max):"
+            };
+            for (const auto& f:field_defs) {
+                std::ostringstream s;
+                s<<f.label<<" ["<<static_cast<long long>(f.lower)
+                 <<".."<<static_cast<long long>(f.upper)<<"]";
+                lines.push_back(s.str());
+            }
+            lines.emplace_back("F1/ENTER/ESC chiude questo aiuto.");
+            gn_screen_clear();gn_screen_cursor_visible(0);
+            const int width=std::max(1,ctx.layout.terminal_columns-1);
+            int row=1;
+            for(const auto& l:lines) {
+                if (row>ctx.layout.terminal_rows) break;
+                fcn_form::write(row,2,l,width-2,
+                    row==1? GN_SCREEN_TITLE:GN_SCREEN_NORMAL);
+                ++row;
+            }
+            gn_screen_flush();
+            for(;;) {
+                GnKeyEvent event{};
+                const GnPollResult r=gn_pump_once(&event);
+                if(r==GN_POLL_EMPTY){gn_cooperative_pause();continue;}
+                if(r==GN_POLL_ERROR || event.code==GN_KEY_F1 ||
+                   event.code==GN_KEY_ENTER || event.code==GN_KEY_ESCAPE)
+                    return;
+                gn_screen_beep();
+            }
+        }
+
+        bool validate(GnFormContext& ctx,void*) {
+            // Solo vincoli TRA campi. I range numerici sono in ENTRY.
+            try {
+                const int count=std::stoi(ctx.values[4]);
+                const int d=std::stoi(ctx.values[9]);
+                const int n=std::stoi(ctx.values[8]);
+                if(n%2!=0) {
+                    ctx.lab=8;
+                    ctx.message="n deve essere pari (due cluster bilanciati)";
+                    return false;
+                }
+                for(int i=0;i<count;++i) {
+                    if(std::stoi(ctx.values[i])>d) {
+                        ctx.lab=static_cast<std::size_t>(i);
+                        ctx.message="Ogni k attivo deve essere <= d";
+                        return false;
+                    }
+                }
+                for(int i=1;i<count;++i) {
+                    if(std::stoi(ctx.values[i]) <= std::stoi(ctx.values[i-1])) {
+                        ctx.lab=static_cast<std::size_t>(i);
+                        ctx.message="I k attivi devono essere strettamente crescenti";
+                        return false;
+                    }
+                }
+            } catch(const std::exception&) {
+                ctx.message="Valore non interpretabile";
+                return false;
+            }
+            return true;
+        }
+    } // namespace interno
+    bool prompt(JLPCAKMCParams& p) {
+        std::string values[FIELD_COUNT]={
+            std::to_string(p.k1), std::to_string(p.k2), std::to_string(p.k3), std::to_string(p.k4),
+            std::to_string(p.k_count), std::to_string(p.T), std::to_string(p.eps_pct),
+            std::to_string(p.seed_A), std::to_string(p.n), std::to_string(p.d), std::to_string(p.seed_X)
+        };
+        GnFormRunSpec spec{};
+        spec.layout_options.header_rows=2;
+        spec.layout_options.top_separator=true;
+        spec.layout_options.bottom_separator=true;
+        spec.layout_options.hint_line=true;
+        spec.layout_options.echo_line=true;
+        spec.layout_options.status_rows=1;
+        spec.layout_options.min_viewport_rows=12;
+        spec.layout_options.min_viewport_columns=80;
+        spec.values=values;
+        spec.field_count=FIELD_COUNT;
+        spec.prepare=prepare;
+        spec.render=render;
+        spec.change=change;
+        spec.help=help;
+        spec.validate=validate;
+        const GnFormRunResult result=gn_form_run_session(spec);
+        if(result!=GN_FORM_RUN_ACCEPT) {
+            if(result==GN_FORM_RUN_ERROR)
+                std::cerr<<"JL_PCA_K_MC_form: impossibile aprire form.\n";
+            return false;
+        }
+        JLPCAKMCParams updated=p;
+        updated.k1=std::stoi(values[0]);
+        updated.k2=std::stoi(values[1]);
+        updated.k3=std::stoi(values[2]);
+        updated.k4=std::stoi(values[3]);
+        updated.k_count=std::stoi(values[4]);
+        updated.T=std::stoi(values[5]);
+        updated.eps_pct=std::stoi(values[6]);
+        updated.seed_A=std::stoi(values[7]);
+        updated.n=std::stoi(values[8]);
+        updated.d=std::stoi(values[9]);
+        updated.seed_X=std::stoi(values[10]);
+        p=updated; // commit solo dopo F10
+        return true;
+    }
+} // JL_PCA_K_MC_form
+
+namespace JL_CLASS_PCA_form {
+    namespace {
+        constexpr std::size_t FIELD_COUNT=6;
+        constexpr const char* HELP_TITLE="JL PCA - classificazione cluster - HELP";
+        struct FieldDef {
+            int poslab;
+            const char* label;
+            const char* hint;
+            int length;
+            double lower,upper;
+        };
+        constexpr FieldDef field_defs[FIELD_COUNT]={
+            {10, "k", "Dimensione proiettata per JL + PCA a due componenti", 4, 2, 5000},
+            {11, "eps %", "Soglia JL in percentuale: 50=0.50", 2, 1, 99},
+            {12, "Seed A", "Seed per la matrice gaussiana di questo confronto", 9, 0, 999999999},
+            {20, "n", "Numero punti del dataset (pari, minimo 4)", 4, 4, 1000},
+            {21, "d", "Numero feature, dimensione originale", 4, 2, 5000},
+            {22, "Seed X", "Seed del dataset; modello Federico invariato", 9, 0, 999999999},
+        };
+        constexpr int cell_left[4]={3,22,41,60};
+        constexpr int cell_right[4]={19,38,57,76};
+        int field_row(const GnFormContext& ctx,int poslab) {
+            return ctx.layout.viewport.top+2+3*(poslab/10-1);
+        }
+        void mask(const GnFormContext& ctx,void*) {
+            const auto& l=ctx.layout;
+            const int width=std::max(1,l.terminal_columns-1);
+            gn_screen_clear();gn_screen_cursor_visible(0);
+            fcn_form::write(l.header_top,1," JL PCA - classificazione cluster ",width,GN_SCREEN_TITLE);
+            fcn_form::write(l.header_top+1,3,"Centroidi, leave-one-out e grafici SVG",width-3);
+            fcn_form::separator(l.top_separator_row,l.terminal_columns);
+            fcn_form::write(l.viewport.top,3,
+                "Dataset Federico: centri U[-1,1]^d; rumore N(0,0.3^2)",width-3);
+            const int top=l.viewport.top;
+            fcn_form::write(top+1,3,"PROIEZIONE - k, epsilon e seed A",width-3);
+            fcn_form::write(top+4,3,"DATASET - n, d e seed X",width-3);
+            fcn_form::separator(l.bottom_separator_row,l.terminal_columns);
+            fcn_form::separator(l.status_separator_row,l.terminal_columns);
+        }
+        bool prepare(GnFormContext& ctx,void*) {
+            if(!ctx.fields || !ctx.values || ctx.field_count!=FIELD_COUNT) return false;
+            for(std::size_t i=0;i<FIELD_COUNT;++i) {
+                const auto& def=field_defs[i];
+                const int slot=def.poslab%10;
+                ctx.fields[i]=GnEntrySpec{
+                    field_row(ctx,def.poslab),
+                    cell_right[slot]-def.length+1,
+                    GN_FIELD_BOUNDED_NATURAL,
+                    static_cast<std::size_t>(def.length),
+                    def.lower,def.upper,1,ctx.layout.echo_row
+                };
+            }
+            return true;
+        }
+        void render(const GnFormContext& ctx,void* data) {
+            if(!ctx.fields || !ctx.values || ctx.field_count!=FIELD_COUNT ||
+               ctx.lab>=FIELD_COUNT) return;
+            mask(ctx,data);
+            for(std::size_t i=0;i<FIELD_COUNT;++i) {
+                const auto& f=ctx.fields[i];
+                const int left=cell_left[field_defs[i].poslab%10];
+                const int width=f.column-left-1;
+                fcn_form::write(f.row,left,
+                    std::string(i==ctx.lab?"> ":"  ")+field_defs[i].label,width);
+                fcn_form::write(f.row,f.column,
+                    fcn_form::field_value(ctx.values[i],f.length),
+                    static_cast<int>(f.length),GN_SCREEN_FIELD);
+            }
+            gn_screen_clear_line(ctx.layout.echo_row);
+            const int width=std::max(1,ctx.layout.terminal_columns-1);
+            fcn_form::write(ctx.layout.hint_row,2,
+                field_defs[ctx.lab].hint,width-2,GN_SCREEN_MESSAGE);
+            fcn_form::write(ctx.layout.status_top,2,
+                "ESC Menu  F1 Help  HOME/END Form  CTRL+frecce Bordi  F10 Esegui",
+                width-2,GN_SCREEN_STATUS);
+            if(!ctx.message.empty())
+                fcn_form::write(ctx.layout.echo_row,2,
+                    ctx.message,width-2,GN_SCREEN_ERROR);
+            gn_screen_flush();
+        }
+
+        GnFormChangeResult move_grid(GnEntryCommand cmd, GnFormContext& ctx) {
+            const int pos=field_defs[ctx.lab].poslab;
+            const int row=pos/10, col=pos%10;
+            std::size_t next=ctx.lab;
+            int best_p=std::numeric_limits<int>::max();
+            int best_s=std::numeric_limits<int>::max();
+            for (std::size_t i=0;i<FIELD_COUNT;++i) {
+                const int p=field_defs[i].poslab,r=p/10,c=p%10;
+                int primary=0,secondary=0;
+                bool eligible=true;
+                switch (cmd) {
+                    case GN_ENTRY_LEFT:  eligible=r==row && c<col; primary=col-c; break;
+                    case GN_ENTRY_RIGHT: eligible=r==row && c>col; primary=c-col; break;
+                    case GN_ENTRY_UP:    eligible=r<row; primary=row-r; secondary=std::abs(c-col); break;
+                    case GN_ENTRY_DOWN:  eligible=r>row; primary=r-row; secondary=std::abs(c-col); break;
+                    case GN_ENTRY_CTRL_LEFT:  eligible=r==row; primary=c; break;
+                    case GN_ENTRY_CTRL_RIGHT: eligible=r==row; primary=-c; break;
+                    case GN_ENTRY_CTRL_UP:    eligible=c==col; primary=r; break;
+                    case GN_ENTRY_CTRL_DOWN:  eligible=c==col; primary=-r; break;
+                    case GN_ENTRY_HOME: primary=p; break;
+                    case GN_ENTRY_END:  primary=-p; break;
+                    default: eligible=false;
+                }
+                if (eligible && (primary<best_p ||
+                    (primary==best_p && secondary<best_s))) {
+                    best_p=primary;best_s=secondary;next=i;
+                }
+            }
+            if (next==ctx.lab) gn_screen_beep();
+            else ctx.lab=next;
+            return GN_FORM_CHANGE_CONTINUE;
+        }
+        GnFormChangeResult change(GnEntryCommand cmd,GnFormContext& ctx,void*) {
+            switch(cmd) {
+                case GN_ENTRY_LEFT: case GN_ENTRY_RIGHT:
+                case GN_ENTRY_UP: case GN_ENTRY_DOWN:
+                case GN_ENTRY_CTRL_LEFT: case GN_ENTRY_CTRL_RIGHT:
+                case GN_ENTRY_CTRL_UP: case GN_ENTRY_CTRL_DOWN:
+                case GN_ENTRY_HOME: case GN_ENTRY_END:
+                    return move_grid(cmd,ctx);
+                case GN_ENTRY_PAGE_UP: case GN_ENTRY_PAGE_DOWN:
+                case GN_ENTRY_CTRL_PAGE_UP: case GN_ENTRY_CTRL_PAGE_DOWN:
+                    gn_screen_beep();
+                    return GN_FORM_CHANGE_CONTINUE;
+                default: return fcn_form::change_linear(cmd,ctx);
+            }
+        }
+        void help(const GnFormContext& ctx,void*) {
+            std::vector<std::string> lines {
+                HELP_TITLE,
+                "",
+                "HOME/END: primo/ultimo campo del form.",
+                "CTRL+SX/DX: inizio/fine riga; CTRL+SU/GIU: colonna.",
+                "F10 esegue; ESC annulla e torna al menu.",
+                "",
+                "Limiti ENTRY (min..max):"
+            };
+            for (const auto& f:field_defs) {
+                std::ostringstream s;
+                s<<f.label<<" ["<<static_cast<long long>(f.lower)
+                 <<".."<<static_cast<long long>(f.upper)<<"]";
+                lines.push_back(s.str());
+            }
+            lines.emplace_back("F1/ENTER/ESC chiude questo aiuto.");
+            gn_screen_clear();gn_screen_cursor_visible(0);
+            const int width=std::max(1,ctx.layout.terminal_columns-1);
+            int row=1;
+            for(const auto& l:lines) {
+                if (row>ctx.layout.terminal_rows) break;
+                fcn_form::write(row,2,l,width-2,
+                    row==1? GN_SCREEN_TITLE:GN_SCREEN_NORMAL);
+                ++row;
+            }
+            gn_screen_flush();
+            for(;;) {
+                GnKeyEvent event{};
+                const GnPollResult r=gn_pump_once(&event);
+                if(r==GN_POLL_EMPTY){gn_cooperative_pause();continue;}
+                if(r==GN_POLL_ERROR || event.code==GN_KEY_F1 ||
+                   event.code==GN_KEY_ENTER || event.code==GN_KEY_ESCAPE)
+                    return;
+                gn_screen_beep();
+            }
+        }
+
+        bool validate(GnFormContext& ctx,void*) {
+            // Solo vincoli di merito / fra campi. Range dei singoli in ENTRY.
+            try {
+                const int k=std::stoi(ctx.values[0]);
+                const int n=std::stoi(ctx.values[3]);
+                const int d=std::stoi(ctx.values[4]);
+                if(n%2 != 0) {
+                    ctx.lab=3;
+                    ctx.message="n deve essere pari (due classi bilanciate)";
+                    return false;
+                }
+                if(k > d) {
+                    ctx.lab=0;
+                    ctx.message="k deve essere <= d";
+                    return false;
+                }
+            } catch(const std::exception&) {
+                ctx.message="Valore non interpretabile";
+                return false;
+            }
+            return true;
+        }
+    } // namespace interno
+    bool prompt(JLClassPCAParams& p) {
+        std::string values[FIELD_COUNT]={
+            std::to_string(p.k), std::to_string(p.eps_pct), std::to_string(p.seed_A),
+            std::to_string(p.n), std::to_string(p.d), std::to_string(p.seed_X)
+        };
+        GnFormRunSpec spec{};
+        spec.layout_options.header_rows=2;
+        spec.layout_options.top_separator=true;
+        spec.layout_options.bottom_separator=true;
+        spec.layout_options.hint_line=true;
+        spec.layout_options.echo_line=true;
+        spec.layout_options.status_rows=1;
+        spec.layout_options.min_viewport_rows=9;
+        spec.layout_options.min_viewport_columns=80;
+        spec.values=values;
+        spec.field_count=FIELD_COUNT;
+        spec.prepare=prepare;
+        spec.render=render;
+        spec.change=change;
+        spec.help=help;
+        spec.validate=validate;
+        const GnFormRunResult result=gn_form_run_session(spec);
+        if(result!=GN_FORM_RUN_ACCEPT) {
+            if(result==GN_FORM_RUN_ERROR)
+                std::cerr<<"JL_CLASS_PCA_form: impossibile aprire form.\n";
+            return false;
+        }
+        JLClassPCAParams updated=p;
+        updated.k=std::stoi(values[0]);
+        updated.eps_pct=std::stoi(values[1]);
+        updated.seed_A=std::stoi(values[2]);
+        updated.n=std::stoi(values[3]);
+        updated.d=std::stoi(values[4]);
+        updated.seed_X=std::stoi(values[5]);
+        p=updated; // commit solo dopo F10
+        return true;
+    }
+} // JL_CLASS_PCA_form
+
