@@ -1,17 +1,18 @@
-#include <iostream>
-#include <iomanip>
-#include <vector>
-#include <cmath>
-#include <random>
-#include <limits>   // per std::numeric_limits
-#include <matplot/matplot.h>
-#include "fcn_lib_calc.h"
+#include <algorithm>
 #include <cassert>
-
+#include <cmath>
 #include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <limits>   // per std::numeric_limits
+#include <random>
 #include <sstream>
 #include <stdexcept>
-#include <algorithm>
+#include <vector>
+
+#include <matplot/matplot.h>
+#include "fcn_lib_calc.h"
+#include "fcn_lib_jl_files.h"
 
 #include "gn_menu.h"
 #include "gn_entry.h"

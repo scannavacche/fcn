@@ -4,7 +4,6 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
-#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -27,6 +26,8 @@
 #include "dataset_JL_centroidi_parametrici.hpp"
 #include "svd_qr.cpp" // magari basta solo un header visto che e' compilato nella lib statica
 #include "fcn_lib_calc.h"
+#include "fcn_lib_jl_files.h"
+
 
 // inclusione nuovo menu e data entry grimm-style migrato da VBDOS
 
@@ -674,22 +675,15 @@ namespace {
         return result;
     }
 
-    static std::string JL_PCA_id_campagna()
+    // Una sola risoluzione del riferimento storico per tutte le prove PCA.
+    static std::filesystem::path JL_PCA_baseline_file(const jl_files::Store& files)
     {
-        const auto now = std::chrono::system_clock::now();
-        const auto t = std::chrono::system_clock::to_time_t(now);
-        const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-            now.time_since_epoch()).count() % 1000;
-        std::tm tm{};
-    #if defined(_WIN32)
-        localtime_s(&tm, &t);
-    #else
-        localtime_r(&t, &tm);
-    #endif
-        std::ostringstream out;
-        out << std::put_time(&tm, "%Y%m%d_%H%M%S")
-            << '_' << std::setw(3) << std::setfill('0') << ms;
-        return out.str();
+        constexpr auto name = "JL_PCA_originale_20261111_203831_386.csv";
+        const auto state_file = files.state_path(name);
+        const auto cache_file = files.cache_path(name);
+        if (!std::filesystem::exists(state_file) && std::filesystem::exists(cache_file))
+            return cache_file;
+        return state_file;
     }
 
     static JLCL_Point JLCL_add(JLCL_Point a, JLCL_Point b)
@@ -907,7 +901,7 @@ namespace {
 
     // Scatter SVG autonomo: niente dipendenza da Matplot++/gnuplot.
     // Originali tenue blu/rosso; JL allineato verde/arancio pieno.
-    static void JLCL_write_svg(const std::string& filename,
+    static void JLCL_write_svg(std::ostream& f,
         const std::vector<JLCL_Point>& X,
         const std::vector<JLCL_Point>& Ya,
         const std::vector<int>& labels,
@@ -916,8 +910,6 @@ namespace {
         const JLCL_Alignment& align,
         int n,int d,int k,double eps,bool show_original_points)
     {
-        std::ofstream f(filename);
-        if (!f) throw std::runtime_error("JLCL_write_svg: apertura fallita");
         const int W=1080,H=740;
         double xmin=std::numeric_limits<double>::infinity();
         double xmax=-xmin,ymin=xmin,ymax=-xmin;
@@ -4095,12 +4087,13 @@ namespace {
     // Include standard, se non gia' presenti:
     // <algorithm> <cmath> <cstdint> <fstream> <iomanip> <iostream>
     // <iterator> <limits> <map> <set> <stdexcept> <string> <utility> <vector>
-    // <chrono> <ctime> <filesystem> <locale> <sstream>
+    // <chrono> <locale> <sstream>
     //
     // ATTENZIONE: primo prototipo numerico. Il 'k trovato' e' il primo
     // successo OSSERVATO nella griglia campionata, non il minimo matematico.
 
     void JL_stima_coeff_n() {
+        const jl_files::Store files{"data"};
         JLCoeffNParams params{};
 
         struct Pair {
@@ -4162,36 +4155,10 @@ namespace {
             const int richiesti =
                 (params.T * params.success_pct + 99) / 100;
 
-            // Identificativo unico della campagna, condiviso dai due CSV.
-            // Se due esecuzioni coincidono nel millisecondo, aggiunge un suffisso.
-            const auto now = std::chrono::system_clock::now();
-            const std::time_t now_t = std::chrono::system_clock::to_time_t(now);
-            std::tm local_tm{};
-    #ifdef _WIN32
-            localtime_s(&local_tm, &now_t);
-    #else
-            localtime_r(&now_t, &local_tm);
-    #endif
-            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                now.time_since_epoch()).count() % 1000;
-            std::ostringstream stamp;
-            stamp << std::put_time(&local_tm, "%Y%m%d_%H%M%S")
-                << '_' << std::setw(3) << std::setfill('0') << ms;
-            const std::string base_id = stamp.str();
-            std::string run_id;
-            std::string scan_name, summary_name;
-            for (int suffix = 0;; ++suffix) {
-                run_id = base_id + (suffix ? "_" + std::to_string(suffix) : "");
-                scan_name = "JL_coeff_n_scan_" + run_id + ".csv";
-                summary_name = "JL_coeff_n_summary_" + run_id + ".csv";
-                if (!std::filesystem::exists(scan_name) &&
-                    !std::filesystem::exists(summary_name)) break;
-            }
-
-            std::ofstream scan_csv(scan_name);
-            std::ofstream summary_csv(summary_name);
-            if (!scan_csv || !summary_csv)
-                throw std::runtime_error("JL coefficiente: impossibile creare i CSV");
+            const auto output = files.begin_run("coefficiente_n", "JL_K_C_n");
+            const auto& run_id = output.id();
+            auto scan_csv = output.open_new("scan.csv");
+            auto summary_csv = output.open_new("summary.csv");
             // CSV: separatore virgola e punto decimale indipendenti dal locale.
             scan_csv.imbue(std::locale::classic());
             summary_csv.imbue(std::locale::classic());
@@ -4223,7 +4190,8 @@ namespace {
                     << params.eps_step_pct << " punti percentuali\n"
                     << "n: " << n_values.size() << " valori; "
                     << "epsilon: " << eps_values.size() << " soglie\n"
-                    << "ID campagna: " << run_id << '\n'
+                    << "Campagna: " << output.campaign() << "  run: " << run_id << '\n'
+                    << "Directory run: " << output.directory().string() << '\n'
                     << "Scansione k da min(k0), ancorata ai k0 (C=1),"
                         " e raffinamento locale.\n";
 
@@ -4500,8 +4468,14 @@ namespace {
                 summary_csv.flush();
             }
 
-            std::cout << "\nCSV prodotti nella directory di lavoro:\n  "
-                    << scan_name << "\n  " << summary_name << '\n'
+            scan_csv.close();
+            summary_csv.close();
+            if (!scan_csv || !summary_csv)
+                throw std::runtime_error("JL coefficiente: errore di scrittura in " +
+                                         output.directory().string());
+            std::cout << "\nCSV prodotti:\n  "
+                    << output.result_path("scan.csv").string() << "\n  "
+                    << output.result_path("summary.csv").string() << '\n'
                     << "\nNota: C_hat e' una stima sulla griglia campionata;"
                         " non una costante universale JL.\n";
             // CoutGuard ripristina flags e precision dopo il report.
@@ -4519,6 +4493,7 @@ namespace {
     // successo OSSERVATO nella griglia campionata, non il minimo matematico.
 
     void JL_stima_coeff_d() {
+        const jl_files::Store files{"data"};
         JLCoeffDParams params{};
 
         struct Pair {
@@ -4579,36 +4554,10 @@ namespace {
             const int richiesti =
                 (params.T * params.success_pct + 99) / 100;
 
-            // Identificativo unico della campagna, condiviso dai due CSV.
-            // Se due esecuzioni coincidono nel millisecondo, aggiunge un suffisso.
-            const auto now = std::chrono::system_clock::now();
-            const std::time_t now_t = std::chrono::system_clock::to_time_t(now);
-            std::tm local_tm{};
-    #ifdef _WIN32
-            localtime_s(&local_tm, &now_t);
-    #else
-            localtime_r(&now_t, &local_tm);
-    #endif
-            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                now.time_since_epoch()).count() % 1000;
-            std::ostringstream stamp;
-            stamp << std::put_time(&local_tm, "%Y%m%d_%H%M%S")
-                << '_' << std::setw(3) << std::setfill('0') << ms;
-            const std::string base_id = stamp.str();
-            std::string run_id;
-            std::string scan_name, summary_name;
-            for (int suffix = 0;; ++suffix) {
-                run_id = base_id + (suffix ? "_" + std::to_string(suffix) : "");
-                scan_name = "JL_coeff_d_scan_" + run_id + ".csv";
-                summary_name = "JL_coeff_d_summary_" + run_id + ".csv";
-                if (!std::filesystem::exists(scan_name) &&
-                    !std::filesystem::exists(summary_name)) break;
-            }
-
-            std::ofstream scan_csv(scan_name);
-            std::ofstream summary_csv(summary_name);
-            if (!scan_csv || !summary_csv)
-                throw std::runtime_error("JL coefficiente: impossibile creare i CSV");
+            const auto output = files.begin_run("coefficiente_d", "JL_K_C_d");
+            const auto& run_id = output.id();
+            auto scan_csv = output.open_new("scan.csv");
+            auto summary_csv = output.open_new("summary.csv");
             // CSV: separatore virgola e punto decimale indipendenti dal locale.
             scan_csv.imbue(std::locale::classic());
             summary_csv.imbue(std::locale::classic());
@@ -4640,7 +4589,8 @@ namespace {
                     << params.eps_step_pct << " punti percentuali\n"
                     << "d: " << d_values.size() << " valori; "
                     << "epsilon: " << eps_values.size() << " soglie\n"
-                    << "ID campagna: " << run_id << '\n'
+                    << "Campagna: " << output.campaign() << "  run: " << run_id << '\n'
+                    << "Directory run: " << output.directory().string() << '\n'
                     << "Intervallo k comune: 1.." << (params.d_min - 1) << '\n'
                     << "Scansione k>=k0(eps), condivisa fra le soglie,"
                         " con raffinamento locale.\n";
@@ -4928,8 +4878,14 @@ namespace {
                 summary_csv.flush();
             }
 
-            std::cout << "\nCSV prodotti nella directory di lavoro:\n  "
-                    << scan_name << "\n  " << summary_name << '\n'
+            scan_csv.close();
+            summary_csv.close();
+            if (!scan_csv || !summary_csv)
+                throw std::runtime_error("JL coefficiente: errore di scrittura in " +
+                                         output.directory().string());
+            std::cout << "\nCSV prodotti:\n  "
+                    << output.result_path("scan.csv").string() << "\n  "
+                    << output.result_path("summary.csv").string() << '\n'
                     << "\nNota: C_hat e' una stima sulla griglia campionata;"
                         " non una costante universale JL.\n";
             // CoutGuard ripristina flags e precision dopo il report.
@@ -4962,8 +4918,8 @@ namespace {
             {502, 387, 304, 237, 202}
         };
 
-        const std::string baseline_file =
-            "JL_PCA_originale_20261111_203831_386.csv";
+        const jl_files::Store files{"data"};
+        const auto baseline_file = JL_PCA_baseline_file(files);
 
         // --------------------------------------------------------
         // 1. Recupero spettri PCA originali, gia' calcolati.
@@ -4983,7 +4939,7 @@ namespace {
         std::ifstream baseline(baseline_file);
         if (!baseline)
             throw std::runtime_error(
-                "PCA_JL: CSV originale non trovato: " + baseline_file);
+                "PCA_JL: CSV originale non apribile: " + baseline_file.string());
 
         std::string line;
         if (!std::getline(baseline, line))
@@ -5056,20 +5012,10 @@ namespace {
         const auto [X_master, label_master] =
             genera_cluster(n_max, d, seed_X);
 
-        const std::string id = JL_PCA_id_campagna();
-
-        const std::string summary_name =
-            "JL_PCA_confronto_" + id + ".csv";
-
-        const std::string spectra_name =
-            "JL_PCA_spettri_" + id + ".csv";
-
-        std::ofstream summary(summary_name);
-        std::ofstream spectra(spectra_name);
-
-        if (!summary || !spectra)
-            throw std::runtime_error(
-                "PCA_JL: impossibile creare i CSV");
+        const auto output = files.begin_run("confronti_spettrali", "PCA_JL");
+        const auto& id = output.id();
+        auto summary = output.open_new("confronto.csv");
+        auto spectra = output.open_new("spettri.csv");
 
         summary
             << "campagna,baseline,n,d,eps,k,seed_X,seed_A,"
@@ -5088,8 +5034,9 @@ namespace {
 
         std::cout
             << "\n=== JL + PCA: CONFRONTO SPETTRALE ===\n"
-            << "Campagna: " << id << '\n'
-            << "Baseline: " << baseline_file << '\n'
+            << "Campagna: " << output.campaign() << "  run: " << id << '\n'
+            << "Directory run: " << output.directory().string() << '\n'
+            << "Baseline: " << baseline_file.string() << '\n'
             << "Dataset master: n=" << n_max << " d=" << d << '\n'
             << "seed_X=" << seed_X << '\n'
             << "Distribuzione JL: Gaussiana\n"
@@ -5312,11 +5259,14 @@ namespace {
 
         summary.close();
         spectra.close();
+        if (!summary || !spectra)
+            throw std::runtime_error("PCA_JL: errore di scrittura in " +
+                                     output.directory().string());
 
         std::cout
             << "CSV prodotti:\n"
-            << "  " << summary_name << '\n'
-            << "  " << spectra_name << '\n'
+            << "  " << output.result_path("confronto.csv").string() << '\n'
+            << "  " << output.result_path("spettri.csv").string() << '\n'
             << "\nNota: una singola proiezione per ogni (n,epsilon)."
             << "\nI k sono quelli della precedente campagna Monte Carlo."
             << "\nIl successo JL va verificato sul dataset attuale.\n";
@@ -5326,9 +5276,7 @@ namespace {
 
     // ============================================================================
     // PCA_JL_MC -- replica Monte Carlo del confronto spettrale JL + PCA
-    // Aggiungere questa funzione a fcn_all.cpp, SENZA sostituire JL_effetto_PCA().
-    // Riutilizza JL_estrai_bilanciato(), JL_PCA_spettro(), JL_PCA_id_campagna()
-    // gia' integrate e collaudate. Nessuna modifica a dataset.hpp.
+    // Riutilizza JL_estrai_bilanciato(), JL_PCA_spettro() e jl_files::Store.
     //
     // Header standard: <algorithm>, <chrono>, <cmath>, <fstream>, <iomanip>,
     // <iostream>, <numeric>, <sstream>, <stdexcept>, <string>, <vector>.
@@ -5346,8 +5294,8 @@ namespace {
         constexpr unsigned seed_A_iniziale = 60000u;
         constexpr int primi = 6;
         constexpr const char* baseline_id = "20261111_203831_386";
-        const std::string baseline_file =
-            std::string("JL_PCA_originale_") + baseline_id + ".csv";
+        const jl_files::Store files{"data"};
+        const auto baseline_file = JL_PCA_baseline_file(files);
 
         if (k <= 0 || k >= d || T <= 0 || n < primi + 1 || !(eps > 0.0 && eps < 1.0))
             throw std::invalid_argument("PCA_JL_MC: parametri non validi");
@@ -5355,7 +5303,7 @@ namespace {
         // 1. Legge il riferimento PCA, senza ripetere la SVD originale.
         std::ifstream base(baseline_file);
         if (!base)
-            throw std::runtime_error("PCA_JL_MC: non trovo " + baseline_file);
+            throw std::runtime_error("PCA_JL_MC: CSV originale non apribile: " + baseline_file.string());
 
         auto split_csv = [](const std::string& line) {
             std::vector<std::string> v;
@@ -5441,13 +5389,10 @@ namespace {
             }
 
         // 3. Output separati: dettaglio di ogni trial + statistiche finali.
-        const std::string id = JL_PCA_id_campagna();
-        const std::string trial_file = "JL_PCA_MC_trial_" + id + ".csv";
-        const std::string stat_file  = "JL_PCA_MC_stat_" + id + ".csv";
-        std::ofstream trial_csv(trial_file);
-        std::ofstream stat_csv(stat_file);
-        if (!trial_csv || !stat_csv)
-            throw std::runtime_error("PCA_JL_MC: impossibile creare i CSV");
+        const auto output = files.begin_run("monte_carlo_spettrale", "PCA_JL_MC");
+        const auto& id = output.id();
+        auto trial_csv = output.open_new("trial.csv");
+        auto stat_csv = output.open_new("stat.csv");
         trial_csv << std::fixed << std::setprecision(9);
         stat_csv << std::fixed << std::setprecision(9);
 
@@ -5473,8 +5418,9 @@ namespace {
         };
 
         std::cout << "\n=== JL + PCA: MONTE CARLO SPETTRALE ===\n"
-                << "Campagna: " << id << '\n'
-                << "Baseline: " << baseline_file << '\n'
+                << "Campagna: " << output.campaign() << "  run: " << id << '\n'
+                << "Directory run: " << output.directory().string() << '\n'
+                << "Baseline: " << baseline_file.string() << '\n'
                 << "n=" << n << " d=" << d << " k=" << k
                 << " epsilon=" << eps << " T=" << T << '\n'
                 << "seed_X=" << seed_X << " seed_A=" << seed_A_iniziale
@@ -5606,6 +5552,12 @@ namespace {
         write_stat("tempo_totale_s",tempi);
         write_stat("speedup_indicativo",speedups);
 
+        trial_csv.close();
+        stat_csv.close();
+        if (!trial_csv || !stat_csv)
+            throw std::runtime_error("PCA_JL_MC: errore di scrittura in " +
+                                     output.directory().string());
+
         Stat a1 = statistica(s1ratio), a2 = statistica(s2ratio);
         Stat aq = statistica(q2), av = statistica(var1);
         std::cout << "\n--- RISULTATI MONTE CARLO ---\n"
@@ -5620,8 +5572,8 @@ namespace {
                 << "Varianza PC1 originale: "
                 << sx.sigma[0]*sx.sigma[0]/sx.energia
                 << "  dopo JL (media): " << av.media << '\n'
-                << "CSV trial: " << trial_file << '\n'
-                << "CSV statistiche: " << stat_file << '\n'
+                << "CSV trial: " << output.result_path("trial.csv").string() << '\n'
+                << "CSV statistiche: " << output.result_path("stat.csv").string() << '\n'
                 << "Nota: 20 trial forniscono frequenze e dispersioni descrittive,"
                     " non una stima precisa della probabilita' di successo.\n";
 
@@ -5630,9 +5582,7 @@ namespace {
 
     // ============================================================================
     // PCA_JL_K_MC: effetto di k sullo spettro PCA (Gaussian JL, trial accoppiati).
-    // STEP successivo al commit con JL_effetto_PCA_MC(): aggiungere a fcn_all.cpp,
-    // SENZA modificare JL_effetto_PCA() ne' JL_effetto_PCA_MC().
-    // Riusa: JL_estrai_bilanciato(), JL_PCA_spettro(), JL_PCA_id_campagna(),
+    // Riusa: JL_estrai_bilanciato(), JL_PCA_spettro(), jl_files::Store,
     // genera_cluster(), matrix_random_jl(), matrix_prodotto_matrix(),
     // matrix_trasposta(), matrix_calcola_media(), matrix_centra_su_media(),
     // vector_distanza2(), fcn_form::wait_report().
@@ -5642,6 +5592,7 @@ namespace {
 
     void JL_effetto_PCA_K_MC()
     {
+        const jl_files::Store files{"data"};
         JLPCAKMCParams p{};
         while (JL_PCA_K_MC_form::prompt(p)) {
             clear_screen();
@@ -5657,8 +5608,6 @@ namespace {
             const int all_k[4] = {p.k1, p.k2, p.k3, p.k4};
             const std::vector<int> k_values(all_k, all_k + p.k_count);
             constexpr const char* baseline_id = "20261111_203831_386";
-            const std::string baseline_file =
-                std::string("JL_PCA_originale_") + baseline_id + ".csv";
 
             if (n < primi+1 || n > n_max || n%2 || T <= 0 ||
                 !(eps > 0.0 && eps < 1.0) || k_values.empty())
@@ -5682,7 +5631,9 @@ namespace {
             JLPCA_Spettro sx;
             bool found = false;
             std::string baseline_used = "DINAMICA";
+            std::filesystem::path baseline_file;
             if (reference_family) {
+                baseline_file = JL_PCA_baseline_file(files);
                 std::ifstream base(baseline_file);
                 if (base) {
                     auto split = [](const std::string& row_text) {
@@ -5733,8 +5684,8 @@ namespace {
                             "ricalcolo SVD di riferimento.\n";
                 sx = JL_PCA_spettro(X);
             } else {
-                std::cout << "PCA originale recuperata dalla campagna "
-                        << baseline_used << "\n";
+                std::cout << "PCA originale recuperata da "
+                        << baseline_file.string() << '\n';
             }
             if (sx.sigma.size()<primi || !(sx.energia>0.0))
                 throw std::runtime_error("PCA_JL_K_MC: spettro X incompleto");
@@ -5771,12 +5722,12 @@ namespace {
                     pairs.push_back({i,j,d2});
                 }
 
-            const std::string id = JL_PCA_id_campagna();
-            const std::string trial_file = "JL_PCA_K_trial_" + id + ".csv";
-            const std::string stats_file = "JL_PCA_K_stat_" + id + ".csv";
-            std::ofstream detail(trial_file), stats(stats_file);
-            if (!detail || !stats)
-                throw std::runtime_error("PCA_JL_K_MC: apertura CSV fallita");
+            const auto output = files.begin_run("stabilita_spettrale_k", "PCA_JL_K_MC");
+            const auto& id = output.id();
+            const auto trial_file = output.result_path("trial.csv");
+            const auto stats_file = output.result_path("stat.csv");
+            auto detail = output.open_new("trial.csv");
+            auto stats = output.open_new("stat.csv");
             detail << std::fixed << std::setprecision(9);
             stats << std::fixed << std::setprecision(9);
             detail << "campagna,baseline,trial,seed_A,n,d,k,K_master,eps,coppie,"
@@ -5816,7 +5767,9 @@ namespace {
             };
 
             std::cout << "\n=== JL + PCA: STABILITA' SPETTRALE AL VARIARE DI k ===\n"
-                    << "Campagna: " << id << "  baseline: " << baseline_used << '\n'
+                    << "Campagna: " << output.campaign() << "  run: " << id
+                    << "  baseline: " << baseline_used << '\n'
+                    << "Directory run: " << output.directory().string() << '\n'
                     << "n=" << n << " d=" << d << " seed_X=" << seed_X
                     << " eps=" << eps << " T=" << T
                     << "  k=";
@@ -5965,9 +5918,12 @@ namespace {
                         << " s2>1:" << a.sigma2_up
                         << " Q2<1:" << a.q2_down << '\n';
             }
-            stats.flush();
-            std::cout << "\nCSV trial: " << trial_file
-                    << "\nCSV statistiche: " << stats_file
+            detail.close();
+            stats.close();
+            if (!detail || !stats)
+                throw std::runtime_error("PCA_JL_K_MC: errore di scrittura in " + output.directory().string());
+            std::cout << "\nCSV trial: " << trial_file.string()
+                    << "\nCSV statistiche: " << stats_file.string()
                     << "\nNOTA: le matrici per diversi k condividono gli stessi coefficienti"
                         " gaussiani (righe iniziali).\n"
                     << "Il confronto temporale misura la PCA per ciascun k; la"
@@ -5982,7 +5938,7 @@ namespace {
     // iostream, limits, sstream, stdexcept, string, vector.
     // Le primitive gia' presenti: genera_cluster, JL_estrai_bilanciato,
     // matrix_random_jl, matrix_prodotto_matrix, matrix_trasposta,
-    // vector_distanza2, JL_PCA_id_campagna, fcn_form::wait_report.
+    // vector_distanza2, fcn_form::wait_report.
     //
     // Nota: JL_PCA_spettro restituisce SOLO i sigma, non gli score 2D.
     // Qui gli score 2D sono ottenuti diagonalizzando G=Xc Xc^T (n x n)
@@ -5993,19 +5949,19 @@ namespace {
 
     void JL_classificazione_PCA()
     {
+        const jl_files::Store files{"data"};
         JLClassPCAParams p{};
         while (JL_CLASS_PCA_form::prompt(p)) {
             clear_screen();
 
         const int n=p.n, d=p.d, seed_X=p.seed_X;
         const int master_n=std::max(160,n);
-        constexpr const char* baseline_file=
-            "JL_PCA_originale_20261111_203831_386.csv";
         const int k=p.k;
         const unsigned seed_A=static_cast<unsigned>(p.seed_A);
         const double eps=static_cast<double>(p.eps_pct)/100.0;
         std::cout << "\n=== JL + PCA: CLASSIFICAZIONE E OVERLAY CLUSTER ===\n"
                 << "Dataset: n="<<n<<" d="<<d<<" seed_X="<<seed_X<<'\n'
+                << "Archivio JL: " << files.root().string() << '\n'
                 << "k="<<k<<" seed_A="<<seed_A<<" epsilon="<<eps<<"\n";
         // n<=160: mantiene il campionamento bilanciato dai 160 punti master
         // (la geometria resta quella storica soltanto in modo Federico).
@@ -6031,7 +5987,7 @@ namespace {
                 (cfg.modo==JLScalaCentroidi::Federico &&
                 n<=160 && d==1000 && seed_X==42);
             std::ifstream base;
-            if (reference_family) base.open(baseline_file);
+            if (reference_family) base.open(JL_PCA_baseline_file(files));
             if (base.is_open()) {
                 std::string header,body;
                 std::getline(base,header);
@@ -6097,13 +6053,10 @@ namespace {
             if(dd>eps)++violations;
         }
 
-        const std::string run=JL_PCA_id_campagna();
-        const std::string summary="JL_CLASS_summary_"+run+".csv";
-        const std::string points="JL_CLASS_points_"+run+".csv";
-        const std::string graphic="JL_CLASS_overlay_"+run+".svg";
-        const std::string graphic_centroids="JL_CLASS_centroidi_"+run+".svg";
-        std::ofstream out(summary),perpoint(points);
-        if(!out || !perpoint)throw std::runtime_error("JL_CLASS: apertura CSV fallita");
+        const auto output = files.begin_run("classificazione", "PCA_JL_CLASS");
+        const auto& run = output.id();
+        auto out = output.open_new("summary.csv");
+        auto perpoint = output.open_new("points.csv");
         out << std::fixed << std::setprecision(9);
         perpoint << std::fixed << std::setprecision(9);
         out << "campagna,n,d,k,seed_X,seed_A,eps,coppie,violazioni,delta_media,delta_max,"
@@ -6147,10 +6100,18 @@ namespace {
                 <<alignment.Yaligned[i].x<<','<<alignment.Yaligned[i].y<<','
                 <<cx.loo_prediction[i]<<','<<cy.loo_prediction[i]<<','
                 <<cx.loo_margin[i]<<','<<cy.loo_margin[i]<<'\n';
+        auto graphic = output.open_new("overlay.svg");
         JLCL_write_svg(graphic,Xp.score,alignment.Yaligned,labels,cx,cy,
                     alignment,n,d,k,eps,true);
+        auto graphic_centroids = output.open_new("centroidi.svg");
         JLCL_write_svg(graphic_centroids,Xp.score,alignment.Yaligned,labels,cx,cy,
                     alignment,n,d,k,eps,false);
+        out.close();
+        perpoint.close();
+        graphic.close();
+        graphic_centroids.close();
+        if (!out || !perpoint || !graphic || !graphic_centroids)
+            throw std::runtime_error("JL_CLASS: errore di scrittura in " + output.directory().string());
         std::cout << std::fixed << std::setprecision(5)
             << "PCA X: sigma1="<<Xp.sigma1<<" sigma2="<<Xp.sigma2
             <<" var1="<<Xp.sigma1*Xp.sigma1/Xp.energia<<'\n'
@@ -6164,8 +6125,10 @@ namespace {
             << "Gap assiale: X="<<cx.signed_gap<<" Y="<<cy.signed_gap<<'\n'
             << "Allineamento grafico: rotazione="<<alignment.angle_deg
             <<" gradi, riflessione="<<(alignment.reflected?"si":"no")<<'\n'
-            << "CSV: "<<summary<<"  "<<points<<'\n'
-            << "Grafici SVG: "<<graphic<<"  "<<graphic_centroids<<'\n';
+            << "Campagna: " << output.campaign() << "  run: " << run << '\n'
+            << "Directory run: " << output.directory().string() << '\n'
+            << "CSV: summary.csv  points.csv\n"
+            << "Grafici SVG: overlay.svg  centroidi.svg\n";
 
             fcn_form::wait_report();
         }

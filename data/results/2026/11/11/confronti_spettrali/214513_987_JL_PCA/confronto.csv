@@ -1,0 +1,2 @@
+campagna,baseline,n,d,eps,k,seed_X,seed_A,coppie,violazioni,delta_media,delta_max,JL_ok,tempo_A_s,tempo_proiezione_s,tempo_PCA_JL_s,tempo_totale_s,tempo_PCA_X_s,speedup_PCA,var1_X,var1_JL
+20261111_214513_987,20261111_203831_386,10,1000,0.400000000,135,42,50002,45,0,0.095412398,0.256851763,1,0.003399096,0.001573190,0.025063313,0.030035599,8.676590453,288.876890819,0.698781168,0.736400220
