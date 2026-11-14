@@ -480,7 +480,7 @@ void linear_LU_dec(
     }
 }
 
-Mat linear_LU_inversa (
+Mat linear_LU_inversa(
     const Mat& T) {          
     // Calcola l' inversa di A usando la fattorizzazione LUx = e_i
 
@@ -509,17 +509,18 @@ Mat linear_LU_inversa (
 Vec linear_LU_risolve_colonna(
     const Mat& L,
     const Mat& U,
-    Vec e){
+    Vec e)
+    {
         // Risolveva  T x = e usando LU
         // Risolve L U x = e_j usando sostituzione in avanti e indietro
         // ora risolve un vettore generico e 
 
-    int n = L.size();
-    Vec y = linear_subst_FW(L, e);
-    // vector_dump(y, 10, y.size(), "y");
-    Vec x = linear_subst_BW(U, y);
-    // vector_dump(x, 10, x.size(), "x");
-    return x;
+        int n = L.size();
+        Vec y = linear_subst_FW(L, e);
+        // vector_dump(y, 10, y.size(), "y");
+        Vec x = linear_subst_BW(U, y);
+        // vector_dump(x, 10, x.size(), "x");
+        return x;
     };
 
 Vec linear_LU_risolve_sistema(

@@ -5472,7 +5472,7 @@ namespace {
         fcn_form::write(l.header_top, 1, " JL - Benchmark PCA al crescere di d ", w, GN_SCREEN_TITLE);
         fcn_form::write(l.header_top + 1, 3, "Stesso input, stesso solver, confronto per coppie.", w - 3);
         fcn_form::separator(l.top_separator_row, l.terminal_columns);
-        fcn_form::write(l.viewport.top, 3, "Default dalla campagna 194259_963. A viene sempre cronometrata.", w - 3);
+        fcn_form::write(l.viewport.top, 3, "LA costruzione di A viene sempre cronometrata.", w - 3);
         for (std::size_t i = 0; i < count; ++i) {
             const auto& f = c.fields[i];
             fcn_form::write(f.row, 4, std::string(i == c.lab ? "> " : "  ") + fields[i].label, f.column - 5);

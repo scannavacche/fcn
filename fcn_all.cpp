@@ -602,6 +602,8 @@ namespace {
     
     // Prende per ogni cluster le prime n/2 osservazioni dal medesimo master.
     // X_10 e' un sottoinsieme di X_20, ecc. (come insieme di righe).
+    // Richiede n pari, un'etichetta per riga e almeno n/2 punti per classe.
+    // Restituisce righe ed etichette, prima la classe 0 e poi la classe 1.
     static std::pair<Mat, std::vector<int>>
     JL_estrai_bilanciato(
         const Mat& master,
@@ -636,7 +638,14 @@ namespace {
         return {std::move(X), std::move(label)};
     }
 
-
+    // Riceve una matrice con un punto per riga e la centra internamente.
+    // Restituisce i valori singolari ordinati, l'energia spettrale (somma
+    // dei loro quadrati) e il tempo di centratura, bidiagonalizzazione e SVD.
+    // Il tempo non include l'ordinamento né i controlli finali sullo spettro.
+    // Non restituisce le coordinate dei punti sulle componenti principali.
+    // Centra i dati e calcola lo spettro con la consueta SVD.
+    // Il tempo netto salta i prodotti di verifica della bidiagonalizzazione.
+    // Il tempo lordo li include, senza cambiare il metodo di calcolo.
     static JLPCA_Spettro JL_PCA_spettro(const Mat& X,
                                        bool prodotti_verifica = true,
                                        bool verbose = true)
@@ -680,6 +689,9 @@ namespace {
     }
 
     // Una sola risoluzione del riferimento storico per tutte le prove PCA.
+    // Cerca il CSV storico in state/ e, se manca, in state/cache/.
+    // Se mancano entrambi, restituisce comunque il percorso in state/.
+    // Non apre il CSV e non controlla se i dati correnti sono compatibili.
     static std::filesystem::path JL_PCA_baseline_file(const jl_files::Store& files)
     {
         constexpr auto name = "JL_PCA_originale_20261111_203831_386.csv";
@@ -690,6 +702,7 @@ namespace {
         return state_file;
     }
 
+    // Operazioni elementari sugli score 2D per classificazione e overlay.
     static JLCL_Point JLCL_add(JLCL_Point a, JLCL_Point b)
     { return {a.x+b.x, a.y+b.y}; }
     static JLCL_Point JLCL_sub(JLCL_Point a, JLCL_Point b)
@@ -701,6 +714,11 @@ namespace {
     static double JLCL_norm(JLCL_Point a)
     { return std::sqrt(JLCL_dot(a,a)); }
 
+    // Da una matrice di punti ricava le coordinate PC1 e PC2 via Gram/Jacobi.
+    // Mantiene l'ordine delle righe e restituisce anche i primi due singolari
+    // e l'energia totale dei dati centrati. Richiede almeno quattro punti
+    // e rango almeno due dopo la centratura.
+    // Nella voce 10 serve alla classificazione, fuori dal benchmark SVD.
     static JLCL_PCA2 JLCL_pca2_gram(const Mat& X)
     {
         const std::size_t n=X.size();
@@ -791,6 +809,10 @@ namespace {
         return result;
     }
 
+    // Valuta il classificatore a centroide piu' vicino su score 2D gia' calcolati.
+    // Richiede etichette 0/1, almeno due punti per classe e centroidi distinti.
+    // Restituisce geometria dei cluster, errori, predizioni e margini.
+    // Il leave-one-out esclude il punto dal suo centroide, non dalla PCA.
     static JLCL_ClassMetrics JLCL_evaluate(
         const std::vector<JLCL_Point>& P,const std::vector<int>& labels)
     {
@@ -857,6 +879,10 @@ namespace {
         return r;
     }
 
+    // Allinea Y a X per l'overlay, con punti corrispondenti nello stesso ordine.
+    // Fa coincidere il punto medio e la direzione orientata dei centroidi,
+    // senza riscalare. Sceglie se riflettere in base allo scarto tra le coppie.
+    // Restituisce Y allineata, angolo, indicatore di riflessione e scarto RMS.
     static JLCL_Alignment JLCL_align(
         const std::vector<JLCL_Point>& X,const JLCL_ClassMetrics& cx,
         const std::vector<JLCL_Point>& Y,const JLCL_ClassMetrics& cy)
@@ -905,6 +931,9 @@ namespace {
 
     // Scatter SVG autonomo: niente dipendenza da Matplot++/gnuplot.
     // Originali tenue blu/rosso; JL allineato verde/arancio pieno.
+    // Scrive su uno stream gia' aperto. Riceve gli score JL gia' allineati
+    // e usa la stessa scala sui due assi, senza ricalcolare PCA o allineamento.
+    // Con show_original_points=false mostra dell'originale solo i centroidi.
     static void JLCL_write_svg(std::ostream& f,
         const std::vector<JLCL_Point>& X,
         const std::vector<JLCL_Point>& Ya,
@@ -5938,209 +5967,283 @@ namespace {
         }
     }
 
+    //
+    // Voce 9 - Confronta la classificazione a centroidi sulle prime due
+    // componenti della PCA diretta e della PCA dopo JL, sugli stessi punti.
+    // Misura separatamente la distorsione JL e allinea i due piani
+    // solo per la sovrapposizione grafica.
+    //
     // Richiede gli header STL: algorithm, array, chrono, cmath, fstream, iomanip,
     // iostream, limits, sstream, stdexcept, string, vector.
     // Le primitive gia' presenti: genera_cluster, JL_estrai_bilanciato,
     // matrix_random_jl, matrix_prodotto_matrix, matrix_trasposta,
     // vector_distanza2, fcn_form::wait_report.
-    //
-    // Nota: JL_PCA_spettro restituisce SOLO i sigma, non gli score 2D.
-    // Qui gli score 2D sono ottenuti diagonalizzando G=Xc Xc^T (n x n)
-    // con Jacobi simmetrico; gli autovalori sono sigma^2. Il controllo sui
-    // sigma originali verifica la coerenza con il riferimento SVD preesistente.
-    // Il plot SVG non necessita di API Matplot++ non verificate nel repo.
-
 
     void JL_classificazione_PCA()
     {
+        // Nota: non usa JL_PCA_spettro perche' restituisce SOLO i sigma, non gli score 2D.
+        // Qui usiamo JLCL_pca2_gram per avere gli score 2D che sono ottenuti 
+        // diagonalizzando G=Xc Xc^T (n x n) con Jacobi simmetrico; 
+        // gli autovalori sono sigma^2. 
+        // Il controllo sui sigma originali verifica la coerenza 
+        // con il riferimento SVD preesistente.
+        // Il plot SVG non necessita di API Matplot++ non verificate nel repo.
+        //
+        // Form e ciclo delle esecuzioni
+        //
         const jl_files::Store files{"data"};
         JLClassPCAParams p{};
         while (JL_CLASS_PCA_form::prompt(p)) {
             clear_screen();
+            //
+            // Parametri, dataset bilanciato e PCA diretta
+            //
+            const int n=p.n, d=p.d, seed_X=p.seed_X;
+            const int master_n=std::max(160,n);
+            const int k=p.k;
+            const unsigned seed_A=static_cast<unsigned>(p.seed_A);
+            const double eps=static_cast<double>(p.eps_pct)/100.0;
+            std::cout << "\n=== JL + PCA: CLASSIFICAZIONE E OVERLAY CLUSTER ===\n"
+                    << "Dataset: n="<<n<<" d="<<d<<" seed_X="<<seed_X<<'\n'
+                    << "Archivio JL: " << files.root().string() << '\n'
+                    << "k="<<k<<" seed_A="<<seed_A<<" epsilon="<<eps<<"\n";
+            // n<=160: mantiene il campionamento bilanciato dai 160 punti master
+            // (la geometria resta quella storica soltanto in modo <Federico>).
+            // Usa anche i default di JLConfigCentroidi definiti in dataset.hpp.
+            // La chiamata a TRE argomenti usa SEMPRE Federico, ignorando cfg.
+            const JLConfigCentroidi cfg{};
+            std::cout << "Modello centroidi: "
+                    << (cfg.modo==JLScalaCentroidi::Federico ? "Federico" : "LeggeDiPotenza")
+                    << " D_ref=" << cfg.distanza_ref
+                    << " d_ref=" << cfg.d_ref << " alfa=" << cfg.alfa << '\n';
+            const auto [master,labelMaster]=genera_cluster(master_n,d,seed_X,cfg);
+            const auto [X,labels]=JL_estrai_bilanciato(master,labelMaster,n);
+            const auto t0=std::chrono::steady_clock::now();
+            JLCL_PCA2 Xp=JLCL_pca2_gram(X);
+            const auto t1=std::chrono::steady_clock::now();
 
-        const int n=p.n, d=p.d, seed_X=p.seed_X;
-        const int master_n=std::max(160,n);
-        const int k=p.k;
-        const unsigned seed_A=static_cast<unsigned>(p.seed_A);
-        const double eps=static_cast<double>(p.eps_pct)/100.0;
-        std::cout << "\n=== JL + PCA: CLASSIFICAZIONE E OVERLAY CLUSTER ===\n"
-                << "Dataset: n="<<n<<" d="<<d<<" seed_X="<<seed_X<<'\n'
-                << "Archivio JL: " << files.root().string() << '\n'
-                << "k="<<k<<" seed_A="<<seed_A<<" epsilon="<<eps<<"\n";
-        // n<=160: mantiene il campionamento bilanciato dai 160 punti master
-        // (la geometria resta quella storica soltanto in modo Federico).
-        // Usa anche i default di JLConfigCentroidi definiti in dataset.hpp.
-        // La chiamata a TRE argomenti usa SEMPRE Federico, ignorando cfg.
-        const JLConfigCentroidi cfg{};
-        std::cout << "Modello centroidi: "
-                << (cfg.modo==JLScalaCentroidi::Federico ? "Federico" : "LeggeDiPotenza")
-                << " D_ref=" << cfg.distanza_ref
-                << " d_ref=" << cfg.d_ref << " alfa=" << cfg.alfa << '\n';
-        const auto [master,labelMaster]=genera_cluster(master_n,d,seed_X,cfg);
-        const auto [X,labels]=JL_estrai_bilanciato(master,labelMaster,n);
-        const auto t0=std::chrono::steady_clock::now();
-        JLCL_PCA2 Xp=JLCL_pca2_gram(X);
-        const auto t1=std::chrono::steady_clock::now();
-
-        // Controllo indipendente contro la SVD originale del commit c089613.
-        // Se presente, il CSV permette di rilevare qualunque errore di convenzione.
-        {
-            // La SVD storica appartiene esclusivamente ai dati originali
-            // di Federico: i parametri di dimensione e seed non bastano.
-            const bool reference_family =
-                (cfg.modo==JLScalaCentroidi::Federico &&
-                n<=160 && d==1000 && seed_X==42);
-            std::ifstream base;
-            if (reference_family) base.open(JL_PCA_baseline_file(files));
-            if (base.is_open()) {
-                std::string header,body;
-                std::getline(base,header);
-                const auto split=[](const std::string& text) {
-                    std::vector<std::string> a;
-                    std::istringstream in(text);std::string s;
-                    while(std::getline(in,s,','))a.push_back(s);
-                    return a;
-                };
-                const auto keys=split(header);
-                auto index=[&](const std::string& name)->std::size_t{
-                    const auto it=std::find(keys.begin(),keys.end(),name);
-                    if(it==keys.end())throw std::runtime_error("baseline: campo mancante "+name);
-                    return static_cast<std::size_t>(it-keys.begin());
-                };
-                const auto in=index("n"),is1=index("sigma1"),is2=index("sigma2");
-                const auto id=index("d"),iseed=index("seed_X");
-                bool found=false;
-                while(std::getline(base,body)) {
-                    const auto a=split(body);
-                    if(a.size()!=keys.size())continue;
-                    if(std::stoi(a[in])!=n)continue;
-                    if(std::stoi(a[id])!=d || std::stoi(a[iseed])!=seed_X)
-                        throw std::runtime_error("baseline: dimensioni/seed incompatibili");
-                    const double b1=std::stod(a[is1]),b2=std::stod(a[is2]);
-                    if(std::abs(Xp.sigma1/b1-1)>1e-5 ||
-                    std::abs(Xp.sigma2/b2-1)>1e-5)
-                        throw std::runtime_error("PCA Gram: sigma discordi dalla SVD baseline");
-                    found=true;break;
+            // Controllo indipendente contro la SVD originale del commit c089613.
+            // Se presente, il CSV permette di rilevare qualunque errore di convenzione.
+            {
+                //
+                // Riscontro con la SVD storica, se applicabile
+                // perche' appartiene esclusivamente ai dati del generatore originale
+                // di Federico: i parametri di dimensione e seed non bastano.
+                //
+                const bool reference_family =
+                    (cfg.modo==JLScalaCentroidi::Federico &&
+                    n<=160 && d==1000 && seed_X==42);
+                std::ifstream base;
+                if (reference_family) base.open(JL_PCA_baseline_file(files));
+                if (base.is_open()) {
+                    std::string header,body;
+                    std::getline(base,header);
+                    const auto split=[](const std::string& text) {
+                        std::vector<std::string> a;
+                        std::istringstream in(text);std::string s;
+                        while(std::getline(in,s,','))a.push_back(s);
+                        return a;
+                    };
+                    const auto keys=split(header);
+                    auto index=[&](const std::string& name)->std::size_t{
+                        const auto it=std::find(keys.begin(),keys.end(),name);
+                        if(it==keys.end())throw std::runtime_error("baseline: campo mancante "+name);
+                        return static_cast<std::size_t>(it-keys.begin());
+                    };
+                    const auto in=index("n"),is1=index("sigma1"),is2=index("sigma2");
+                    const auto id=index("d"),iseed=index("seed_X");
+                    bool found=false;
+                    while(std::getline(base,body)) {
+                        const auto a=split(body);
+                        if(a.size()!=keys.size())continue;
+                        if(std::stoi(a[in])!=n)continue;
+                        if(std::stoi(a[id])!=d || std::stoi(a[iseed])!=seed_X)
+                            throw std::runtime_error("baseline: dimensioni/seed incompatibili");
+                        const double b1=std::stod(a[is1]),b2=std::stod(a[is2]);
+                        if(std::abs(Xp.sigma1/b1-1)>1e-5 ||
+                        std::abs(Xp.sigma2/b2-1)>1e-5)
+                            throw std::runtime_error("PCA Gram: sigma discordi dalla SVD baseline");
+                        found=true;break;
+                    }
+                    if (found)
+                        std::cout << "PCA originale: sigma1, sigma2 coincidono con baseline.\n";
+                    else
+                        std::cout << "PCA originale: n assente dal CSV, riferimento "
+                                    "calcolato nel nuovo test.\n";
+                } else {
+                    std::cout << "PCA originale: riferimento ricalcolato sul dataset "
+                                "corrente (baseline storica non applicabile oppure "
+                                "CSV assente).\n";
                 }
-                if (found)
-                    std::cout << "PCA originale: sigma1, sigma2 coincidono con baseline.\n";
-                else
-                    std::cout << "PCA originale: n assente dal CSV, riferimento "
-                                "calcolato nel nuovo test.\n";
-            } else {
-                std::cout << "PCA originale: riferimento ricalcolato sul dataset "
-                            "corrente (baseline storica non applicabile oppure "
-                            "CSV assente).\n";
             }
-        }
-
-        const auto a0=std::chrono::steady_clock::now();
-        const Mat A=matrix_random_jl(
-            k,d,JLMatrixDistribution::Gaussian,seed_A,3);
-        const Mat Y=matrix_prodotto_matrix(X,matrix_trasposta(A));
-        const auto a1=std::chrono::steady_clock::now();
-        JLCL_PCA2 Yp=JLCL_pca2_gram(Y);
-        const auto a2=std::chrono::steady_clock::now();
-        const auto cx=JLCL_evaluate(Xp.score,labels);
-        const auto cy=JLCL_evaluate(Yp.score,labels);
-        const auto alignment=JLCL_align(Xp.score,cx,Yp.score,cy);
-
-        // Conservazione delle distanze JL sull'insieme finito di coppie.
-        double delta_sum=0.0,delta_max=0.0;
-        int violations=0,pairs=0;
-        for(int i=0;i<n;++i)for(int j=i+1;j<n;++j){
-            const double dx=vector_distanza2(X[i],X[j]);
-            const double dy=vector_distanza2(Y[i],Y[j]);
-            if(!(dx>0))throw std::runtime_error("JL_CLASS: distanza X nulla");
-            const double dd=std::abs(dy/dx-1.0);
-            ++pairs;delta_sum+=dd;delta_max=std::max(delta_max,dd);
-            if(dd>eps)++violations;
-        }
-
-        const auto output = files.begin_run("classificazione", "PCA_JL_CLASS");
-        const auto& run = output.id();
-        auto out = output.open_new("summary.csv");
-        auto perpoint = output.open_new("points.csv");
-        out << std::fixed << std::setprecision(9);
-        perpoint << std::fixed << std::setprecision(9);
-        out << "campagna,n,d,k,seed_X,seed_A,eps,coppie,violazioni,delta_media,delta_max,"
-            "sigma1_X,sigma2_X,sigma1_Y,sigma2_Y,"
-            "var1_X,var1_Y,var2_X,var2_Y,"
-            "dist_centroidi_X,dist_centroidi_Y,"
-            "raggio0_X,raggio1_X,raggio0_Y,raggio1_Y,"
-            "sep_ratio_X,sep_ratio_Y,gap_X,gap_Y,"
-            "errori_train_X,errori_train_Y,errori_LOO_X,errori_LOO_Y,"
-            "accuratezza_LOO_X,accuratezza_LOO_Y,"
-            "margine_min_LOO_X,margine_min_LOO_Y,"
-            "angolo_allineamento_deg,riflessione_trasversale,rms_spostamento_plot,"
-            "tempo_PCA_X_s,tempo_proiezione_s,tempo_PCA_Y_s,"
-            "modo_centroidi,D_ref,d_ref,alfa\n";
-        out << run<<','<<n<<','<<d<<','<<k<<','<<seed_X<<','<<seed_A<<','
-            <<eps<<','<<pairs<<','<<violations<<','<<delta_sum/pairs<<','<<delta_max<<','
-            <<Xp.sigma1<<','<<Xp.sigma2<<','<<Yp.sigma1<<','<<Yp.sigma2<<','
-            <<Xp.sigma1*Xp.sigma1/Xp.energia<<','<<Yp.sigma1*Yp.sigma1/Yp.energia<<','
-            <<Xp.sigma2*Xp.sigma2/Xp.energia<<','<<Yp.sigma2*Yp.sigma2/Yp.energia<<','
-            <<cx.separation<<','<<cy.separation<<','
-            <<cx.radius[0]<<','<<cx.radius[1]<<','<<cy.radius[0]<<','<<cy.radius[1]<<','
-            <<cx.sep_ratio<<','<<cy.sep_ratio<<','<<cx.signed_gap<<','<<cy.signed_gap<<','
-            <<cx.train_errors<<','<<cy.train_errors<<','<<cx.loo_errors<<','<<cy.loo_errors<<','
-            <<1.0-cx.loo_errors/static_cast<double>(n)<<','
-            <<1.0-cy.loo_errors/static_cast<double>(n)<<','
-            <<cx.loo_min_margin<<','<<cy.loo_min_margin<<','
-            <<alignment.angle_deg<<','<<(alignment.reflected?1:0)<<','
-            <<alignment.rms_displacement<<','
-            <<std::chrono::duration<double>(t1-t0).count()<<','
-            <<std::chrono::duration<double>(a1-a0).count()<<','
-            <<std::chrono::duration<double>(a2-a1).count()<<','
-            <<(cfg.modo==JLScalaCentroidi::Federico?"Federico":"LeggeDiPotenza")<<','
-            <<cfg.distanza_ref<<','<<cfg.d_ref<<','<<cfg.alfa<<'\n';
-        perpoint << "campagna,id,label,PC1_X,PC2_X,PC1_JL_raw,PC2_JL_raw,"
-                    "PC1_JL_aligned,PC2_JL_aligned,pred_LOO_X,pred_LOO_JL,"
-                    "margin_LOO_X,margin_LOO_JL\n";
-        for(int i=0;i<n;++i)
-            perpoint << run<<','<<i<<','<<labels[i]<<','
-                <<Xp.score[i].x<<','<<Xp.score[i].y<<','
-                <<Yp.score[i].x<<','<<Yp.score[i].y<<','
-                <<alignment.Yaligned[i].x<<','<<alignment.Yaligned[i].y<<','
-                <<cx.loo_prediction[i]<<','<<cy.loo_prediction[i]<<','
-                <<cx.loo_margin[i]<<','<<cy.loo_margin[i]<<'\n';
-        auto graphic = output.open_new("overlay.svg");
-        JLCL_write_svg(graphic,Xp.score,alignment.Yaligned,labels,cx,cy,
-                    alignment,n,d,k,eps,true);
-        auto graphic_centroids = output.open_new("centroidi.svg");
-        JLCL_write_svg(graphic_centroids,Xp.score,alignment.Yaligned,labels,cx,cy,
-                    alignment,n,d,k,eps,false);
-        out.close();
-        perpoint.close();
-        graphic.close();
-        graphic_centroids.close();
-        if (!out || !perpoint || !graphic || !graphic_centroids)
-            throw std::runtime_error("JL_CLASS: errore di scrittura in " + output.directory().string());
-        std::cout << std::fixed << std::setprecision(5)
-            << "PCA X: sigma1="<<Xp.sigma1<<" sigma2="<<Xp.sigma2
-            <<" var1="<<Xp.sigma1*Xp.sigma1/Xp.energia<<'\n'
-            << "PCA Y: sigma1="<<Yp.sigma1<<" sigma2="<<Yp.sigma2
-            <<" var1="<<Yp.sigma1*Yp.sigma1/Yp.energia<<'\n'
-            << "JL: delta_max="<<delta_max<<" violazioni="<<violations<<'/'<<pairs<<'\n'
-            << "Classificazione 2PC (leave-one-out): X="<<n-cx.loo_errors<<'/'<<n
-            <<"  Y="<<n-cy.loo_errors<<'/'<<n<<'\n'
-            << "Distanza centroidi: X="<<cx.separation<<" Y="<<cy.separation<<'\n'
-            << "Separazione/raggi: X="<<cx.sep_ratio<<" Y="<<cy.sep_ratio<<'\n'
-            << "Gap assiale: X="<<cx.signed_gap<<" Y="<<cy.signed_gap<<'\n'
-            << "Allineamento grafico: rotazione="<<alignment.angle_deg
-            <<" gradi, riflessione="<<(alignment.reflected?"si":"no")<<'\n'
-            << "Campagna: " << output.campaign() << "  run: " << run << '\n'
-            << "Directory run: " << output.directory().string() << '\n'
-            << "CSV: summary.csv  points.csv\n"
-            << "Grafici SVG: overlay.svg  centroidi.svg\n";
+            //
+            // Proiezione JL e PCA sui dati ridotti
+            //
+            const auto a0=std::chrono::steady_clock::now();
+            const Mat A=matrix_random_jl(
+                k,d,JLMatrixDistribution::Gaussian,seed_A,3);
+            const Mat Y=matrix_prodotto_matrix(X,matrix_trasposta(A));
+            const auto a1=std::chrono::steady_clock::now();
+            JLCL_PCA2 Yp=JLCL_pca2_gram(Y);
+            const auto a2=std::chrono::steady_clock::now();
+            //
+            // Classificazione nei due piani e allineamento per il grafico
+            //
+            const auto cx=JLCL_evaluate(Xp.score,labels);
+            const auto cy=JLCL_evaluate(Yp.score,labels);
+            const auto alignment=JLCL_align(Xp.score,cx,Yp.score,cy);
+            //
+            // Controllo JL sulle distanze quadratiche sull'insieme finito di coppie.
+            //
+            double delta_sum=0.0,delta_max=0.0;
+            int violations=0,pairs=0;
+            for(int i=0;i<n;++i)for(int j=i+1;j<n;++j){
+                const double dx=vector_distanza2(X[i],X[j]);
+                const double dy=vector_distanza2(Y[i],Y[j]);
+                if(!(dx>0))throw std::runtime_error("JL_CLASS: distanza X nulla");
+                const double dd=std::abs(dy/dx-1.0);
+                ++pairs;delta_sum+=dd;delta_max=std::max(delta_max,dd);
+                if(dd>eps)++violations;
+            }
+            //
+            // Salvataggio CSV, grafici SVG e report
+            //
+            const auto output = files.begin_run("classificazione", "PCA_JL_CLASS");
+            const auto& run = output.id();
+            auto out = output.open_new("summary.csv");
+            auto perpoint = output.open_new("points.csv");
+            out << std::fixed << std::setprecision(9);
+            perpoint << std::fixed << std::setprecision(9);
+            //
+            // summary.csv - una riga per run.
+            //
+            // campagna contiene l'ID della run. 
+            // n, d, k, semi ed eps descrivono la prova. 
+            // X indica i dati originali, Y quelli dopo JL.
+            // coppie conta le coppie non ordinate. 
+            // delta_media e delta_max riassumono abs(D_Y^2/D_X^2 - 1). 
+            // violazioni conta i delta > eps.
+            // sigma1/2 sono i primi due singolari dei dati centrati.
+            // var1/2 sono quote di energia spiegata, sigma_i^2 / energia totale.
+            // I raggi sono distanze RMS dal centroide della propria classe.
+            // sep_ratio = distanza tra i centroidi / somma dei raggi.
+            // gap = minimo della classe 1 meno massimo della classe 0
+            //  (distanza tra calssi) lungo l'asse orientato da centroide 0 a centroide 1.
+            // errori_train e errori_LOO sono conteggi. 
+            // accuratezza_LOO e' una frazione: 1 - errori_LOO / n. 
+            // Il LOO rifà il centroide della classe del punto escluso, non la PCA.
+            // margine_min_LOO e' il minimo dei margini salvati in points.csv.
+            // Angolo, riflessione (0/1) e RMS descrivono il solo overlay.
+            // I tempi sono in secondi. 
+            // tempo_proiezione_s comprende anche generazione di A, trasposizione e prodotto.
+            // modo_centroidi, D_ref, d_ref e alfa descrivono il generatore.
+            // In LeggeDiPotenza la distanza obiettivo e' D_ref*(d/d_ref)^alfa.
+            //
+            out << "campagna,n,d,k,seed_X,seed_A,eps,coppie,violazioni,delta_media,delta_max,"
+                "sigma1_X,sigma2_X,sigma1_Y,sigma2_Y,"
+                "var1_X,var1_Y,var2_X,var2_Y,"
+                "dist_centroidi_X,dist_centroidi_Y,"
+                "raggio0_X,raggio1_X,raggio0_Y,raggio1_Y,"
+                "sep_ratio_X,sep_ratio_Y,gap_X,gap_Y,"
+                "errori_train_X,errori_train_Y,errori_LOO_X,errori_LOO_Y,"
+                "accuratezza_LOO_X,accuratezza_LOO_Y,"
+                "margine_min_LOO_X,margine_min_LOO_Y,"
+                "angolo_allineamento_deg,riflessione_trasversale,rms_spostamento_plot,"
+                "tempo_PCA_X_s,tempo_proiezione_s,tempo_PCA_Y_s,"
+                "modo_centroidi,D_ref,d_ref,alfa\n";
+            out << run<<','<<n<<','<<d<<','<<k<<','<<seed_X<<','<<seed_A<<','
+                <<eps<<','<<pairs<<','<<violations<<','<<delta_sum/pairs<<','<<delta_max<<','
+                <<Xp.sigma1<<','<<Xp.sigma2<<','<<Yp.sigma1<<','<<Yp.sigma2<<','
+                <<Xp.sigma1*Xp.sigma1/Xp.energia<<','<<Yp.sigma1*Yp.sigma1/Yp.energia<<','
+                <<Xp.sigma2*Xp.sigma2/Xp.energia<<','<<Yp.sigma2*Yp.sigma2/Yp.energia<<','
+                <<cx.separation<<','<<cy.separation<<','
+                <<cx.radius[0]<<','<<cx.radius[1]<<','<<cy.radius[0]<<','<<cy.radius[1]<<','
+                <<cx.sep_ratio<<','<<cy.sep_ratio<<','<<cx.signed_gap<<','<<cy.signed_gap<<','
+                <<cx.train_errors<<','<<cy.train_errors<<','<<cx.loo_errors<<','<<cy.loo_errors<<','
+                <<1.0-cx.loo_errors/static_cast<double>(n)<<','
+                <<1.0-cy.loo_errors/static_cast<double>(n)<<','
+                <<cx.loo_min_margin<<','<<cy.loo_min_margin<<','
+                <<alignment.angle_deg<<','<<(alignment.reflected?1:0)<<','
+                <<alignment.rms_displacement<<','
+                <<std::chrono::duration<double>(t1-t0).count()<<','
+                <<std::chrono::duration<double>(a1-a0).count()<<','
+                <<std::chrono::duration<double>(a2-a1).count()<<','
+                <<(cfg.modo==JLScalaCentroidi::Federico?"Federico":"LeggeDiPotenza")<<','
+                <<cfg.distanza_ref<<','<<cfg.d_ref<<','<<cfg.alfa<<'\n';
+            //
+            // points.csv - una riga per punto, nello stesso ordine nei due rami.
+            //
+            // campagna e' l'ID della run. 
+            // id parte da 0, 
+            // label e' la classe vera.
+            // PC1/2_X e PC1/2_JL_raw sono gli score nei rispettivi piani PCA.
+            // PC1/2_JL_aligned sono coordinate trasformate per il grafico,
+            // non i punteggi sulle componenti principali della PCA diretta.
+            // pred_LOO_* e' la classe assegnata nei rispettivi piani grezzi.
+            // margin_LOO_* = (dist^2 dal centroide rivale - dist^2 dal proprio
+            // centroide LOO) / distanza^2 tra i centroidi completi.
+            // Un margine positivo indica una classificazione corretta.
+            //
+            perpoint << "campagna,id,label,PC1_X,PC2_X,PC1_JL_raw,PC2_JL_raw,"
+                        "PC1_JL_aligned,PC2_JL_aligned,pred_LOO_X,pred_LOO_JL,"
+                        "margin_LOO_X,margin_LOO_JL\n";
+            for(int i=0;i<n;++i)
+                perpoint << run<<','<<i<<','<<labels[i]<<','
+                    <<Xp.score[i].x<<','<<Xp.score[i].y<<','
+                    <<Yp.score[i].x<<','<<Yp.score[i].y<<','
+                    <<alignment.Yaligned[i].x<<','<<alignment.Yaligned[i].y<<','
+                    <<cx.loo_prediction[i]<<','<<cy.loo_prediction[i]<<','
+                    <<cx.loo_margin[i]<<','<<cy.loo_margin[i]<<'\n';
+            auto graphic = output.open_new("overlay.svg");
+            JLCL_write_svg(graphic,Xp.score,alignment.Yaligned,labels,cx,cy,
+                        alignment,n,d,k,eps,true);
+            auto graphic_centroids = output.open_new("centroidi.svg");
+            JLCL_write_svg(graphic_centroids,Xp.score,alignment.Yaligned,labels,cx,cy,
+                        alignment,n,d,k,eps,false);
+            out.close();
+            perpoint.close();
+            graphic.close();
+            graphic_centroids.close();
+            if (!out || !perpoint || !graphic || !graphic_centroids)
+                throw std::runtime_error("JL_CLASS: errore di scrittura in " + output.directory().string());
+            std::cout << std::fixed << std::setprecision(5)
+                << "PCA X: sigma1="<<Xp.sigma1<<" sigma2="<<Xp.sigma2
+                <<" var1="<<Xp.sigma1*Xp.sigma1/Xp.energia<<'\n'
+                << "PCA Y: sigma1="<<Yp.sigma1<<" sigma2="<<Yp.sigma2
+                <<" var1="<<Yp.sigma1*Yp.sigma1/Yp.energia<<'\n'
+                << "JL: delta_max="<<delta_max<<" violazioni="<<violations<<'/'<<pairs<<'\n'
+                << "Classificazione 2PC (leave-one-out): X="<<n-cx.loo_errors<<'/'<<n
+                <<"  Y="<<n-cy.loo_errors<<'/'<<n<<'\n'
+                << "Distanza centroidi: X="<<cx.separation<<" Y="<<cy.separation<<'\n'
+                << "Separazione/raggi: X="<<cx.sep_ratio<<" Y="<<cy.sep_ratio<<'\n'
+                << "Gap assiale: X="<<cx.signed_gap<<" Y="<<cy.signed_gap<<'\n'
+                << "Allineamento grafico: rotazione="<<alignment.angle_deg
+                <<" gradi, riflessione="<<(alignment.reflected?"si":"no")<<'\n'
+                << "Campagna: " << output.campaign() << "  run: " << run << '\n'
+                << "Directory run: " << output.directory().string() << '\n'
+                << "CSV: summary.csv  points.csv\n"
+                << "Grafici SVG: overlay.svg  centroidi.svg\n";
 
             fcn_form::wait_report();
         }
     }
 
-    // Voce 10: il benchmark non consulta la cache e non cerca k.
+    // Voce 10 
+    // Confronta i tempi di PCA diretta e JL + PCA al crescere di d,
+    // con n e k fissati e la stessa X nei due rami per ogni d.
+    // A d fisso si rigenera la stessa A: 
+    // le ripetizioni sono cronometriche, non Monte Carlo. 
+    
+    // Fuori cronometraggio controlla le distanze quadratiche 
+    // e la classificazione sulle prime due componenti. 
+    // Usa il k scelto nel form e non legge la baseline storica. 
+    // Produce trial.csv e summary.csv per ogni run.
+
     void JL_benchmark_PCA()
     {
+        // -------------------------------------------------------------
+        // 1. Cronometro e strutture di appoggio
+        // -------------------------------------------------------------
         using Clock = std::chrono::steady_clock;
         const auto seconds = [](auto from, auto to) {
             return std::chrono::duration<double>(to - from).count();
@@ -6159,8 +6262,12 @@ namespace {
             double max_delta = 0.0;
             int correct_x = 0, correct_y = 0;
         };
-
+        // -------------------------------------------------------------
+        // 2. Form e ciclo delle esecuzioni
+        // -------------------------------------------------------------
         const jl_files::Store files{"data"};
+        // I default valgono all'ingresso nella voce. Dopo ogni report
+        // il form riparte dai parametri dell'ultima prova confermata.
         JLPcaBenchParams p;
         while (JL_PCA_BENCH_form::prompt(p)) {
             clear_screen();
@@ -6169,6 +6276,9 @@ namespace {
             fcn_form::wait_report();
             continue;
 #endif
+            // ---------------------------------------------------------
+            // 3. Nuova run e intestazioni di CSV e report
+            // ---------------------------------------------------------
             const auto run = files.begin_run("benchmark_pca_d", "PCA_JL_BENCH");
             auto trial = run.open_new("trial.csv");
             auto summary = run.open_new("summary.csv");
@@ -6176,15 +6286,55 @@ namespace {
                 out->imbue(std::locale::classic());
                 *out << std::fixed << std::setprecision(9);
             }
+            // Colonne comuni ai due CSV
+            // run_id identifica la run. n e' il numero di punti,
+            // d e k sono le dimensioni prima e dopo JL.
+            // delta_colonne = d-k. frazione_eliminata = (d-k)/d, non in %.
+            // eps e' la soglia frazionaria sulla distorsione delle distanze
+            // quadratiche. seed_X e seed_A identificano le due generazioni.
+            // modo: netto senza prodotti di verifica della bidiagonalizzazione,
+            // lordo con quei prodotti inclusi nel tempo.
+
+            // trial.csv - una riga per d, modo e ripetizione
+            //
+            // ripetizione parte da 1. ordine indica quale ramo parte prima
+            // (X_JL = diretto, JL_X = con proiezione).
+            // I tempi sono in secondi: 
+            //      PCA su X, 
+            //      generazione A, 
+            //      proiezione Y = X A^t (trasposta e prodotto), 
+            //      PCA su Y.
+            //      tempo_JL_totale_s somma le ultime tre fasi. 
+            // A d fisso le repliche misurano la stessa A.
+
+            // summary.csv - una riga per d e modo
+            // 
+            // ripetizioni conta i campioni delle due mediane in secondi.
+            // speedup = mediana_PCA_X_s / mediana_JL_totale_s.
+            // Il campo resta vuoto se la mediana al denominatore non e' positiva.
+            // coppie conta le coppie controllate. 
+            // delta_max e' il massimo di abs(D_Y^2/D_X^2 - 1). 
+            // violazioni conta i delta > eps.
+            //
+            // corretti_LOO_X e corretti_LOO_JL sono conteggi su n punti,
+            // con leave-one-out sui centroidi, non sulla PCA.
+            // La qualita' si misura una volta per d sulla stessa coppia X,Y
+            // e si riporta uguale nelle righe netto e lordo.
+
+            //
+            // intestazioni csv
+            //
             const char* common = "run_id,n,d,k,delta_colonne,frazione_eliminata,eps,seed_X,seed_A,";
             trial << common << "modo,ripetizione,ordine,tempo_PCA_X_s,tempo_A_s,tempo_proiezione_s,"
                    "tempo_PCA_Y_s,tempo_JL_totale_s\n";
             summary << common << "modo,ripetizioni,mediana_PCA_X_s,mediana_JL_totale_s,speedup,"
                      "coppie,violazioni,delta_max,corretti_LOO_X,corretti_LOO_JL\n";
-
+            // 
+            // legge i valori dei parametri del form 
+            //
             const int n = p.n, k = p.k;
             const double eps = p.eps_pct / 100.0;
-            const int modes = 1 + p.include_gross;
+            const int modes = 1 + p.include_gross;  // 1+0 netto, 1+1 lordo con controlli
             std::cout << "\n=== BENCHMARK JL + PCA | BIDIAG + SVD ===\n"
                       << "n=" << n << "  k=" << k << "  eps=" << eps
                       << "  seed_X=" << p.seed_X << "  seed_A=" << p.seed_A
@@ -6195,18 +6345,30 @@ namespace {
                       << "Cartella: " << run.directory().string() << "\n\n"
                       << "    d    d-k   elim.%   modo     PCA X s   JL tot s   speedup"
                          "   delta max     JL     LOO X / JL\n";
-
+            //
+            // loop sulla progressione del numero di colonne di origine d da d_min a d_max
+            //
             for (int d = p.d_min; ; d *= p.d_factor) {
+                // -----------------------------------------------------
+                // 4. Dataset comune ai due rami per il d corrente
+                // -----------------------------------------------------
                 // I dati non fanno parte del cronometro. Come nella voce 5,
                 // stesso generatore e seed, non prefissi annidati fra d diversi.
-                const auto [X, labels] = genera_cluster(n, d, p.seed_X);
+                //
+                // usa genera_cluster originale 
+                // (std=0.3 e centroidi a distanza crescente con d)
+                // cioe' modello <Federico>
+                //
+                const auto [X, labels] = genera_cluster(n, d, p.seed_X); 
                 const double eliminated = (d - k) / static_cast<double>(d);
                 auto row = [&](std::ostream& out) -> std::ostream& {
                     return out << run.id() << ',' << n << ',' << d << ',' << k << ','
                                << d-k << ',' << eliminated << ',' << eps << ','
                                << p.seed_X << ',' << p.seed_A << ',';
                 };
-
+                // -----------------------------------------------------
+                // 5. Tempi di PCA diretta e JL + PCA, per ripetizione
+                // -----------------------------------------------------
                 std::vector<Sample> samples[2];
                 for (auto& v : samples) v.reserve(p.repetitions);
                 Mat quality_y;
@@ -6238,7 +6400,9 @@ namespace {
                         samples[mode].push_back(sample);
                     }
                 }
-
+                // -----------------------------------------------------
+                // 6. Qualita' fuori tempo: distanze JL e classificazione 2PC
+                // -----------------------------------------------------
                 // Una sola verifica per d, sulle matrici misurate. Gram/Jacobi
                 // serve solo per gli score di classificazione, mai per i tempi.
                 Quality q;
@@ -6259,7 +6423,9 @@ namespace {
                 const auto yp = JLCL_pca2_gram(quality_y);
                 q.correct_x = n - JLCL_evaluate(xp.score, labels).loo_errors;
                 q.correct_y = n - JLCL_evaluate(yp.score, labels).loo_errors;
-
+                // -----------------------------------------------------
+                // 7. Risultati per d e modo: trial, mediane e report
+                // -----------------------------------------------------
                 for (int mode = 0; mode < modes; ++mode) {
                     const char* name = mode == 0 ? "netto" : "lordo";
                     std::vector<double> direct, projected;
@@ -6296,6 +6462,9 @@ namespace {
                     throw std::runtime_error("Benchmark JL: scrittura CSV fallita");
                 if (d > p.d_max / p.d_factor) break;
             }
+            // ---------------------------------------------------------
+            // 8. Chiusura della run e ritorno al form
+            // ---------------------------------------------------------
             trial.close();
             summary.close();
             if (!trial || !summary)
