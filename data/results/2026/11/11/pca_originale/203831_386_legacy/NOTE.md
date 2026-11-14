@@ -24,4 +24,6 @@ Questo è il riferimento della SVD originale per quel preciso dataset, non una c
 
 Usare la baseline per [il confronto spettrale](<../../confronti_spettrali/214942_247_JL_PCA/NOTE.md>) e per i Monte Carlo. Non confrontare direttamente questo tempo con quello della PCA Gram/Jacobi della classificazione.
 
+**Perimetro dei tempi storici.** Il tempo PCA comprende i prodotti interni $V_0^T V_0$ e $U_0^T U_0$ del percorso Bidiag–SVD, anche con il dump disattivato. Un rapporto di tempi ottenuto con questa baseline è **al lordo** di quei prodotti, che costano meno sulla matrice compressa. Non è uno speedup netto. Il [benchmark dedicato](../../../../../../../docs/JL_BENCHMARK_PCA.md) misura i due percorsi nello stesso eseguibile e distingue i due regimi. I CSV di questa prova restano invariati.
+
 **File della prova:** [JL_PCA_originale_20261111_203831_386.csv](./JL_PCA_originale_20261111_203831_386.csv).

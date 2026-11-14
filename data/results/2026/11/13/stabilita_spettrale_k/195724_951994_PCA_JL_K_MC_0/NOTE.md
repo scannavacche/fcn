@@ -20,4 +20,6 @@ La prova ripete gli stessi semi e non aumenta il campione. I dati rimangono util
 
 Per le conclusioni sulla coda e su Q₂ usare [la campagna originale](<../../../11/stabilita_spettrale_k/233629_422_JL_PCA_K/NOTE.md>).
 
+**Perimetro dei tempi storici.** Il tempo PCA comprende i prodotti interni $V_0^T V_0$ e $U_0^T U_0$ del percorso Bidiag–SVD, anche con il dump disattivato. Un rapporto di tempi ottenuto con questa baseline è **al lordo** di quei prodotti, che costano meno sulla matrice compressa. Non è uno speedup netto. Il [benchmark dedicato](../../../../../../../docs/JL_BENCHMARK_PCA.md) misura i due percorsi nello stesso eseguibile e distingue i due regimi. I CSV di questa prova restano invariati.
+
 **File della prova:** [stat.csv](./stat.csv), [trial.csv](./trial.csv).

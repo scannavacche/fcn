@@ -1,7 +1,9 @@
 .vscode
 /fcn_all
+/.build/
 /fcn.zip
 /fcn_avanzi.cpp
 /teoria
 *.o
 *.a
+/.build-svdqr/

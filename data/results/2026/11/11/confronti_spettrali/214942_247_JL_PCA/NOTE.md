@@ -24,4 +24,6 @@ Il controllo delle distanze non coincide con la conservazione dello spettro. Una
 
 Lo stesso verso del cambiamento di σ₂ e Q₂ si vede in tutti i casi, ma con una sola A per configurazione non sappiamo quanto conti la scelta della matrice. [Fissiamo n, d, k ed ε e cambiamo soltanto il seme di A](<../../monte_carlo_spettrale/225535_132_JL_PCA_MC/NOTE.md>) per separare le due questioni.
 
+**Perimetro dei tempi storici.** Il tempo PCA comprende i prodotti interni $V_0^T V_0$ e $U_0^T U_0$ del percorso Bidiag–SVD, anche con il dump disattivato. Un rapporto di tempi ottenuto con questa baseline è **al lordo** di quei prodotti, che costano meno sulla matrice compressa. Non è uno speedup netto. Il [benchmark dedicato](../../../../../../../docs/JL_BENCHMARK_PCA.md) misura i due percorsi nello stesso eseguibile e distingue i due regimi. I CSV di questa prova restano invariati.
+
 **File della prova:** [confronto.csv](./confronto.csv), [spettri.csv](./spettri.csv).

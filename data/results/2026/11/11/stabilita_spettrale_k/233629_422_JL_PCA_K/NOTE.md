@@ -31,4 +31,6 @@ La coda è l’energia oltre i primi sei valori singolari, rapportata alla coda 
 
 La coda recupera, ma dai valori singolari non sappiamo ancora se la separazione dei due gruppi ne risenta. Passiamo alla [classificazione sulle prime due componenti](<../../../12/classificazione/165216_969_PCA_JL_CLASS1/NOTE.md>). La domanda cambia: non più soltanto come si distribuisce l’energia, ma se cambia un risultato ottenuto a valle.
 
+**Perimetro dei tempi storici.** Il tempo PCA comprende i prodotti interni $V_0^T V_0$ e $U_0^T U_0$ del percorso Bidiag–SVD, anche con il dump disattivato. Un rapporto di tempi ottenuto con questa baseline è **al lordo** di quei prodotti, che costano meno sulla matrice compressa. Non è uno speedup netto. Il [benchmark dedicato](../../../../../../../docs/JL_BENCHMARK_PCA.md) misura i due percorsi nello stesso eseguibile e distingue i due regimi. I CSV di questa prova restano invariati.
+
 **File della prova:** [stat.csv](./stat.csv), [trial.csv](./trial.csv).

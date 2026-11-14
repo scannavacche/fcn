@@ -5426,3 +5426,116 @@ namespace JL_CLASS_PCA_form {
     }
 } // JL_CLASS_PCA_form
 
+
+namespace JL_PCA_BENCH_form {
+namespace {
+    using Member = int JLPcaBenchParams::*;
+    struct Field {
+        const char* label;
+        const char* hint;
+        int width, min, max;
+        Member member;
+    };
+    constexpr Field fields[] = {
+        {"n", "Numero di punti, pari per bilanciare i due cluster.", 4, 4, 1000, &JLPcaBenchParams::n},
+        {"k", "Numero fisso di colonne dopo JL, minore del primo d.", 4, 2, 4999, &JLPcaBenchParams::k},
+        {"eps %", "Soglia sulle distanze quadratiche, verificata fuori tempo.", 2, 1, 99, &JLPcaBenchParams::eps_pct},
+        {"d iniziale", "Primo numero di colonne, maggiore di k.", 4, 3, 5000, &JLPcaBenchParams::d_min},
+        {"d finale", "Ultimo limite per la progressione geometrica.", 4, 3, 5000, &JLPcaBenchParams::d_max},
+        {"fattore d", "Moltiplicatore intero tra due valori successivi di d.", 2, 2, 10, &JLPcaBenchParams::d_factor},
+        {"seed X", "Seed del generatore Federico, riusato per ogni d.", 9, 0, 999999999, &JLPcaBenchParams::seed_X},
+        {"seed A", "Seed di A. Si rigenera la stessa proiezione per ogni ripetizione a d fisso.", 9, 0, 999999999, &JLPcaBenchParams::seed_A},
+        {"ripetizioni", "Repliche cronometriche della stessa prova. Non sono Monte Carlo.", 2, 1, 20, &JLPcaBenchParams::repetitions},
+        {"anche lordo", "0: solo netto. 1: ripete con i prodotti di verifica (puo' costare molto).", 1, 0, 1, &JLPcaBenchParams::include_gross},
+    };
+    constexpr std::size_t count = sizeof(fields) / sizeof(fields[0]);
+
+    bool prepare(GnFormContext& c, void*) {
+        if (!c.fields || !c.values || c.field_count != count) return false;
+        for (std::size_t i = 0; i < count; ++i) {
+            const auto& f = fields[i];
+            c.fields[i] = GnEntrySpec{
+                c.layout.viewport.top + 2 + static_cast<int>(i),
+                40 - f.width + 1, GN_FIELD_BOUNDED_NATURAL,
+                static_cast<std::size_t>(f.width), static_cast<double>(f.min),
+                static_cast<double>(f.max), 1, c.layout.echo_row
+            };
+        }
+        return true;
+    }
+
+    void render(const GnFormContext& c, void*) {
+        const auto& l = c.layout;
+        const int w = l.terminal_columns - 1;
+        gn_screen_clear();
+        gn_screen_cursor_visible(0);
+        fcn_form::write(l.header_top, 1, " JL - Benchmark PCA al crescere di d ", w, GN_SCREEN_TITLE);
+        fcn_form::write(l.header_top + 1, 3, "Stesso input, stesso solver, confronto per coppie.", w - 3);
+        fcn_form::separator(l.top_separator_row, l.terminal_columns);
+        fcn_form::write(l.viewport.top, 3, "Default dalla campagna 194259_963. A viene sempre cronometrata.", w - 3);
+        for (std::size_t i = 0; i < count; ++i) {
+            const auto& f = c.fields[i];
+            fcn_form::write(f.row, 4, std::string(i == c.lab ? "> " : "  ") + fields[i].label, f.column - 5);
+            fcn_form::write(f.row, f.column, fcn_form::field_value(c.values[i], f.length),
+                            static_cast<int>(f.length), GN_SCREEN_FIELD);
+        }
+        fcn_form::separator(l.bottom_separator_row, l.terminal_columns);
+        fcn_form::separator(l.status_separator_row, l.terminal_columns);
+        fcn_form::write(l.hint_row, 2, fields[c.lab].hint, w - 1, GN_SCREEN_MESSAGE);
+        if (!c.message.empty())
+            fcn_form::write(l.echo_row, 2, c.message, w - 1, GN_SCREEN_ERROR);
+        fcn_form::write(l.status_top, 2, "ESC Menu    Frecce / TAB    F10 Esegui", w - 1, GN_SCREEN_STATUS);
+        gn_screen_flush();
+    }
+
+    GnFormChangeResult change(GnEntryCommand cmd, GnFormContext& c, void*) {
+        return fcn_form::change_linear(cmd, c);
+    }
+
+    bool validate(GnFormContext& c, void*) {
+        if (std::stoi(c.values[0]) % 2 != 0) {
+            c.lab = 0;
+            c.message = "n deve essere pari.";
+        } else if (std::stoi(c.values[1]) >= std::stoi(c.values[3])) {
+            c.lab = 1;
+            c.message = "k deve essere minore di d iniziale.";
+        } else if (std::stoi(c.values[4]) < std::stoi(c.values[3])) {
+            c.lab = 4;
+            c.message = "d finale deve essere almeno d iniziale.";
+        } else {
+            return true;
+        }
+        return false;
+    }
+}
+
+bool prompt(JLPcaBenchParams& p) {
+    std::string values[count];
+    for (std::size_t i = 0; i < count; ++i)
+        values[i] = std::to_string(p.*fields[i].member);
+    GnFormRunSpec spec{};
+    spec.layout_options.header_rows = 2;
+    spec.layout_options.top_separator = true;
+    spec.layout_options.bottom_separator = true;
+    spec.layout_options.hint_line = true;
+    spec.layout_options.echo_line = true;
+    spec.layout_options.status_rows = 1;
+    spec.layout_options.min_viewport_rows = 12;
+    spec.layout_options.min_viewport_columns = 80;
+    spec.values = values;
+    spec.field_count = count;
+    spec.prepare = prepare;
+    spec.render = render;
+    spec.change = change;
+    spec.validate = validate;
+    const auto result = gn_form_run_session(spec);
+    if (result == GN_FORM_RUN_ERROR)
+        std::cerr << "Impossibile aprire il form benchmark JL + PCA.\n";
+    if (result != GN_FORM_RUN_ACCEPT) return false;
+    auto updated = p;
+    for (std::size_t i = 0; i < count; ++i)
+        updated.*fields[i].member = std::stoi(values[i]);
+    p = updated;
+    return true;
+}
+} // namespace JL_PCA_BENCH_form

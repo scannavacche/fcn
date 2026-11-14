@@ -24,4 +24,6 @@ L’effetto si ripete in questa configurazione anche quando l’energia totale m
 
 Il fenomeno si ripete anche quando tutte le proiezioni passano il controllo JL. Vogliamo ora capire se si attenua riducendo la compressione. Nella [prova con k accoppiati](<../../stabilita_spettrale_k/233629_422_JL_PCA_K/NOTE.md>) i diversi k di un trial usano le prime righe dello stesso blocco gaussiano, riscalate, così non cambiamo insieme k e l’intero sorteggio.
 
+**Perimetro dei tempi storici.** Il tempo PCA comprende i prodotti interni $V_0^T V_0$ e $U_0^T U_0$ del percorso Bidiag–SVD, anche con il dump disattivato. Un rapporto di tempi ottenuto con questa baseline è **al lordo** di quei prodotti, che costano meno sulla matrice compressa. Non è uno speedup netto. Il [benchmark dedicato](../../../../../../../docs/JL_BENCHMARK_PCA.md) misura i due percorsi nello stesso eseguibile e distingue i due regimi. I CSV di questa prova restano invariati.
+
 **File della prova:** [stat.csv](./stat.csv), [trial.csv](./trial.csv).

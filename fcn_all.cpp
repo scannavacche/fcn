@@ -3,6 +3,7 @@
 #include <cfloat>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -24,7 +25,7 @@
 #include <vector>
 
 #include "dataset_JL_centroidi_parametrici.hpp"
-#include "svd_qr.cpp" // magari basta solo un header visto che e' compilato nella lib statica
+#include "svd_qr.h"
 #include "fcn_lib_calc.h"
 #include "fcn_lib_jl_files.h"
 
@@ -636,7 +637,9 @@ namespace {
     }
 
 
-    static JLPCA_Spettro JL_PCA_spettro(const Mat& X)
+    static JLPCA_Spettro JL_PCA_spettro(const Mat& X,
+                                       bool prodotti_verifica = true,
+                                       bool verbose = true)
     {
         if (X.size() < 2 || X.front().empty())
             throw std::invalid_argument("JL_PCA_spettro: matrice vuota o n<2");
@@ -652,11 +655,12 @@ namespace {
         Mat Xtilde = matrix_centra_su_media(X, avg_col);
 
         Mat U0, B, V0;
-        trmatrix_bidiagonalizza(Xtilde, U0, B, V0, bidiag_mode, false);
+        trmatrix_bidiagonalizza(Xtilde, U0, B, V0, bidiag_mode, false,
+                                prodotti_verifica, verbose);
 
         Mat Ub, Vb_t;
         Vec sigma;
-        if (svd_bidiagonale(B, Ub, Vb_t, sigma) != 0)
+        if (svd_bidiagonale(B, Ub, Vb_t, sigma, verbose) != 0)
             throw std::runtime_error("JL_PCA_spettro: SVD non convergente");
 
         const auto end = std::chrono::steady_clock::now();
@@ -6134,6 +6138,177 @@ namespace {
         }
     }
 
+    // Voce 10: il benchmark non consulta la cache e non cerca k.
+    void JL_benchmark_PCA()
+    {
+        using Clock = std::chrono::steady_clock;
+        const auto seconds = [](auto from, auto to) {
+            return std::chrono::duration<double>(to - from).count();
+        };
+        const auto median = [](std::vector<double> v) {
+            std::sort(v.begin(), v.end());
+            const auto mid = v.size() / 2;
+            return v.size() % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2.0;
+        };
+        struct Sample {
+            double pca_x = 0.0, gen_a = 0.0, projection = 0.0, pca_y = 0.0;
+            double total_jl() const { return gen_a + projection + pca_y; }
+        };
+        struct Quality {
+            std::size_t pairs = 0, violations = 0;
+            double max_delta = 0.0;
+            int correct_x = 0, correct_y = 0;
+        };
+
+        const jl_files::Store files{"data"};
+        JLPcaBenchParams p;
+        while (JL_PCA_BENCH_form::prompt(p)) {
+            clear_screen();
+#ifdef FCN_BENCH_MATMUL
+            std::cerr << "Disattivare FCN_BENCH_MATMUL: esegue un secondo prodotto e altera i tempi.\n";
+            fcn_form::wait_report();
+            continue;
+#endif
+            const auto run = files.begin_run("benchmark_pca_d", "PCA_JL_BENCH");
+            auto trial = run.open_new("trial.csv");
+            auto summary = run.open_new("summary.csv");
+            for (auto* out : {&trial, &summary}) {
+                out->imbue(std::locale::classic());
+                *out << std::fixed << std::setprecision(9);
+            }
+            const char* common = "run_id,n,d,k,delta_colonne,frazione_eliminata,eps,seed_X,seed_A,";
+            trial << common << "modo,ripetizione,ordine,tempo_PCA_X_s,tempo_A_s,tempo_proiezione_s,"
+                   "tempo_PCA_Y_s,tempo_JL_totale_s\n";
+            summary << common << "modo,ripetizioni,mediana_PCA_X_s,mediana_JL_totale_s,speedup,"
+                     "coppie,violazioni,delta_max,corretti_LOO_X,corretti_LOO_JL\n";
+
+            const int n = p.n, k = p.k;
+            const double eps = p.eps_pct / 100.0;
+            const int modes = 1 + p.include_gross;
+            std::cout << "\n=== BENCHMARK JL + PCA | BIDIAG + SVD ===\n"
+                      << "n=" << n << "  k=" << k << "  eps=" << eps
+                      << "  seed_X=" << p.seed_X << "  seed_A=" << p.seed_A
+                      << "  ripetizioni=" << p.repetitions << '\n'
+                      << "Dataset Federico (sigma=0.3). Stessa X nei due rami, rigenerata per ogni d.\n"
+                      << "A generata a ogni ripetizione, con lo stesso seed a d fisso.\n"
+                      << "JL totale = generazione A + proiezione + PCA. Qualita' fuori tempo.\n"
+                      << "Cartella: " << run.directory().string() << "\n\n"
+                      << "    d    d-k   elim.%   modo     PCA X s   JL tot s   speedup"
+                         "   delta max     JL     LOO X / JL\n";
+
+            for (int d = p.d_min; ; d *= p.d_factor) {
+                // I dati non fanno parte del cronometro. Come nella voce 5,
+                // stesso generatore e seed, non prefissi annidati fra d diversi.
+                const auto [X, labels] = genera_cluster(n, d, p.seed_X);
+                const double eliminated = (d - k) / static_cast<double>(d);
+                auto row = [&](std::ostream& out) -> std::ostream& {
+                    return out << run.id() << ',' << n << ',' << d << ',' << k << ','
+                               << d-k << ',' << eliminated << ',' << eps << ','
+                               << p.seed_X << ',' << p.seed_A << ',';
+                };
+
+                std::vector<Sample> samples[2];
+                for (auto& v : samples) v.reserve(p.repetitions);
+                Mat quality_y;
+                for (int rep = 0; rep < p.repetitions; ++rep) {
+                    for (int turn = 0; turn < modes; ++turn) {
+                        // Con due modi alterniamo anche l'ordine netto/lordo.
+                        const int mode = (turn + rep) % modes;
+                        const bool gross = mode == 1;
+                        const bool direct_first = rep % 2 == 0;
+                        Sample sample;
+                        auto direct = [&] {
+                            sample.pca_x = JL_PCA_spettro(X, gross, false).tempo_s;
+                        };
+                        auto projected = [&] {
+                            const auto start = Clock::now();
+                            const Mat A = matrix_random_jl(k, d, JLMatrixDistribution::Gaussian,
+                                                          static_cast<unsigned>(p.seed_A), 3);
+                            const auto after_a = Clock::now();
+                            Mat Y = matrix_prodotto_matrix(X, matrix_trasposta(A));
+                            const auto after_projection = Clock::now();
+                            sample.gen_a = seconds(start, after_a);
+                            sample.projection = seconds(after_a, after_projection);
+                            sample.pca_y = JL_PCA_spettro(Y, gross, false).tempo_s;
+                            if (!gross && rep == p.repetitions - 1)
+                                quality_y = std::move(Y);
+                        };
+                        if (direct_first) { direct(); projected(); }
+                        else { projected(); direct(); }
+                        samples[mode].push_back(sample);
+                    }
+                }
+
+                // Una sola verifica per d, sulle matrici misurate. Gram/Jacobi
+                // serve solo per gli score di classificazione, mai per i tempi.
+                Quality q;
+                for (int i = 0; i < n; ++i)
+                    for (int j = i + 1; j < n; ++j) {
+                        const double dx = vector_distanza2(X[i], X[j]);
+                        const double dy = vector_distanza2(quality_y[i], quality_y[j]);
+                        if (!(dx > 0.0) || !std::isfinite(dx) || !std::isfinite(dy))
+                            throw std::runtime_error("Benchmark JL: distanza non valida");
+                        const double delta = std::abs(dy / dx - 1.0);
+                        if (!std::isfinite(delta))
+                            throw std::runtime_error("Benchmark JL: distorsione non finita");
+                        q.max_delta = std::max(q.max_delta, delta);
+                        ++q.pairs;
+                        q.violations += delta > eps;
+                    }
+                const auto xp = JLCL_pca2_gram(X);
+                const auto yp = JLCL_pca2_gram(quality_y);
+                q.correct_x = n - JLCL_evaluate(xp.score, labels).loo_errors;
+                q.correct_y = n - JLCL_evaluate(yp.score, labels).loo_errors;
+
+                for (int mode = 0; mode < modes; ++mode) {
+                    const char* name = mode == 0 ? "netto" : "lordo";
+                    std::vector<double> direct, projected;
+                    for (int i = 0; i < p.repetitions; ++i) {
+                        const auto& s = samples[mode][i];
+                        direct.push_back(s.pca_x);
+                        projected.push_back(s.total_jl());
+                        row(trial) << name << ',' << i+1 << ','
+                                   << (i % 2 == 0 ? "X_JL" : "JL_X") << ','
+                                   << s.pca_x << ',' << s.gen_a << ',' << s.projection << ','
+                                   << s.pca_y << ',' << s.total_jl() << '\n';
+                    }
+                    const double tx = median(direct), ty = median(projected);
+                    row(summary) << name << ',' << p.repetitions << ',' << tx << ',' << ty << ',';
+                    if (ty > 0) summary << tx / ty;
+                    summary << ',' << q.pairs << ',' << q.violations << ',' << q.max_delta
+                            << ',' << q.correct_x << ',' << q.correct_y << '\n';
+                    std::cout << std::fixed << std::setprecision(3)
+                              << std::setw(5) << d << std::setw(7) << d-k
+                              << std::setw(9) << 100.0*eliminated
+                              << "   " << name << std::setprecision(6)
+                              << std::setw(12) << tx << std::setw(11) << ty
+                              << std::setprecision(3);
+                    if (ty > 0) std::cout << std::setw(9) << tx/ty << 'x';
+                    else std::cout << std::setw(10) << "--";
+                    std::cout << std::setw(12) << q.max_delta
+                              << std::setw(7) << (q.violations ? "NO" : "OK")
+                              << "     " << q.correct_x << '/' << n << " / "
+                              << q.correct_y << '/' << n << '\n';
+                }
+                trial.flush();
+                summary.flush();
+                if (!trial || !summary)
+                    throw std::runtime_error("Benchmark JL: scrittura CSV fallita");
+                if (d > p.d_max / p.d_factor) break;
+            }
+            trial.close();
+            summary.close();
+            if (!trial || !summary)
+                throw std::runtime_error("Benchmark JL: chiusura CSV fallita");
+            std::cout << std::defaultfloat << std::setprecision(6)
+                      << "\nSpeedup = rapporto delle mediane. LOO sui centroidi, non sulla PCA.\n"
+                      << "Netto/lordo si riferiscono ai prodotti di verifica nella bidiagonalizzazione.\n"
+                      << "CSV: " << run.result_path("summary.csv").string()
+                      << " e " << run.result_path("trial.csv").string() << '\n';
+            fcn_form::wait_report();
+        }
+    }
+
     void sandbox() {
             SandboxParams params{};
             while (sandbox_form::prompt(params)) {
@@ -6193,6 +6368,7 @@ namespace {
             {"PCA_JL_MC",       JL_effetto_PCA_MC},     //straight
             {"PCA_JL_K_MC",     JL_effetto_PCA_K_MC},   //straight
             {"PCA_JL_CLASS",    JL_classificazione_PCA},//straight
+            {"PCA_JL_BENCH",    JL_benchmark_PCA},      // form ok
             {"sandbox",         sandbox}
             };
         }

@@ -373,6 +373,17 @@ namespace JL_CLASS_PCA_form {
     bool prompt(JLClassPCAParams& p);
 }
 
+struct JLPcaBenchParams {
+    int n = 50, k = 413, eps_pct = 30;
+    int d_min = 500, d_max = 2000, d_factor = 2;
+    int seed_X = 42, seed_A = 12345;
+    int repetitions = 3;
+    int include_gross = 0; // 0: solo netto; 1: anche lordo
+};
+namespace JL_PCA_BENCH_form {
+    bool prompt(JLPcaBenchParams& p);
+}
+
 // Ritorno dal rapporto stdio alla form dei parametri.
 namespace fcn_form
 {

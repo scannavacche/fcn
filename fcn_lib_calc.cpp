@@ -2350,7 +2350,9 @@ void trmatrix_bidiagonalizza(
     Mat& B, 
     Mat& V0, 
     bool sup_diag,
-    bool dump_flag) 
+    bool dump_flag,
+    bool prodotti_verifica,
+    bool verbose)
 {
     // A = U0 * B * V0^T
 
@@ -2359,19 +2361,19 @@ void trmatrix_bidiagonalizza(
 
     if (m < n) {
         if (sup_diag) 
-            trmatrix_bidiag_wide_to_upper(A, U0, B, V0,  dump_flag);
+            trmatrix_bidiag_wide_to_upper(A, U0, B, V0,  dump_flag, prodotti_verifica);
         else
-            trmatrix_bidiag_wide_to_lower(A, U0, B, V0,  dump_flag);
-        cout << "Bidiagonalizzazione diretta" << endl;
+            trmatrix_bidiag_wide_to_lower(A, U0, B, V0,  dump_flag, prodotti_verifica);
+        if (verbose) cout << "Bidiagonalizzazione diretta" << endl;
     } else {
         Mat At = matrix_trasposta(A);
 
         Mat Ut, Bt, Vt;
         if (sup_diag)
-            trmatrix_bidiag_wide_to_upper(At, Ut, Bt, Vt,  dump_flag);   // At = Ut * Bt * Vt^T
+            trmatrix_bidiag_wide_to_upper(At, Ut, Bt, Vt,  dump_flag, prodotti_verifica);   // At = Ut * Bt * Vt^T
         else
-            trmatrix_bidiag_wide_to_lower(At, Ut, Bt, Vt, dump_flag);   // At = Ut * Bt * Vt^T
-        cout << "Bidiagonalizzazione inversa" << endl;
+            trmatrix_bidiag_wide_to_lower(At, Ut, Bt, Vt, dump_flag, prodotti_verifica);   // At = Ut * Bt * Vt^T
+        if (verbose) cout << "Bidiagonalizzazione inversa" << endl;
         U0 = Vt;           // A = Vt * Bt^T * Ut^T
         B  = matrix_trasposta(Bt);
         V0 = Ut;
@@ -2387,7 +2389,8 @@ void trmatrix_bidiag_wide_to_upper(
     Mat& U0, 
     Mat& B, 
     Mat& V0,
-    bool dump_flag) 
+    bool dump_flag,
+    bool prodotti_verifica)
 {
 
     Mat A = X;                 // copia di lavoro
@@ -2534,8 +2537,10 @@ void trmatrix_bidiag_wide_to_upper(
             //
             //  Verifica di U0 e V0 ortogonali
             //
-            Mat V0t_V0 = matrix_prodotto_matrix(matrix_trasposta(V0), V0);
-            Mat U0t_U0 = matrix_prodotto_matrix(matrix_trasposta(U0), U0);
+            if (prodotti_verifica) {
+                Mat V0t_V0 = matrix_prodotto_matrix(matrix_trasposta(V0), V0);
+                Mat U0t_U0 = matrix_prodotto_matrix(matrix_trasposta(U0), U0);
+            }
             // matrix_dump(U0t_U0, "U0_t U0");
             // matrix_dump(V0t_V0, "V0_t V0");
 
@@ -2555,7 +2560,8 @@ void trmatrix_bidiag_wide_to_lower(
     Mat& U0, 
     Mat& B, 
     Mat& V0,
-    bool dump_flag) 
+    bool dump_flag,
+    bool prodotti_verifica)
 {
 
     Mat A = X;                 // copia di lavoro
@@ -2644,9 +2650,10 @@ void trmatrix_bidiag_wide_to_lower(
             //
 
             //cout << "Trasposta V0" << endl;
-            Mat V0t_V0 = matrix_prodotto_matrix(matrix_trasposta(V0), V0);
-            //cout << "Trasposta U0" << endl;
-            Mat U0t_U0 = matrix_prodotto_matrix(matrix_trasposta(U0), U0);
+            if (prodotti_verifica) {
+                Mat V0t_V0 = matrix_prodotto_matrix(matrix_trasposta(V0), V0);
+                Mat U0t_U0 = matrix_prodotto_matrix(matrix_trasposta(U0), U0);
+            }
             if (dump_flag) cout << "Fatto" << endl;
             //matrix_dump(U0t_U0, "U0_t U0");
             //matrix_dump(V0t_V0, "V0_t V0");

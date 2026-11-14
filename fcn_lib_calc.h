@@ -524,21 +524,25 @@ void trmatrix_bidiagonalizza(
     Mat& B, 
     Mat& V0, 
     bool sup_diag = false,  
-    bool dump_flag = false);
+    bool dump_flag = false,
+    bool prodotti_verifica = true,
+    bool verbose = true);
 
 void trmatrix_bidiag_wide_to_lower(
     const Mat& X, 
     Mat& U0, 
     Mat& B, 
     Mat& V0,
-    bool dump_flag) ;
+    bool dump_flag,
+    bool prodotti_verifica = true);
 
 void trmatrix_bidiag_wide_to_upper(
     const Mat& X, 
     Mat& U0, 
     Mat& B, 
     Mat& V0,
-    bool dump_flag) ;
+    bool dump_flag,
+    bool prodotti_verifica = true);
 
 
 void trmatrix_SVDQR(

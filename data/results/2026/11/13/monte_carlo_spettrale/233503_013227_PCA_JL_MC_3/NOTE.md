@@ -20,4 +20,6 @@ Stessi semi 60000–60019, quindi non sommare questi 20 trial ai 20 storici. Il 
 
 Per metodo e interpretazione usare [la campagna originale](<../../../11/monte_carlo_spettrale/225535_132_JL_PCA_MC/NOTE.md>). Per il passaggio dal vecchio logging vedere [la nota del lancio delle 19:56](../195644_105_PCA_JL_MC_2/NOTE.md).
 
+**Perimetro dei tempi storici.** Il tempo PCA comprende i prodotti interni $V_0^T V_0$ e $U_0^T U_0$ del percorso Bidiag–SVD, anche con il dump disattivato. Un rapporto di tempi ottenuto con questa baseline è **al lordo** di quei prodotti, che costano meno sulla matrice compressa. Non è uno speedup netto. Il [benchmark dedicato](../../../../../../../docs/JL_BENCHMARK_PCA.md) misura i due percorsi nello stesso eseguibile e distingue i due regimi. I CSV di questa prova restano invariati.
+
 **File della prova:** [stat.csv](./stat.csv), [trial.csv](./trial.csv).

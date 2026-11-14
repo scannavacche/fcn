@@ -20,4 +20,6 @@ Il test conferma la riproducibilità numerica della prova archiviata, non aggiun
 
 Per la lettura scientifica usare [il confronto originale](<../../../11/confronti_spettrali/214942_247_JL_PCA/NOTE.md>).
 
+**Perimetro dei tempi storici.** Il tempo PCA comprende i prodotti interni $V_0^T V_0$ e $U_0^T U_0$ del percorso Bidiag–SVD, anche con il dump disattivato. Un rapporto di tempi ottenuto con questa baseline è **al lordo** di quei prodotti, che costano meno sulla matrice compressa. Non è uno speedup netto. Il [benchmark dedicato](../../../../../../../docs/JL_BENCHMARK_PCA.md) misura i due percorsi nello stesso eseguibile e distingue i due regimi. I CSV di questa prova restano invariati.
+
 **File della prova:** [confronto.csv](./confronto.csv), [spettri.csv](./spettri.csv).

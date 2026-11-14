@@ -1,13 +1,13 @@
+#include "svd_qr.h"
+
+#include <algorithm>
+#include <cstdio>
 #include <iostream>
-#include <cmath>
-#include "ap.h"
-#include "alglibinternal.h"
-#include "linalg.h"
+#include "alglib/linalg.h"
 
 using namespace alglib;
 
-using Vec = std::vector<double>;
-using Mat = std::vector<Vec>;
+namespace {
 
 void set_identity(real_2d_array &A, int n)
 {
@@ -58,14 +58,14 @@ void extract_bidiag(const real_2d_array& B,
     }
 }
 
-real_2d_array to_alglib(const Mat& A)
+real_2d_array to_alglib(const Mat& A, bool verbose)
 {
-    printf("to alglib: inizio \n");
+    if (verbose) printf("to alglib: inizio \n");
 
     int m = A.size();
-    printf("to alglib: m = %d\n", m);
+    if (verbose) printf("to alglib: m = %d\n", m);
     int n = A[0].size();
-    printf("to alglib: n = %d\n", n);
+    if (verbose) printf("to alglib: n = %d\n", n);
 
     real_2d_array B;
     B.setlength(m, n);
@@ -102,13 +102,15 @@ Vec from_alglib(const real_1d_array& A)
     return v;
 }
 
+} // namespace
 
-int svd_bidiagonale(const Mat& B_in, Mat& Ub, Mat& VTb, Vec& sigma){
+int svd_bidiagonale(const Mat& B_in, Mat& Ub, Mat& VTb, Vec& sigma,
+                    bool verbose){
 
     real_2d_array B;
-    printf("svd_bidiagonale: inizio\n");
-    B = to_alglib(B_in);
-    printf("svd_bidiagonale: B convertita\n");
+    if (verbose) printf("svd_bidiagonale: inizio\n");
+    B = to_alglib(B_in, verbose);
+    if (verbose) printf("svd_bidiagonale: B convertita\n");
 
     ae_int_t n = B.cols(); //colonne
     ae_int_t m = B.rows(); //righe
@@ -126,7 +128,7 @@ int svd_bidiagonale(const Mat& B_in, Mat& Ub, Mat& VTb, Vec& sigma){
     d.setlength(p);
     e.setlength(p-1);
 
-    printf("svd_bidiagonale: estrai diagonali da B \n");
+    if (verbose) printf("svd_bidiagonale: estrai diagonali da B \n");
 
     extract_bidiag(B, d, e, isupper);
     

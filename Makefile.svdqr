@@ -1,0 +1,23 @@
+.DELETE_ON_ERROR:
+
+BUILD_DIR := .build-svdqr
+LIB := $(BUILD_DIR)/libsvdqr.a
+ALGLIB_NAMES := ap linalg alglibinternal alglibmisc
+ALGLIB_OBJS := $(addprefix $(BUILD_DIR)/,$(addsuffix .o,$(ALGLIB_NAMES)))
+ALGLIB_HEADERS := $(wildcard alglib/*.h)
+CXXFLAGS := -O2 -std=c++17
+
+.PHONY: all
+all: $(LIB)
+
+$(LIB): $(BUILD_DIR)/svd_qr.o $(ALGLIB_OBJS)
+	$(AR) rcs $@ $^
+
+$(BUILD_DIR)/svd_qr.o: svd_qr.cpp svd_qr.h $(ALGLIB_HEADERS) Makefile.svdqr | $(BUILD_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: alglib/%.cpp $(ALGLIB_HEADERS) Makefile.svdqr | $(BUILD_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR):
+	mkdir -p $@
