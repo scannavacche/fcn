@@ -4,6 +4,10 @@
 
 **Ruolo:** Campagna a separazione controllata, voce 9.
 
+## Perché questa prova
+
+Il raddoppio della distanza, a k = 202, aveva portato JL+PCA quasi al tetto dell’accuratezza. A quel punto la domanda era se, senza spostare di nuovo le nuvole, dare più coordinate alla proiezione migliorasse ancora la separazione o il conteggio dei punti corretti. Ripetiamo quindi a D_ref = 4 lo stesso passaggio k = 202 → 400 già provato a D_ref = 2. Si può così leggere l’effetto di k a geometria fissa e, separatamente, quello della distanza confrontando prove allo stesso k.
+
 ## Domanda
 
 A D_ref = 4, aumentare k da 202 a 400 cambia anche le predizioni o soltanto gli indicatori geometrici?
@@ -23,10 +27,12 @@ Distorsione relativa massima 0,28515, violazioni JL 0/12720. Unico punto errato 
 
 ## Lettura
 
-Il gap assiale cambia segno (−0,40630 → +0,52790) e il rapporto separazione/raggi migliora. L’accuratezza resta 159/160, ma cambia l’errore: il punto 153 torna corretto e il punto 60 diventa errato. Il gap riguarda gli intervalli sull’asse tra i centroidi, non garantisce che il confine del classificatore LOO separi tutti i punti. Con il solo seme comune non si conclude che il fenomeno sia sistematico. Il leave-one-out ricalcola il centroide senza il punto, non la PCA. L’allineamento SVG serve alla visualizzazione.
+Il gap assiale cambia segno (−0,40630 → +0,52790) e il rapporto separazione/raggi migliora. L’accuratezza resta 159/160. Il gap positivo separa gli intervalli sull’asse tra i centroidi, ma non dice dove cada il confine del classificatore. Il leave-one-out ricalcola il centroide senza il punto, non la PCA. L’allineamento SVG serve alla visualizzazione.
+
+**Rilettura dei punti.** Solo confrontando dopo i due `points.csv` si vede che l’unico errore non è lo stesso: il punto 153 torna corretto e il 60 diventa errato. Non era il motivo del lancio. È il motivo per cui, nel seguito, non basta confrontare i due conteggi. Con un solo seme non sappiamo se lo stesso effetto si ripeta.
 
 ## Passo successivo
 
-Ripetere con più semi di A e confrontare i cambi di predizione, oltre alle medie. In seguito variare un solo parametro del generatore per volta, separazione oppure rumore.
+Un seguito naturale è rifare questo confronto con più semi di A, accoppiando i k all’interno del seme. Oltre all’accuratezza, confrontare quali punti cambiano predizione e come si muovono i margini. Non è un esperimento già eseguito.
 
 **File della prova:** [centroidi.svg](./centroidi.svg), [overlay.svg](./overlay.svg), [points.csv](./points.csv), [summary.csv](./summary.csv).

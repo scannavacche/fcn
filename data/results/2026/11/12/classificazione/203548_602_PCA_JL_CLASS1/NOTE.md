@@ -4,6 +4,10 @@
 
 **Ruolo:** Controllo di regressione del generatore.
 
+## Perché questa prova
+
+Per rendere più difficile la classificazione vogliamo avvicinare i centri, ma senza cambiare contemporaneamente il rumore o perdere il generatore originale. Prima di usare il parametro nuovo, il default deve quindi riprodurre il risultato già noto. Altrimenti non sapremmo se un cambiamento dipenda dalla distanza scelta o dall’introduzione del generatore parametrico.
+
 ## Domanda
 
 I default del generatore parametrico conservano il caso storico?

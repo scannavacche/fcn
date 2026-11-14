@@ -4,6 +4,10 @@
 
 **Ruolo:** Campagna a separazione controllata, voce 9.
 
+## Perché questa prova
+
+Il caso a k = 202 ha fatto emergere un divario che il dataset Federico nascondeva. Ora non spostiamo più i centri: vogliamo sapere quanta parte del divario si riduce dando a JL più coordinate. Così non confondiamo il beneficio di comprimere meno con quello di rendere i cluster più separati.
+
 ## Domanda
 
 A D_ref = 2, che cosa recuperiamo passando da k = 202 a k = 400?
@@ -27,6 +31,6 @@ Si recuperano 11 classificazioni corrette (133 → 144). Il gap migliora, ma res
 
 ## Passo successivo
 
-Proseguire a [k = 600](<../210853_389_PCA_JL_CLASS1/NOTE.md>) a parità delle altre impostazioni.
+Il recupero da 133 a 144 punti corretti è visibile, ma la PCA diretta è a 158 e il gap resta negativo. Continuiamo a [k = 600](<../210853_389_PCA_JL_CLASS1/NOTE.md>) per vedere se il recupero prosegue.
 
 **File della prova:** [centroidi.svg](./centroidi.svg), [overlay.svg](./overlay.svg), [points.csv](./points.csv), [summary.csv](./summary.csv).

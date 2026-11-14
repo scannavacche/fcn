@@ -4,6 +4,10 @@
 
 **Ruolo:** Campagna a separazione controllata, voce 9.
 
+## Perché questa prova
+
+Da k = 202 a 400 erano migliorate sia la distorsione massima sia l’accuratezza. Aumentiamo ancora k con lo stesso X e gli stessi semi per verificare se la tendenza continua. Il confronto riguarda anche il costo in compressione: più ci avviciniamo a d, meno coordinate risparmiamo.
+
 ## Domanda
 
 A D_ref = 2, il miglioramento continua passando da k = 400 a k = 600?
@@ -27,6 +31,6 @@ Si sale da 144 a 151 classificazioni corrette e il rapporto separazione/raggi mi
 
 ## Passo successivo
 
-Provare [k = 800](<../211201_253_PCA_JL_CLASS1/NOTE.md>) e controllare se le diverse misure continuano a muoversi insieme.
+Si arriva a 151/160, ma il gap assiale si muove appena. Il [lancio a k = 800](<../211201_253_PCA_JL_CLASS1/NOTE.md>) serve a capire se i progressi nella distorsione, nella separazione e nelle predizioni proseguono davvero insieme.
 
 **File della prova:** [centroidi.svg](./centroidi.svg), [overlay.svg](./overlay.svg), [points.csv](./points.csv), [summary.csv](./summary.csv).

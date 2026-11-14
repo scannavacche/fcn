@@ -4,6 +4,10 @@
 
 **Ruolo:** Campagna di riferimento, voce 7.
 
+## Perché questa prova
+
+Nel confronto precedente, il secondo valore singolare aumentava in tutti i 25 casi e il rapporto σ₁/σ₂ si riduceva. L’osservazione era interessante, ma cambiavano insieme dataset, k e proiezione. Qui congeliamo X e k e ripetiamo il sorteggio di A. Se il fenomeno sparisce, poteva essere legato alle proiezioni della prima griglia. Se si ripete, abbiamo una ragione per misurare come dipenda dalla compressione in questa configurazione.
+
 ## Domanda
 
 Sul master Federico, tenere fissi n = 160, d = 1000, k = 202, ε = 0,50 e usare 20 matrici con semi 60000–60019.
@@ -18,6 +22,6 @@ L’effetto si ripete in questa configurazione anche quando l’energia totale m
 
 ## Passo successivo
 
-Provare [k diversi con proiezioni accoppiate](<../../stabilita_spettrale_k/233629_422_JL_PCA_K/NOTE.md>) per misurare la dipendenza dalla compressione.
+Il fenomeno si ripete anche quando tutte le proiezioni passano il controllo JL. Vogliamo ora capire se si attenua riducendo la compressione. Nella [prova con k accoppiati](<../../stabilita_spettrale_k/233629_422_JL_PCA_K/NOTE.md>) i diversi k di un trial usano le prime righe dello stesso blocco gaussiano, riscalate, così non cambiamo insieme k e l’intero sorteggio.
 
 **File della prova:** [stat.csv](./stat.csv), [trial.csv](./trial.csv).

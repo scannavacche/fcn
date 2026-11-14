@@ -4,6 +4,10 @@
 
 **Ruolo:** Riferimento storico, voce 9.
 
+## Perché questa prova
+
+Le prove precedenti avevano mostrato che rispettare le distanze non impediva di alterare lo spettro. Restava da capire se questo cambiamento avesse un effetto pratico: i due cluster restano distinguibili quando il classificatore vede soltanto le prime due componenti? Partiamo dal dataset storico e da k = 202, già usato nel Monte Carlo spettrale. L’overlay e il rapporto separazione/raggi aiutano a vedere differenze che il solo numero di classificazioni corrette può nascondere.
+
 ## Domanda
 
 La differenza spettrale osservata compromette la separazione dei due cluster di Federico?
@@ -27,6 +31,6 @@ Qui l’accuratezza è satura. Il rapporto separazione/raggi scende malgrado l�
 
 ## Passo successivo
 
-Cambiare solo k e passare a [k = 400](<../185044_074_PCA_JL_CLASS1/NOTE.md>).
+La classificazione è già perfetta, ma le nuvole dopo JL sono più larghe rispetto alla separazione. Passiamo a [k = 400](<../185044_074_PCA_JL_CLASS1/NOTE.md>) con lo stesso dataset e gli stessi semi per capire se comprimere meno avvicina anche gli indicatori geometrici al riferimento.
 
 **File della prova:** [centroidi.svg](./centroidi.svg), [overlay.svg](./overlay.svg), [points.csv](./points.csv), [summary.csv](./summary.csv).

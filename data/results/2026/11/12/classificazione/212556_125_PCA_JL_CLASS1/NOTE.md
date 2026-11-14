@@ -4,6 +4,12 @@
 
 **Ruolo:** Campagna a separazione controllata, voce 9.
 
+## Perché questa prova
+
+A D_ref = 2 la separazione era stata volutamente indebolita. Dare più coordinate a JL aiutava, ma non faceva muovere all’unisono distorsione e accuratezza. Ci siamo allora chiesti se il problema fosse anche riconoscere, nelle prime componenti stimate, la direzione dei centroidi quando il rumore pesa molto sulla geometria osservata.
+
+Per metterlo alla prova raddoppiamo D_ref, senza toccare il rumore isotropo a σ = 0,3, e torniamo a k = 202. Il codice sposta rigidamente ciascun gruppo lungo la stessa direzione e riusa le realizzazioni gaussiane. A k, d e seed_A uguali si usa anche la stessa A. Il confronto con D_ref = 2 e k = 202 isola dunque la separazione nominale. Ridurre σ era un’altra leva discussa, non quella usata qui.
+
 ## Domanda
 
 Con gli stessi semi e k = 202, quanto cambia la classificazione se D_ref passa da 2 a 4?
@@ -23,10 +29,10 @@ Distorsione relativa massima 0,46484, violazioni JL 0/12720. Unico punto errato 
 
 ## Lettura
 
-La classificazione JL+PCA passa da 133/160 a 159/160. La distorsione massima rimane identica alla prova a distanza 2, ma il gap assiale è molto meno negativo. La separazione dei dati conta anche a parità della distorsione peggiore. Il leave-one-out ricalcola il centroide senza il punto, non la PCA. L’allineamento SVG serve alla visualizzazione.
+La classificazione JL+PCA passa da 133/160 a 159/160 e il gap è molto meno negativo. La quota di energia della prima componente nella PCA diretta passa da circa 1,92% a 5,09%, coerentemente con un segnale fra gruppi più marcato. Non è una misura diretta dell’allineamento fra PC1 e l’asse dei centroidi. La distorsione massima coincide nelle due prove, ma questo non dice che tutte le distorsioni siano identiche. Il leave-one-out ricalcola il centroide senza il punto, non la PCA. L’allineamento SVG serve alla visualizzazione.
 
 ## Passo successivo
 
-Tenere D_ref = 4 e passare a [k = 400](<../212722_043_PCA_JL_CLASS1/NOTE.md>) per distinguere recupero geometrico e accuratezza.
+A parità di k e di distorsione massima osservata, la classificazione migliora nettamente. Ora che la geometria è meno difficile, teniamo D_ref = 4 e [ripetiamo il confronto a k = 400](<../212722_043_PCA_JL_CLASS1/NOTE.md>). Vogliamo vedere se comprimere meno recupera ancora qualcosa nella separazione e nell’accuratezza, già vicina al tetto.
 
 **File della prova:** [centroidi.svg](./centroidi.svg), [overlay.svg](./overlay.svg), [points.csv](./points.csv), [summary.csv](./summary.csv).

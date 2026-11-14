@@ -4,6 +4,10 @@
 
 **Ruolo:** Campagna a separazione controllata, voce 9.
 
+## Perché questa prova
+
+A distanza 2, le prime tre prove sembravano suggerire che meno distorsione portasse a più punti corretti. Il k = 800 mette alla prova questa lettura senza cambiare il dataset. Non avevamo motivo di assumere la monotonia per il classificatore, che lavora nel piano PCA ricalcolato a ogni proiezione.
+
 ## Domanda
 
 A D_ref = 2, una distorsione massima ancora più piccola implica più classificazioni corrette?
@@ -23,10 +27,12 @@ Distorsione relativa massima 0,21690, violazioni JL 0/12720.
 
 ## Lettura
 
-No. Da k = 600 a 800, la distorsione massima scende da 0,24563 a 0,21690, il gap e il rapporto separazione/raggi migliorano, ma si passa da 151/160 a 150/160. Il punto 123 torna corretto e i punti 81 e 101 diventano errati. Il leave-one-out ricalcola il centroide senza il punto, non la PCA. L’allineamento SVG serve alla visualizzazione.
+Da k = 600 a 800, la distorsione massima scende da 0,24563 a 0,21690, il gap e il rapporto separazione/raggi migliorano, ma si passa da 151/160 a 150/160. La stessa soglia JL è rispettata in entrambi i casi. Il leave-one-out ricalcola il centroide senza il punto, non la PCA. L’allineamento SVG serve alla visualizzazione.
+
+**Rilettura dei punti.** Confrontando i CSV delle due run, il punto 123 torna corretto e i punti 81 e 101 diventano errati. Il saldo di un punto nasconde dunque tre cambi di predizione.
 
 ## Passo successivo
 
-Cambiare la difficoltà della classificazione portando la distanza nominale a 4. Ripartire da [k = 202](<../212556_125_PCA_JL_CLASS1/NOTE.md>) per confrontarlo con la prima prova a D_ref = 2.
+Aumentare k da 600 a 800 migliora l’indicatore JL ma non l’accuratezza. Per capire quanto conti la debole separazione, cambiamo adesso la geometria invece di inseguire k. Raddoppiamo la distanza nominale a 4 e [torniamo a k = 202](<../212556_125_PCA_JL_CLASS1/NOTE.md>). Il confronto pertinente per isolare la distanza è con la prima prova a D_ref = 2, anch’essa a k = 202, non con questa a k = 800.
 
 **File della prova:** [centroidi.svg](./centroidi.svg), [overlay.svg](./overlay.svg), [points.csv](./points.csv), [summary.csv](./summary.csv).

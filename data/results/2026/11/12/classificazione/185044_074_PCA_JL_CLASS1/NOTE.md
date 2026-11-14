@@ -4,6 +4,10 @@
 
 **Ruolo:** Confronto storico, voce 9.
 
+## Perché questa prova
+
+Il caso k = 202 aveva già ottenuto 160/160. Un risultato identico a k = 400 non poteva migliorare quel conteggio. Poteva però dirci se le nuvole tornavano più simili alle originali riducendo la compressione. Perciò confrontiamo anche gli indicatori geometrici, senza cambiare la generazione dei dati.
+
 ## Domanda
 
 Con la stessa coppia di semi, quale effetto ha aumentare k da 202 a 400 sul dataset Federico?
@@ -27,6 +31,6 @@ La distorsione massima scende da 0,46484 a 0,27599 e il rapporto separazione/rag
 
 ## Passo successivo
 
-Abbassare la separazione dei centroidi per rendere il problema più selettivo, quindi verificare [D_ref = 2](<../210411_282_PCA_JL_CLASS1/NOTE.md>).
+Il 160/160 resiste, anche se gli indicatori geometrici cambiano. Il modello Federico separa i gruppi troppo bene per mettere sotto pressione il classificatore in questi due casi. Introduciamo allora una separazione nominale controllabile, senza cambiare il rumore. Prima [controlliamo il default](<../203548_602_PCA_JL_CLASS1/NOTE.md>), poi proviamo [D_ref = 2](<../210411_282_PCA_JL_CLASS1/NOTE.md>) per vedere che cosa succede quando la direzione fra i centri è meno evidente.
 
 **File della prova:** [centroidi.svg](./centroidi.svg), [overlay.svg](./overlay.svg), [points.csv](./points.csv), [summary.csv](./summary.csv).

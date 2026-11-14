@@ -4,6 +4,10 @@
 
 **Ruolo:** Campagna di riferimento, voce 4.
 
+## Perché questa prova
+
+Nella scansione precedente, a d = 500, il vincolo k < d limitava parecchi casi alle soglie più strette. Qui alziamo d a 1000, restringiamo n e lasciamo fuori le soglie sotto 0,30. Lo scopo immediato è ottenere casi in cui il k utile cada dentro il dominio di ricerca. La tabella risultante ci darà un punto di partenza per confrontare PCA diretta e PCA dopo JL, senza scegliere k a occhio.
+
 ## Domanda
 
 Trovare un k empirico per ognuna delle 25 combinazioni tra n = 10, 20, 40, 80, 160 e ε = 0,30, 0,35, 0,40, 0,45, 0,50, a d = 1000.

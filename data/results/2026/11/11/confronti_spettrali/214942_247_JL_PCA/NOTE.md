@@ -4,6 +4,10 @@
 
 **Ruolo:** Campagna di riferimento, voce 6.
 
+## Perché questa prova
+
+La calibrazione dei k ci diceva se una proiezione rispettava una soglia sulle distanze. Non ci diceva se, dopo aver proiettato, la PCA avrebbe visto la stessa gerarchia di valori singolari. Confrontiamo dunque, per ciascun n, lo stesso sottoinsieme prima e dopo JL. I k vengono dalla scansione, ma qui il dataset è annidato e i semi di A sono diversi da quelli di calibrazione. Per questo ricontrolliamo le distanze invece di dare per acquisito il successo.
+
 ## Domanda
 
 Confrontare PCA diretta e JL+PCA per 25 combinazioni n–ε. Una matrice gaussiana per combinazione, con i k della [campagna di calibrazione](<../../../10/coefficiente_n/204027_870_JL_coeff_n/NOTE.md>).
@@ -18,6 +22,6 @@ Il controllo delle distanze non coincide con la conservazione dello spettro. Una
 
 ## Passo successivo
 
-Fissare n = 160, k = 202, ε = 0,50 e [variare soltanto il seme di A](<../../monte_carlo_spettrale/225535_132_JL_PCA_MC/NOTE.md>).
+Lo stesso verso del cambiamento di σ₂ e Q₂ si vede in tutti i casi, ma con una sola A per configurazione non sappiamo quanto conti la scelta della matrice. [Fissiamo n, d, k ed ε e cambiamo soltanto il seme di A](<../../monte_carlo_spettrale/225535_132_JL_PCA_MC/NOTE.md>) per separare le due questioni.
 
 **File della prova:** [confronto.csv](./confronto.csv), [spettri.csv](./spettri.csv).

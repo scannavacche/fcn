@@ -4,6 +4,10 @@
 
 **Ruolo:** Baseline storica e copia fredda.
 
+## Perché questa prova
+
+Una volta ottenuti dei k utilizzabili, serve il termine di paragone. Prima di proiettare vogliamo sapere quali valori singolari e quote di energia produce la PCA sui dati originali. Il master unico evita di cambiare nuvola a ogni n. Il sottoinsieme più grande aggiunge punti al precedente, mantenendo metà punti per classe. Per ogni n salviamo la PCA originale una volta e la riusiamo nei confronti con soglie e proiezioni diverse.
+
 ## Domanda
 
 Misurare spettro e tempi prima di JL. Si parte da un master Federico con n = 160, d = 1000 e seed_X = 42 e si estraggono sottoinsiemi bilanciati e annidati.

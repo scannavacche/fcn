@@ -4,6 +4,10 @@
 
 **Ruolo:** Diagnosi, configurazione D_ref = 2 non applicata.
 
+## Perché questa prova
+
+Dopo il controllo di default, questo doveva essere il primo caso difficile. La previsione era che, a rumore invariato, avvicinare i centri avrebbe fatto emergere differenze che il 160/160 storico non mostrava. La coincidenza dei risultati con il caso di default ci ha fatto verificare prima la chiamata al generatore, anziché interpretare quella coincidenza come insensibilità della PCA alla separazione.
+
 ## Domanda
 
 La modifica del default a distanza fissa 2 è arrivata al generatore usato dalla classificazione?

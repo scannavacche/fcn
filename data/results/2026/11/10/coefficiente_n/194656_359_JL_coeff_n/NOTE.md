@@ -4,6 +4,10 @@
 
 **Ruolo:** Campagna storica, voce 4.
 
+## Perché questa prova
+
+Il controllo sulle coppie ci aveva fatto distinguere tra poche violazioni complessive e molte proiezioni che violano almeno una coppia. Per questo misuriamo il successo della matrice intera. Aumentiamo n a d fisso per vedere se il k utile cresce con il numero di punti, come suggerisce la scala logaritmica del lemma.
+
 ## Domanda
 
 A d fisso, il primo k trovato cresce con n? Si provano n = 50, 100, 200, 400, 800, con T = 120 e obiettivo 95%.
@@ -18,6 +22,6 @@ Il confronto è coerente con la scala logaritmica, ma non la dimostra. Il vincol
 
 ## Passo successivo
 
-Portare d a 1000 e restringere la griglia di n e di ε per ottenere una [tabella di k utilizzabile nel confronto PCA](<../204027_870_JL_coeff_n/NOTE.md>).
+A d = 500, una parte dei casi con soglie più strette arriva al tetto senza raggiungere il target. Il rilancio a d = 1000 e su un intervallo di n più piccolo permette di ottenere [una griglia di configurazioni riuscite](<../204027_870_JL_coeff_n/NOTE.md>) per il successivo confronto PCA.
 
 **File della prova:** [scan.csv](./scan.csv), [summary.csv](./summary.csv).

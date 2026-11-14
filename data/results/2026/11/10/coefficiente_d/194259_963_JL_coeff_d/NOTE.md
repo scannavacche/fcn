@@ -4,6 +4,12 @@
 
 **Ruolo:** Campagna di riferimento, voce 5.
 
+## Perché questa prova
+
+Dopo le prove di conservazione delle distanze, il punto interessante era capire che cosa dovesse far crescere k. Aumentare il numero dei punti aggiunge coppie da controllare. Aumentare soltanto il numero di coordinate, invece, non aggiunge coppie. Volevamo vedere se questa differenza si riconosceva nei dati.
+
+Si tengono perciò fissi n, le soglie e il criterio di successo. Il limite comune impedisce che un dataset più grande ottenga un risultato migliore semplicemente perché gli abbiamo permesso di cercare k più in alto. Se uno stesso k è sufficiente mentre d cresce, aumenta la frazione relativa eliminabile anche senza migliorare la distorsione.
+
 ## Domanda
 
 A n = 50, il k che raggiunge il 95% di successo cambia se si aumenta d da 500 a 1000 e 2000? La scansione usa 120 proiezioni per caso e un tetto comune k = 499, così ogni k candidato è una riduzione per tutti i d.

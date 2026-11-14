@@ -4,6 +4,10 @@
 
 **Ruolo:** Campagna di riferimento, voce 8.
 
+## Perché questa prova
+
+Il Monte Carlo a k = 202 aveva mostrato che σ₂ cresceva sistematicamente in quella configurazione, senza un aumento analogo di σ₁ o dell’energia totale media. Volevamo capire se, comprimendo meno, l’eccesso vicino alla testa dello spettro si attenuasse e la coda recuperasse. Usiamo proiezioni accoppiate per seguire questa variazione, non per imporre che ogni metrica sia monotona.
+
 ## Domanda
 
 Su n = 160 e d = 1000, confrontare k = 202, 304, 502, 800 per ognuno dei cinque semi 70000–70004. Per ogni seme si riusano le prime righe gaussiane, con scala 1/√k.
@@ -25,6 +29,6 @@ La coda è l’energia oltre i primi sei valori singolari, rapportata alla coda 
 
 ## Passo successivo
 
-Misurare [se il cambiamento spettrale conta anche per separare e classificare i due cluster](<../../../12/classificazione/165216_969_PCA_JL_CLASS1/NOTE.md>).
+La coda recupera, ma dai valori singolari non sappiamo ancora se la separazione dei due gruppi ne risenta. Passiamo alla [classificazione sulle prime due componenti](<../../../12/classificazione/165216_969_PCA_JL_CLASS1/NOTE.md>). La domanda cambia: non più soltanto come si distribuisce l’energia, ma se cambia un risultato ottenuto a valle.
 
 **File della prova:** [stat.csv](./stat.csv), [trial.csv](./trial.csv).
