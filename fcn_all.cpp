@@ -4960,16 +4960,18 @@ namespace {
         constexpr int n_max = 160;
         constexpr int seed_X = 42;
         constexpr int first_values = 6;
-
+        //
         // Primo collaudo: n=10, epsilon=0.40.
         // Mettere false per eseguire tutte le 25 combinazioni.
+        //
         constexpr bool prova_rapida = false;
 
         const std::vector<int> n_values = {10, 20, 40, 80, 160};
         const std::vector<int> eps_percent = {30, 35, 40, 45, 50};
-
+        //
         // k riusciti nella campagna 20261110_204027_870.
         // Righe: n. Colonne: epsilon.
+        //
         const std::vector<std::vector<int>> k_values = {
             {258, 165, 135, 107,  95},
             {288, 201, 175, 140, 116},
@@ -5076,14 +5078,39 @@ namespace {
         const auto& id = output.id();
         auto summary = output.open_new("confronto.csv");
         auto spectra = output.open_new("spettri.csv");
-
+        //
+        // confronto.csv - una riga per configurazione (n, eps).
+        // campagna e' l'ID della run. 
+        // baseline e' l'ID del riferimento.
+        // n = punti, 
+        // d = dimensione originale, 
+        // k = dimensione ridotta.
+        // eps e' la soglia frazionaria. 
+        // seed_X identifica il master,
+        // seed_A la nuova proiezione usata per questa configurazione.
+        // delta = abs(D_JL^2/D_X^2 - 1) sulle coppie non ordinate.
+        // delta_media e delta_max lo riassumono. 
+        // violazioni conta i delta > eps. 
+        // JL_ok vale 1 se nessuna coppia viola la soglia.
+        // Tempi in s. Assomma generazione di A, trasposta, prodotto JL e PCA.
+        // speedup_PCA = tempo storico PCA su X / tempo_totale_s
+        // (zero se il totale non e' positivo). E' un rapporto storico.
+        // var1_X/JL e' la quota di energia spiegata dalla prima PC.
+        //
         summary
             << "campagna,baseline,n,d,eps,k,seed_X,seed_A,"
             << "coppie,violazioni,delta_media,delta_max,JL_ok,"
             << "tempo_A_s,tempo_proiezione_s,tempo_PCA_JL_s,"
             << "tempo_totale_s,tempo_PCA_X_s,speedup_PCA,"
             << "var1_X,var1_JL\n";
-
+        //
+        // spettri.csv - sei righe per configurazione, indice da 1 a 6.
+        // sigma_X/JL sono i singolari dei dati centrati. 
+        // rapporto_X/JL e' sigma1/sigma_indice nel relativo ramo.
+        // Q = rapporto_JL / rapporto_X, con Q = 1 per indice 1.
+        // var_X/JL sono le quote di energia della componente indicata.
+        // var_diff = var_JL - var_X, in frazione (0.01 = 1 punto %).
+        //
         spectra
             << "campagna,n,d,eps,k,seed_A,indice,"
             << "sigma_X,sigma_JL,rapporto_X,rapporto_JL,Q,"
@@ -5152,7 +5179,7 @@ namespace {
                     << sx.tempo_s << " s\n";
 
             // ----------------------------------------------------
-            // 4. Ciclo epsilon: JL + PCA.
+            // 4. Ciclo su epsilon: k tabulato, nuova proiezione JL e PCA
             // ----------------------------------------------------
 
             for (std::size_t ei = 0; ei < eps_percent.size(); ++ei) {
@@ -5335,7 +5362,11 @@ namespace {
     }
 
     // ============================================================================
-    // PCA_JL_MC -- replica Monte Carlo del confronto spettrale JL + PCA
+    // Voce 7: Y = A X 
+    // Ripete il confronto spettrale su X e k fissi,
+    // cambiando soltanto il seme della proiezione A ad ogni trial.
+    // Usa la PCA storica di X come riferimento per tutti i trial.
+
     // Riutilizza JL_estrai_bilanciato(), JL_PCA_spettro() e jl_files::Store.
     //
     // Header standard: <algorithm>, <chrono>, <cmath>, <fstream>, <iomanip>,
@@ -5344,7 +5375,10 @@ namespace {
 
     void JL_effetto_PCA_MC()    // Menu JL-7 - Stabilita' spettrale con MonteCarlo 
     {
-        // Prima prova: caso della campagna completa con n=160, eps=0.50.
+        //
+        // Prima prova:  configurazione fissa 
+        // Caso della campagna completa con n=160, eps=0.50.
+        // 
         constexpr int n = 160;
         constexpr int d = 1000;
         constexpr int k = 202;
@@ -5359,8 +5393,9 @@ namespace {
 
         if (k <= 0 || k >= d || T <= 0 || n < primi + 1 || !(eps > 0.0 && eps < 1.0))
             throw std::invalid_argument("PCA_JL_MC: parametri non validi");
-
-        // 1. Legge il riferimento PCA, senza ripetere la SVD originale.
+        // 
+        // Lettura e verifica della baseline PCA storica senza ripetere la SVD originale.
+        //
         std::ifstream base(baseline_file);
         if (!base)
             throw std::runtime_error("PCA_JL_MC: CSV originale non apribile: " + baseline_file.string());
@@ -5419,7 +5454,9 @@ namespace {
             if (!std::isfinite(s) || s <= 0.0)
                 throw std::runtime_error("PCA_JL_MC: valori singolari originali non validi");
 
-        // 2. Ricostruisce ESATTAMENTE il master della campagna originale.
+        // 
+        // Ricostruzione di X originale e verifica dell'energia
+        // 
         const auto [X_master, label_master] = genera_cluster(n, d, seed_X);
         const auto [X, labels] = JL_estrai_bilanciato(X_master, label_master, n);
 
@@ -5435,8 +5472,9 @@ namespace {
             std::abs(energia_dati / sx.energia - 1.0) > 1e-5)
             throw std::runtime_error(
                 "PCA_JL_MC: energia della baseline diversa da quella del master");
-
-        // Distanze originarie calcolate UNA sola volta per tutti i trial.
+        //
+        // Distanze originali, calcolate UNA sola volta per tutti i trial.
+        // 
         struct Coppia { std::size_t i, j; double d2; };
         std::vector<Coppia> coppie;
         coppie.reserve(static_cast<std::size_t>(n)*(n-1)/2);
@@ -5447,8 +5485,10 @@ namespace {
                     throw std::runtime_error("PCA_JL_MC: distanza originale non valida");
                 coppie.push_back({i,j,d2});
             }
-
-        // 3. Output separati: dettaglio di ogni trial + statistiche finali.
+        // 
+        // Apertura dei CSV della run
+        // Output separati: dettaglio di ogni trial + statistiche finali.
+        // 
         const auto output = files.begin_run("monte_carlo_spettrale", "PCA_JL_MC");
         const auto& id = output.id();
         auto trial_csv = output.open_new("trial.csv");
@@ -5486,8 +5526,10 @@ namespace {
                 << "seed_X=" << seed_X << " seed_A=" << seed_A_iniziale
                 << ".." << seed_A_iniziale+T-1 << '\n'
                 << "Coppie: " << coppie.size() << '\n';
-
-        // 4. Monte Carlo: stessa X, matrice A differente in ogni trial.
+        //
+        // Nuova proiezione, PCA e verifica JL per trial
+        // Loop a la Monte Carlo: stessa X, matrice A differente in ogni trial.
+        // 
         for (int t = 0; t < T; ++t) {
             unsigned seed_A = seed_A_iniziale + static_cast<unsigned>(t);
             auto start = std::chrono::steady_clock::now();
@@ -5552,6 +5594,27 @@ namespace {
             speedups.push_back(speedup);
             indicatori_ok.push_back(ok ? 1.0 : 0.0);
 
+            // trial.csv - una riga per proiezione. 
+            // campagna e' l'ID della run, 
+            // baseline quello del riferimento storico. 
+            // trial parte da 1.
+            // n, d, k, eps e seed_X restano fissi. 
+            // Ad ogni trial cambia seed_A.
+            // delta = abs(D_Y^2/D_X^2 - 1) sulle coppie non ordinate.
+            // delta_media e delta_max lo riassumono. 
+            // violazioni conta i delta > eps. 
+            // JL_ok vale 1 per zero violazioni, 0 altrimenti.
+            // sigma1/2_su_X sono sigma_i(Y)/sigma_i(X). 
+            // sigmaY1..6 sono i valori singolari di Y. 
+            // Qj confronta sigma1/sigmaj in Y rispetto a X.
+            // var1_* e' la quota di energia di PC1. 
+            // energia_Y_su_X e' il rapporto tra le energie totali dei due dataset centrati.
+            // Tempi in s: Il totale somma generazione A, trasposta, prodotto e PCA su Y. 
+            // tempo_PCA_X_s proviene dalla baseline.
+            // speedup_indicativo = tempo_PCA_X_s / tempo_totale_s
+            // (zero se il totale non e' positivo). 
+            // E' al lordo delle verifiche: per il netto vedere funzione 10 Benchmark.
+
             trial_csv << id << ',' << baseline_id << ',' << t+1 << ','
                     << n << ',' << d << ',' << k << ',' << eps << ','
                     << seed_X << ',' << seed_A << ',' << coppie.size() << ','
@@ -5574,8 +5637,18 @@ namespace {
                     << "  var1=" << ve1_Y
                     << "  tempo=" << std::setprecision(3) << t_tot << " s\n";
         }
+        //
+        // Tabelle Statistiche descrittive e report
+        // 
+        // stat.csv - una riga per metrica. 
+        // T e' il numero di trial,
+        // campioni il numero di valori usati per quella riga.
+        // La media di JL_ok_01 e' la frazione di proiezioni riuscite.
+        // Q2_solo_JL_ok usa solo i successi e manca se non ce ne sono.
+        // Le altre metriche usano tutti i trial. 
+        // min e max sono osservati.
+        // Deviazione standard campionaria, o zero con un solo campione.
 
-        // 5. Tabelle statistiche; dev. standard campionaria (T-1).
         stat_csv << "campagna,baseline,n,d,k,eps,T,metrica,campioni,media,"
                     "dev_std_campionaria,min,max\n";
         struct Stat { double media=0, ds=0, minimo=0, massimo=0; };
@@ -5640,7 +5713,7 @@ namespace {
         fcn_form::wait_report();
     }
 
-    // Voce 8: y = A X  (label PCA_JL_K_MC)
+    // Voce 8: Y = A X  (label PCA_JL_K_MC)
     // Confronta l'effetto di k sullo spettro PCA a X fissata.
     // PEr ogni trial le proiezioni a k diversi condividono 
     // le stesse righe gaussiane iniziali. 
