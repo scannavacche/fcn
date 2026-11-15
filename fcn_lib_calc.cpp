@@ -2141,7 +2141,11 @@ Vec vector_campiona_f_k(
         return phi;
     }
 
-
+//
+// abbiamo gia' vector_calcola_norma(tipo, vettore)
+// ma lavora su un singolo vettore come se fosse gia' la differenza
+// ci manca un calcolo in norma2 della diff tra due vettori
+//
 double vector_distanza2(const Vec& x, const Vec& y)
 {
     if (x.size() != y.size())

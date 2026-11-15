@@ -3804,6 +3804,9 @@ namespace {
        }
     }
     
+    //
+    // procedura di test del calcolo distanza tra due vettori dopo traslazione
+    //
     void JL_distanze()          // Menu JL-1 (Test)
     {
         JLDistanceParams params{};
@@ -3826,6 +3829,9 @@ namespace {
         }
     }
 
+    //
+    // procedura di test del calcolo distorsione su un intero dataset a griglia di epsilon
+    //
     void JL_distanze_dataset()  // Menu JL-2 (Test)
     {
         JLDistanzeDatasetParams params{};
@@ -3841,6 +3847,11 @@ namespace {
             cout << "Seed proiezione A:     " << params.seed_A << '\n';
             cout << "Distribuzione A:       Gaussiana\n";
 
+            //
+            // lavoriamo con due clusters per valutare la distorsione della distanza
+            // tra coppie vicine, intra cluster
+            //  e coppie lontane, inter clusters
+            //
             auto [X, label] = genera_cluster(params.n, params.d, params.seed);
             if (X.size() != label.size())
                 throw std::runtime_error("Dataset: X e label incompatibili");
@@ -3853,17 +3864,29 @@ namespace {
             };
 
             std::array<size_t, 6> violazioni{};
-
+            //
+            // Genera matrice di punti random secondo tre distribuzioni disponibili
+            //
             Mat A = matrix_random_jl(
                 params.k, 
                 params.d, 
-                JLMatrixDistribution::Gaussian,
+                JLMatrixDistribution::Gaussian, // per ora lavoriamo con Gaussiana
                 static_cast<unsigned>(params.seed_A),
                  3
             );
 
+            //
+            // Nota: nel dataset abbiamo in punti/vettori rappresentati in riga X_i
+            // Se fossero in colonna potremmo calcolare Y_i = A X_i
+            // ma dovremmo prima trasporre X e poi il risultato Y
+            // quindi per condurre una trasposizione sola, di A, invece di due
+            // calcoliamo Y = X A^t  { Y^t = (A X^t) ==> Y = (A X^t)^t = X A^t }
+            // ed e' la stessa trasformazione che otterremmo con Y = A X 
+            // se i punti/vettori fossero rappresentati in colonna 
+            //
             Mat Y = matrix_prodotto_matrix(X, matrix_trasposta(A)); // vettori in riga
 
+            /* 
             const double d2x = vector_distanza2(X[0], X[1]);
             const double d2y = vector_distanza2(Y[0], Y[1]);
 
@@ -3872,7 +3895,7 @@ namespace {
             cout << "D2 proiettata = " << d2y << '\n';
             cout << "Rapporto R01  = " << d2y / d2x << '\n';
             cout << "Distorsione   = " << std::abs(d2y / d2x - 1.0) << '\n';
-
+            */
 
             double somma_delta = 0.0;
             double max_delta = 0.0;
@@ -3881,20 +3904,21 @@ namespace {
 
             for (size_t i = 0; i < X.size(); ++i) {
                 for (size_t j = i + 1; j < X.size(); ++j) {
-                    double dx2 = vector_distanza2(X[i], X[j]);
+                    double dx2 = vector_distanza2(X[i], X[j]); // originale
                     if (dx2 == 0.0) continue;
 
-                    double dy2 = vector_distanza2(Y[i], Y[j]);
+                    double dy2 = vector_distanza2(Y[i], Y[j]); // trasformata
                     double delta = std::abs(dy2 / dx2 - 1.0);
 
                     somma_delta += delta;
                     ++coppie;
+                    // ogni X_i accoppiato con tutti a destra (n*(n-1)/2)
                     for (size_t s = 0; s < soglie.size(); ++s) {
-                        if (delta > soglie[s])
-                            ++violazioni[s];
+                        if (delta > soglie[s])  // se supera la tolleranza epsilon
+                            ++violazioni[s];    // conteggia le violazioni per distorsione
                     }
-                    if (delta > max_delta) {
-                        max_delta = delta;
+                    if (delta > max_delta) {    // cerca la coppia con distorsione massima
+                        max_delta = delta;      
                         i_max = i;
                         j_max = j;
                     }
@@ -3933,6 +3957,10 @@ namespace {
         }
     }
 
+    // 
+    // procedura di test: come la JL-2 ma ripetendola in loop MonteCarlo 
+    // per dare un significato probabilistico al successo entro banda epsilon
+    //
     void JL_distanze_dataMC()   // Menu JL-3 (Test)
     {
         JLDistanzeMCParams params{};
@@ -3954,7 +3982,9 @@ namespace {
             CoutGuard() { saved.copyfmt(std::cout); }
             ~CoutGuard() { std::cout.copyfmt(saved); }
         };
-
+        //
+        // con form di impostazione parametri di esercizio
+        //
         while (JL_distanze_dataMC_form::prompt(params)) {
             clear_screen();
             const size_t T = static_cast<size_t>(params.T);
@@ -3965,7 +3995,9 @@ namespace {
                 throw std::runtime_error(
                     "JL MC: dimensioni incompatibili");
 
+            //
             // 1. Dataset generato una sola volta.
+            //
             auto [X, label] =
                 genera_cluster(params.n, params.d, params.seed);
 
@@ -3973,7 +4005,9 @@ namespace {
                 throw std::runtime_error(
                     "JL MC: X e label incompatibili");
 
+            //
             // 2. Distanze originali precalcolate.
+            //
             std::vector<Coppia> coppie;
             size_t coincidenti = 0;
 
@@ -3995,7 +4029,9 @@ namespace {
                 throw std::runtime_error(
                     "JL MC: nessuna coppia valida");
 
+            //
             // 3. Accumulatori Monte Carlo.
+            //
             std::array<size_t, NS> proiezioni_fallite{};
             std::array<std::uint64_t, NS> violazioni_totali{};
 
@@ -4019,7 +4055,9 @@ namespace {
                 throw std::runtime_error(
                     "JL MC: intervallo seed_A non valido");
 
+            //
             // 4. Ciclo Monte Carlo.
+            //
             for (size_t t = 0; t < T; ++t) {
                 Seed seed_A =
                     static_cast<Seed>(seed0 + t);
@@ -4088,7 +4126,9 @@ namespace {
                 }
             }
 
+            //
             // 5. Report.
+            //
             std::cout
                 << "\n=== PARAMETRI JL MONTE CARLO ===\n"
                 << "Numero osservazioni n: " << params.n << '\n'
