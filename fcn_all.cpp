@@ -4221,12 +4221,74 @@ namespace {
             // CSV: separatore virgola e punto decimale indipendenti dal locale.
             scan_csv.imbue(std::locale::classic());
             summary_csv.imbue(std::locale::classic());
-
+            //
+            // scan.csv - una riga per ogni (n, d, k, eps) esportato.
+            // run_id identifica la run. 
+            // n = punti, 
+            // d = dimensione originale,
+            // k = dimensione ridotta, 
+            // eps = soglia frazionaria.
+            //
+            // k0 = ceil(log(n)/eps^2) e' l'ancora operativa della ricerca,
+            // non un limite inferiore del lemma. La scansione riporta
+            // anche i k sotto il k0 di quella eps, esclusi dal riepilogo.
+            //
+            // T = proiezioni per k. 
+            // seed_X fissa il dataset
+            // seed_A_start e' il primo dei T semi consecutivi delle matrici A.
+            // successi conta le proiezioni in cui TUTTE le coppie rispettano eps. 
+            // successo_pct = 100*successi/T.
+            // obiettivo_pct e' la percentuale richiesta per accettare k.
+            // delta = abs(D_Y^2/D_X^2 - 1). 
+            // 
+            // media_delta e' la media sui trial delle medie sulle coppie. 
+            // media_max e' la media sui trial dei massimi sulle coppie. 
+            // Entrambe non dipendono da eps.
+            //
+            // eps_min_pct, eps_max_pct, eps_step_pct 
+            // descrivono la griglia delle soglie in punti percentuali. 
+            //
+            // distribuzione = per ora Gaussian (ci sono le varianti Rademacher e sparse).
+            //
+            // n_min/max/step/mode descrivono la griglia a d fisso.
+            //
+            // Modo 1: si somma n_step. Modo 2: si moltiplica per n_step.
+            // Il limite e' d-1. NON_RAGGIUNTA_CON_K<D significa che
+            // il limite e' stato testato, non che ogni k < d sia fallito.
+            // A pari successi best_k e' il maggiore. Il tempo e' tempo_n_s.
+            //
             // Intestazioni CSV brevi e su UNA riga: adatte a parser e grafici.
+            //
             scan_csv << "run_id,n,d,k,eps,k0,T,seed_X,seed_A_start,"
                         "successi,successo_pct,media_delta,media_max,"
                         "obiettivo_pct,n_min,n_max,n_step,n_mode,"
                         "eps_min_pct,eps_max_pct,eps_step_pct,distribuzione\n";
+            //
+            // summary.csv - una riga per (n, d, eps).
+            //
+            // k_successo e' il piu' piccolo k CAMPIONATO con k >= k0
+            // e almeno ceil(T*obiettivo_pct/100) proiezioni riuscite.
+            // k_non_successo e' il maggior k >= k0 realmente fallito
+            // sotto k_successo. Resta vuoto se non ne e' stato osservato uno.
+            //
+            // C_hat = k_successo*eps^2/log(n). 
+            //
+            // successo_pct qui si riferisce a k_successo. 
+            // Senza successo, questi campi e i due k di soglia restano vuoti, non valgono zero.
+            // 
+            // best_successi, best_successo_pct e best_k riportano il
+            // migliore risultato fra i k valutati con k >= k0, anche
+            // senza raggiungere l'obiettivo. Vuoti se non ce ne sono.
+            //
+            // k_valutati e k_max_valutato descrivono l'intera scansione del dataset. 
+            // k_cap_testato e budget_esaurito sono flag 0/1.
+            // esito distingue SUCCESSO, K0_FUORI_RANGE, limite testato
+            // senza successo, BUDGET_ESAUTITO e GRIGLIA_INCOMPLETA.
+            // 
+            // Il tempo del dataset include generazione, distanze originali
+            // e ricerca in k. Esclude l'export ed e' ripetuto per ogni eps.
+            //
+
             summary_csv << "run_id,n,d,eps,k0,k_non_successo,k_successo,"
                         "C_hat,successo_pct,T,seed_X,seed_A_start,"
                         "k_valutati,esito,obiettivo_pct,"
@@ -4621,12 +4683,73 @@ namespace {
             // CSV: separatore virgola e punto decimale indipendenti dal locale.
             scan_csv.imbue(std::locale::classic());
             summary_csv.imbue(std::locale::classic());
-
+            //
+            // scan.csv - una riga per ogni (n, d, k, eps) esportato.
+            // run_id identifica la run. 
+            // n = punti, 
+            // d = dimensione originale,
+            // k = dimensione ridotta, 
+            // eps = soglia frazionaria.
+            //
+            // k0 = ceil(log(n)/eps^2) e' l'ancora operativa della ricerca,
+            // non un limite inferiore del lemma. La scansione riporta
+            // anche i k sotto il k0 di quella eps, esclusi dal riepilogo.
+            //
+            // T = proiezioni per k. 
+            // seed_X fissa il dataset
+            // seed_A_start e' il primo dei T semi consecutivi delle matrici A.
+            // successi conta le proiezioni in cui TUTTE le coppie rispettano eps. 
+            // successo_pct = 100*successi/T.
+            // obiettivo_pct e' la percentuale richiesta per accettare k.
+            // delta = abs(D_Y^2/D_X^2 - 1). 
+            // 
+            // media_delta e' la media sui trial delle medie sulle coppie. 
+            // media_max e' la media sui trial dei massimi sulle coppie. 
+            // Entrambe non dipendono da eps.
+            //
+            // eps_min_pct, eps_max_pct, eps_step_pct 
+            // descrivono la griglia delle soglie in punti percentuali. 
+            //
+            // distribuzione = per ora Gaussian (ci sono le varianti Rademacher e sparse).
+            //
+            // d_min/max/step/mode descrivono la griglia a n fisso.
+            // Modo 1: si somma d_step. Modo 2: si moltiplica per d_step.
+            // Il limite comune e' d_min-1. NON_RAGGIUNTA_ENTRO_K_COMUNE
+            // significa che quel limite e' stato testato senza trovare
+            // un successo nella griglia, non che tutti i k siano falliti.
+            // A pari successi best_k e' il minore. Il tempo e' tempo_d_s.
+            //
             // Intestazioni CSV brevi e su UNA riga: adatte a parser e grafici.
+            //
             scan_csv << "run_id,n,d,k,eps,k0,T,seed_X,seed_A_start,"
                         "successi,successo_pct,media_delta,media_max,"
                         "obiettivo_pct,d_min,d_max,d_step,d_mode,"
                         "eps_min_pct,eps_max_pct,eps_step_pct,distribuzione\n";
+            //
+            // summary.csv - una riga per (n, d, eps).
+            //
+            // k_successo e' il piu' piccolo k CAMPIONATO con k >= k0
+            // e almeno ceil(T*obiettivo_pct/100) proiezioni riuscite.
+            // k_non_successo e' il maggior k >= k0 realmente fallito
+            // sotto k_successo. Resta vuoto se non ne e' stato osservato uno.
+            //
+            // C_hat = k_successo*eps^2/log(n). 
+            //
+            // successo_pct qui si riferisce a k_successo. 
+            // Senza successo, questi campi e i due k di soglia restano vuoti, non valgono zero.
+            // 
+            // best_successi, best_successo_pct e best_k riportano il
+            // migliore risultato fra i k valutati con k >= k0, anche
+            // senza raggiungere l'obiettivo. Vuoti se non ce ne sono.
+            //
+            // k_valutati e k_max_valutato descrivono l'intera scansione del dataset. 
+            // k_cap_testato e budget_esaurito sono flag 0/1.
+            // esito distingue SUCCESSO, K0_FUORI_RANGE, limite testato
+            // senza successo, BUDGET_ESAUTITO e GRIGLIA_INCOMPLETA.
+            // 
+            // Il tempo del dataset include generazione, distanze originali
+            // e ricerca in k. Esclude l'export ed e' ripetuto per ogni eps.
+            //
             summary_csv << "run_id,n,d,eps,k0,k_non_successo,k_successo,"
                         "C_hat,successo_pct,T,seed_X,seed_A_start,"
                         "k_valutati,esito,obiettivo_pct,"
