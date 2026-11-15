@@ -1059,7 +1059,8 @@ namespace {
         for (int i=0; i<3; i++) linear_max_autoval_pwr_any_res(A, 1000, 1e-12);
     }
 
-    void f1_sample() {
+    void f1_sample()        // Menu 1-1 - Foglio es 1 - Campionamento
+    {
 
         // ── costanti ─────────────────────────────────────────────────────────────────
         F1SampleParams params{}; // N. di funzioni base e N. di nodi (default 40 e 100) 
@@ -1221,7 +1222,8 @@ namespace {
         }
     }
 
-    void f1_taylor_exp() {
+    void f1_taylor_exp()    // Menu 1-2 - Foglio es 1 - Taylor exp
+    {
 
         F1TaylorParams params{20, -2};
 
@@ -1282,7 +1284,8 @@ namespace {
         }
     }
 
-    void f1_taylor_cos() {
+    void f1_taylor_cos()    // Menu 1-3 - Foglio es 1 - Taylor cos
+    {
         F1TaylorParams params{20, 1};
 
         Vecn n_val;
@@ -1338,7 +1341,8 @@ namespace {
         }
     }
 
-    void f1_prec() {
+    void f1_prec()          // Menu 1-4 - Foglio es 1 - Precisione di calcolo 
+    {
         F1PrecParams params{};
 
         while (f1_prec_form::prompt(params)) {
@@ -1488,7 +1492,8 @@ namespace {
         }
     }
 
-    void f2_deriv() {
+    void f2_deriv()         // Menu 2-1 - Foglio es 2 - Derivata discreta
+    {
 
         F2DerivParams params{};
 
@@ -1581,7 +1586,8 @@ namespace {
         };
     };
 
-    void f2_cauchy() {
+    void f2_cauchy()        // Menu 2-2 - Foglio es 2 - Problema di Cauchy
+    {
 
         Vec t, fvals, b;
         Mat L;
@@ -1655,7 +1661,8 @@ namespace {
         };
     };
 
-    void f2_bordo() {
+    void f2_bordo()         // Menu 2-3 - Foglio es 2 - Problema differenziale al bordo
+    {
 
         Vec t, fvals, b, x, y;
         Mat A,L,U;
@@ -1745,7 +1752,8 @@ namespace {
         };
     };
 
-    void f2_integral() {
+    void f2_integral()      // Menu 2-4 - Foglio es 2 - Integrazione numerica
+    {
 
         Vec fvals;
         F2IntegralParams params{};
@@ -1895,7 +1903,8 @@ namespace {
         };
     };
 
-    void f2_norme() {
+    void f2_norme()         // Menu 2-5 - Foglio es 2 - Confronto tra norme
+    {
 
         F2NormeParams params{640, 1};
 
@@ -2142,7 +2151,8 @@ namespace {
 
     };
 
-    void f2_deconv() {
+    void f2_deconv()        // Menu 2-6 - Foglio es 2 - Deconvoluzione
+    {
          
         Mat kappa2(4, Vec(3, 0.0)); // 0 numero cond, 1 norma2(K), 2 (norma2(K_inv))
         F2DeconvParams params{};
@@ -2491,7 +2501,8 @@ namespace {
         }
     }
 
-    void f3_svd_test(){
+    void f3_svd_test()      // Menu 3-1 - Foglio es 3 - SVD (Test)
+    {
         int n = 6;
         int d = 5;
 
@@ -2561,7 +2572,8 @@ namespace {
         }
     }
 
-    void f3_svd(){
+    void f3_svd()           // Menu 3-2 - Foglio es 3 - SVD-QR con alglib  
+    {
         int n = 6, d = 6;
 
         while (f3_svd_form::prompt(n, d)) 
@@ -2733,7 +2745,8 @@ namespace {
        }
     }
 
-    void f3_svd_pca(){
+    void f3_svd_pca()       // Menu 3-3 - Foglio es 3 - SVD-QR e PCA 
+    {
         F3SvdPcaParams params{100, 10, 2.0f, 2.0f};  // valori di default
 
         while (f3_svd_pca_form::prompt(params))
@@ -2856,7 +2869,8 @@ namespace {
        }
     }
 
-    void f3_svd_an(){
+    void f3_svd_an()        // Menu 3-4 - Foglio es 3 - SVD-QR e PCA per analisi (da finire) 
+    {
         
         F3SvdAnParams params{};
 
@@ -2953,7 +2967,8 @@ namespace {
         }
     }
 
-	void sym_cauchy() {
+	void sym_cauchy()       // Menu 4-1 - Simulazione di prova - Problemi di Cauchy
+    {
 		SymCauchyParams params{};
 
 		while (sym_cauchy_form::prompt(params)) {
@@ -3025,7 +3040,8 @@ namespace {
 		}
 	}
  
-    void sym_hhalpha() {
+    void sym_hhalpha()      // Menu 4-2 - Simulazione di prova - Vettori di Householder 
+    {
         SymHHAlphaParams params{};
         while (sym_hhalpha_form::prompt(params)) {
             clear_screen();
@@ -3069,7 +3085,7 @@ namespace {
         };
     };
 
-    void ode_euler()
+    void ode_euler()    // Menu 5-1 - Ode Scalare con parametri funzionali (Euler, Heun, RK4)
     {
         OdeEulerParams params{};
 
@@ -3283,7 +3299,8 @@ namespace {
         };
     };
  
-    void ode_osc2d() {
+    void ode_osc2d()    // Menu 5-2 - ODE Vettoriale Osc libero e smorzato (con RK4)
+    {
         //
         // confronto Eulero-Heun test runner
         //
@@ -3485,7 +3502,8 @@ namespace {
         };
     };
 
-    void ode_lotkav() {
+    void ode_lotkav()   // Menu 5-3 - ODE Vettoriale Lotka-Volterra (Predatori-Prede)
+    {
 
         OdeLotkaVParams params{};
 
@@ -3613,7 +3631,8 @@ namespace {
         };
     }
 
-    void gg1() {
+    void gg1()          // Menu 6-1 - T Gershgorin 1 (fatto ma in R non c'e' gusto)
+    {
 
         Mat A = matrix_random(10);
         matrix_dump(A, "Full random");
@@ -3635,7 +3654,9 @@ namespace {
         fcn_form::wait_report();
         clear_screen();
     }
-    void gg2(){
+
+    void gg2()          // Menu 6-2 - T Gershgorin 2 (da fare)
+    {
 
         fcn_form::wait_report();
 
@@ -3644,7 +3665,8 @@ namespace {
 
     }
 
-    void al_qr() {
+    void al_qr()        // Menu 6-3 - SVD by QR
+    {
         AlQRParams params{};
 
         while (al_qr_form::prompt(params)) {
@@ -3782,7 +3804,8 @@ namespace {
        }
     }
     
-    void JL_distanze() {
+    void JL_distanze()          // Menu JL-1 (Test)
+    {
         JLDistanceParams params{};
         while (JL_distanze_form::prompt(params)) {
             clear_screen();
@@ -3803,7 +3826,8 @@ namespace {
         }
     }
 
-    void JL_distanze_dataset() {
+    void JL_distanze_dataset()  // Menu JL-2 (Test)
+    {
         JLDistanzeDatasetParams params{};
 
         while (JL_distanze_dataset_form::prompt(params)) {
@@ -3909,7 +3933,8 @@ namespace {
         }
     }
 
-    void JL_distanze_dataMC() {
+    void JL_distanze_dataMC()   // Menu JL-3 (Test)
+    {
         JLDistanzeMCParams params{};
 
         constexpr std::array<double, 6> soglie{
@@ -4125,7 +4150,8 @@ namespace {
     // ATTENZIONE: primo prototipo numerico. Il 'k trovato' e' il primo
     // successo OSSERVATO nella griglia campionata, non il minimo matematico.
 
-    void JL_stima_coeff_n() {
+    void JL_stima_coeff_n()     // Menu JL-4 - Dipendenza di k da n
+    {
         const jl_files::Store files{"data"};
         JLCoeffNParams params{};
 
@@ -4525,7 +4551,8 @@ namespace {
     // Primo prototipo numerico. Il 'k trovato' e' il primo
     // successo OSSERVATO nella griglia campionata, non il minimo matematico.
 
-    void JL_stima_coeff_d() {
+    void JL_stima_coeff_d()     // Menu JL-5 - Indipendenza di k da d
+    {
         const jl_files::Store files{"data"};
         JLCoeffDParams params{};
 
@@ -4927,7 +4954,7 @@ namespace {
     }
 
 
-    void JL_effetto_PCA()
+    void JL_effetto_PCA()       // Menu JL-6 - Confronti spettrali PCA dopo JL
     {
         constexpr int d = 1000;
         constexpr int n_max = 160;
@@ -5315,7 +5342,7 @@ namespace {
     // <iostream>, <numeric>, <sstream>, <stdexcept>, <string>, <vector>.
     // ============================================================================
 
-    void JL_effetto_PCA_MC()
+    void JL_effetto_PCA_MC()    // Menu JL-7 - Stabilita' spettrale con MonteCarlo 
     {
         // Prima prova: caso della campagna completa con n=160, eps=0.50.
         constexpr int n = 160;
@@ -5613,18 +5640,26 @@ namespace {
         fcn_form::wait_report();
     }
 
+    // Voce 8: y = A X  (label PCA_JL_K_MC)
+    // Confronta l'effetto di k sullo spettro PCA a X fissata.
+    // PEr ogni trial le proiezioni a k diversi condividono 
+    // le stesse righe gaussiane iniziali. 
+    // Trial diversi hanno A generata con seme diverso.
     // ============================================================================
-    // PCA_JL_K_MC: effetto di k sullo spettro PCA (Gaussian JL, trial accoppiati).
+    // Standard: algorithm, chrono, cmath, fstream, iomanip, iostream,
+    // sstream, stdexcept, string, utility, vector.
+
     // Riusa: JL_estrai_bilanciato(), JL_PCA_spettro(), jl_files::Store,
     // genera_cluster(), matrix_random_jl(), matrix_prodotto_matrix(),
     // matrix_trasposta(), matrix_calcola_media(), matrix_centra_su_media(),
     // vector_distanza2(), fcn_form::wait_report().
-    // Standard: algorithm, chrono, cmath, fstream, iomanip, iostream,
-    // sstream, stdexcept, string, utility, vector.
     // ============================================================================
 
-    void JL_effetto_PCA_K_MC()
+    void JL_effetto_PCA_K_MC()  // Menu JL-8 - Stabiltia' spettrale variando k
     {
+        //
+        // Form e parametri della prova
+        //
         const jl_files::Store files{"data"};
         JLPCAKMCParams p{};
         while (JL_PCA_K_MC_form::prompt(p)) {
@@ -5651,15 +5686,19 @@ namespace {
                     throw std::invalid_argument("PCA_JL_K_MC: k non ordinati/validi");
             const int K = k_values.back();
 
-            // 1) Dataset secondo il modello originale di Federico.
+            //
+            // Dataset bialnciato secondo il modello originale di Federico (dataset.hpp)
             // Quando n<=160 si usa lo stesso master di 160 osservazioni della
             // campagna baseline, cosi' anche i sottoinsiemi annidati coincidono.
+            // 
             const auto [Xmaster, lmaster] = genera_cluster(n_max,d,seed_X);
             const auto [X, labels] = JL_estrai_bilanciato(Xmaster,lmaster,n);
 
+            //
             // Il CSV storico e' valido SOLO con gli stessi parametri e con n
             // effettivamente presente. Negli altri casi la PCA originale viene
             // ricalcolata sul nuovo dataset: mai confrontare spettri incompatibili.
+            //
             const bool reference_family = (n<=160 && d==1000 && seed_X==42);
             JLPCA_Spettro sx;
             bool found = false;
@@ -5736,25 +5775,40 @@ namespace {
                 throw std::runtime_error("PCA_JL_K_MC: dataset diverso dalla baseline");
 
             double energia_top6_X = 0.0;
-            for (double s : sx.sigma) energia_top6_X += s*s;
+            //
+            // errore: sommava tutti i sigma, non solo i primi sei come la baseline
+            //
+            // for (double s : sx.sigma) energia_top6_X += s*s;
+            //
+            // viene sostitutita da 
+            //
+            for (int j = 0; j < primi; ++j)
+                energia_top6_X += sx.sigma[j] * sx.sigma[j];
+            //
             const double energia_coda_X = sx.energia-energia_top6_X;
             if (!(energia_coda_X > 0.0))
                 throw std::runtime_error("PCA_JL_K_MC: energia coda originale nulla");
             const double var1_X = sx.sigma[0]*sx.sigma[0]/sx.energia;
             const double var2_X = sx.sigma[1]*sx.sigma[1]/sx.energia;
             const double coda_X = energia_coda_X/sx.energia;
-
+            //
+            // Distanze originali condivise da tutti i trial
+            //
             struct Pair { std::size_t i,j; double d2; };
             std::vector<Pair> pairs;
             pairs.reserve(static_cast<std::size_t>(n)*(n-1)/2);
-            for (std::size_t i=0;i<X.size();++i)
+            for (std::size_t i=0;i<X.size();++i) {
                 for (std::size_t j=i+1;j<X.size();++j) {
                     const double d2 = vector_distanza2(X[i],X[j]);
                     if (!(d2 > 0.0) || !std::isfinite(d2))
                         throw std::runtime_error("PCA_JL_K_MC: distanza X non valida");
                     pairs.push_back({i,j,d2});
                 }
+            } // anche se ha una sola istruzione, metto in blocco per chiarezza
 
+            //
+            // Apertura dei CSV della run
+            // 
             const auto output = files.begin_run("stabilita_spettrale_k", "PCA_JL_K_MC");
             const auto& id = output.id();
             const auto trial_file = output.result_path("trial.csv");
@@ -5763,6 +5817,35 @@ namespace {
             auto stats = output.open_new("stat.csv");
             detail << std::fixed << std::setprecision(9);
             stats << std::fixed << std::setprecision(9);
+            //
+            // trial.csv - una riga per coppia (trial, k).
+            // campagna = ID della run. baseline identifica il riferimento
+            // storico o DINAMICA per indicare il ricalcolo di X.
+            // n = punti, 
+            // d = dimensione originale,
+            // k = dimensione ridotta,
+            // K_master = massimo k richiesto. 
+            // trial parte da 1.
+            // seed_X identifica il dataset. 
+            // seed_A cambia tra trial e resta lo stesso per tutti i k del trial. 
+            // Y si ottiene dalle prime k colonne di Ymax con fattore sqrt(K_master/k).
+            // delta = abs(D_Y^2/D_X^2 - 1) sulle coppie non ordinate.
+            // delta_media e delta_max lo riassumono. 
+            // violazioni conta i delta > eps (soglia frazionaria). 
+            // JL_ok vale 1 se violazioni sono zero.
+            // sigma1/2_Y_su_X sono rapporti tra valori singolari corrispondenti.
+            // Qj = (sigma1(Y)/sigmaj(Y)) / (sigma1(X)/sigmaj(X)).
+            // Qj misura la forma relativa, non la scala dello spettro.
+            // sigmaY1..6 sono i singolari di Y. 
+            // sigma1_X, sigma2_X ed energia_X descrivono il riferimento centrato.
+            // var1/2 sono quote sigma_i^2 / energia totale del ramo.
+            // energia_Y_su_X e' il rapporto delle energie totali.
+            // La coda e' l'energia oltre i primi sei singolari.
+            // coda6_Y_su_X confronta le code. 
+            // coda6_quota_X/Y divide ogni coda per l'energia totale del proprio ramo.
+            // Tempi in s compreso Generazione di A, trasposta e prodotto X A^t (per riga di X).
+            // Estrazione/riscalatura e PCA sono tempi per singolo k.
+            //
             detail << "campagna,baseline,trial,seed_A,n,d,k,K_master,eps,coppie,"
                     "violazioni,delta_media,delta_max,JL_ok,"
                     "sigma1_Y_su_X,sigma2_Y_su_X,Q2,"
@@ -5773,6 +5856,18 @@ namespace {
             for (int j=1;j<=primi;++j) detail << ",sigmaY" << j;
             for (int j=3;j<=primi;++j) detail << ",Q" << j;
             detail << ",seed_X,sigma1_X,sigma2_X,energia_X\n";
+            //
+            // stat.csv - una riga per k e metrica, su tutti i trial
+            // del k attuale, anche quelli con violazioni di epsilon per JL.
+            // 
+            // T e' il numero previsto di trial, 
+            // campioni quello realmente usato.
+            // media, min e max riassumono i campioni. 
+            // La deviazione standard e' campionaria (denominatore campioni-1),
+            // oppure zero se il campione e' unico. 
+            // I conteggi JL OK sono nel trial report e si ricavano dal dettaglio, 
+            // non da una riga di stat.csv.
+            //
             stats << "campagna,baseline,n,d,k,K_master,eps,T,metrica,"
                     "campioni,media,dev_std_campionaria,min,max,seed_X,energia_X\n";
 
@@ -5812,7 +5907,9 @@ namespace {
                     << "Accoppiamento: stesse prime righe gaussiane, scala 1/sqrt(k).\n"
                     << "PC1 X=" << var1_X << "  PC2 X=" << var2_X
                     << "  coda (j>=7) X=" << coda_X << "\n";
-
+            //
+            // Una proiezione master per trial
+            //
             for (int t=0;t<T;++t) {
                 const unsigned seed_A = seed_A_start + static_cast<unsigned>(t);
                 const auto a0 = std::chrono::steady_clock::now();
@@ -5830,7 +5927,10 @@ namespace {
                     throw std::runtime_error("PCA_JL_K_MC: Ymax malformata");
                 const double tempo_A = elapsed(a0,a1);
                 const double tempo_proiezione = elapsed(a1,a2);
-
+                // 
+                // dentro il trial
+                // Estrazione e riscalatura per k, PCA e controllo JL
+                //
                 for (std::size_t ik=0;ik<k_values.size();++ik) {
                     const int k = k_values[ik];
                     const auto b0 = std::chrono::steady_clock::now();
@@ -5914,7 +6014,9 @@ namespace {
                             << std::setprecision(3) << time_pca << " s\n";
                 }
             }
-
+            //
+            // Statistiche descrittive per k e report
+            // 
             auto emit_stat=[&](int k,const char* metric,const std::vector<double>& v) {
                 if (v.empty()) return;
                 const auto s=stat(v);
@@ -5968,18 +6070,20 @@ namespace {
     }
 
     //
-    // Voce 9 - Confronta la classificazione a centroidi sulle prime due
+    // Voce 9: Y = A X  
+    // Confronta la classificazione a centroidi sulle prime due
     // componenti della PCA diretta e della PCA dopo JL, sugli stessi punti.
     // Misura separatamente la distorsione JL e allinea i due piani
     // solo per la sovrapposizione grafica.
-    //
+    // ============================================================================
     // Richiede gli header STL: algorithm, array, chrono, cmath, fstream, iomanip,
     // iostream, limits, sstream, stdexcept, string, vector.
+    // ============================================================================
     // Le primitive gia' presenti: genera_cluster, JL_estrai_bilanciato,
     // matrix_random_jl, matrix_prodotto_matrix, matrix_trasposta,
     // vector_distanza2, fcn_form::wait_report.
 
-    void JL_classificazione_PCA()
+    void JL_classificazione_PCA() // Menu JL-9 - Tenuta della Classificazione
     {
         // Nota: non usa JL_PCA_spettro perche' restituisce SOLO i sigma, non gli score 2D.
         // Qui usiamo JLCL_pca2_gram per avere gli score 2D che sono ottenuti 
@@ -6228,7 +6332,7 @@ namespace {
         }
     }
 
-    // Voce 10 
+    // Voce 10: Y = A X 
     // Confronta i tempi di PCA diretta e JL + PCA al crescere di d,
     // con n e k fissati e la stessa X nei due rami per ogni d.
     // A d fisso si rigenera la stessa A: 
@@ -6239,7 +6343,7 @@ namespace {
     // Usa il k scelto nel form e non legge la baseline storica. 
     // Produce trial.csv e summary.csv per ogni run.
 
-    void JL_benchmark_PCA()
+    void JL_benchmark_PCA()     // menu JL-10 - Benchmark su risparmio cronometrico
     {
         // -------------------------------------------------------------
         // 1. Cronometro e strutture di appoggio
